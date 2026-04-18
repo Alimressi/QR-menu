@@ -6,10 +6,13 @@ declare global {
 }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not set.");
+    throw new Error(
+      "DATABASE_URL or DIRECT_DATABASE_URL must be set in the runtime environment."
+    );
   }
 
   const adapter = new PrismaNeon({ connectionString });
