@@ -15,9 +15,6 @@ const SUPER_ADMIN_COOKIE_VALUE = process.env.SUPER_ADMIN_SESSION_TOKEN || "super
 const RESTAURANT_ADMIN_COOKIE_VALUE =
   process.env.RESTAURANT_ADMIN_SESSION_TOKEN || "restaurant-admin-session";
 
-const ADMIN_LOGIN = process.env.ADMIN_LOGIN || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-
 const SUPER_ADMIN_LOGIN = process.env.SUPER_ADMIN_LOGIN || "superadmin";
 const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || "superadmin123";
 
@@ -33,6 +30,36 @@ async function verifyPassword(candidate: string, passwordOrHash: string) {
   }
 
   return candidate === passwordOrHash;
+}
+
+function getRestaurantAdminCredentialsFromSettings(settingsRaw?: string | null) {
+  if (!settingsRaw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(settingsRaw) as {
+      adminLogin?: unknown;
+      adminPasswordHash?: unknown;
+      adminPassword?: unknown;
+    };
+
+    const adminLogin = typeof parsed.adminLogin === "string" ? parsed.adminLogin.trim() : "";
+    const adminPasswordHash = typeof parsed.adminPasswordHash === "string" ? parsed.adminPasswordHash.trim() : "";
+    const adminPassword = typeof parsed.adminPassword === "string" ? parsed.adminPassword.trim() : "";
+    const passwordOrHash = adminPasswordHash || adminPassword;
+
+    if (!adminLogin || !passwordOrHash) {
+      return null;
+    }
+
+    return {
+      login: adminLogin,
+      passwordOrHash,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function hasValidSuperAdminSession(request: NextRequest) {
@@ -88,12 +115,20 @@ function getRestaurantIdFromCookieStore(cookieStore: Awaited<ReturnType<typeof c
   return legacyRestaurantId ? Number(legacyRestaurantId) : null;
 }
 
-export async function validateAdminCredentials(login: string, password: string) {
-  if (login !== ADMIN_LOGIN) {
+export async function validateAdminCredentials(login: string, password: string, restaurantSettings?: string | null) {
+  const restaurantCredentials = getRestaurantAdminCredentialsFromSettings(restaurantSettings);
+  if (!restaurantCredentials) {
     return null;
   }
 
-  const isValid = await verifyPassword(password, ADMIN_PASSWORD);
+  const effectiveLogin = restaurantCredentials.login;
+  const effectivePasswordOrHash = restaurantCredentials.passwordOrHash;
+
+  if (login !== effectiveLogin) {
+    return null;
+  }
+
+  const isValid = await verifyPassword(password, effectivePasswordOrHash);
   if (isValid) {
     return { role: "RESTAURANT_ADMIN" as UserRole };
   }

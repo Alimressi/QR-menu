@@ -626,6 +626,17 @@ function parseRestaurantSettingsObject(settings: string | null) {
   return {} as Record<string, unknown>;
 }
 
+function parseRestaurantAdminLogin(settings: string | null) {
+  const parsed = parseRestaurantSettingsObject(settings);
+  const adminLogin = parsed.adminLogin;
+
+  if (typeof adminLogin === "string") {
+    return adminLogin;
+  }
+
+  return "";
+}
+
 function normalizeRadiusForSave(value: string, fallback: string) {
   const parsed = Number.parseFloat(String(value).trim().replace("px", ""));
   if (!Number.isFinite(parsed) || parsed < 0) {
@@ -932,6 +943,8 @@ export function SuperAdminDashboard() {
     slug: "",
     logoUrl: "",
     serviceMode: "pro" as RestaurantServiceMode,
+    adminLogin: "",
+    adminPassword: "",
   });
   const [editingRestaurantId, setEditingRestaurantId] = useState<number | null>(null);
 
@@ -1492,6 +1505,8 @@ export function SuperAdminDashboard() {
         slug: restaurantForm.slug,
         logoUrl: restaurantForm.logoUrl || null,
         settings: normalizedSettings,
+        adminLogin: restaurantForm.adminLogin,
+        adminPassword: restaurantForm.adminPassword,
       }),
     });
 
@@ -1501,7 +1516,14 @@ export function SuperAdminDashboard() {
       return;
     }
 
-    setRestaurantForm({ name: "", slug: "", logoUrl: "", serviceMode: "pro" });
+    setRestaurantForm({
+      name: "",
+      slug: "",
+      logoUrl: "",
+      serviceMode: "pro",
+      adminLogin: "",
+      adminPassword: "",
+    });
     setEditingRestaurantId(null);
     await loadRestaurants();
   }
@@ -1512,6 +1534,8 @@ export function SuperAdminDashboard() {
       slug: restaurant.slug,
       logoUrl: restaurant.logoUrl || "",
       serviceMode: parseRestaurantServiceMode(restaurant.settings),
+      adminLogin: parseRestaurantAdminLogin(restaurant.settings),
+      adminPassword: "",
     });
     setEditingRestaurantId(restaurant.id);
   }
@@ -1911,7 +1935,7 @@ export function SuperAdminDashboard() {
               <h2 className="font-serif text-2xl text-gold-100">
                 {editingRestaurantId ? t.editRestaurant : t.addRestaurant}
               </h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <input
                   className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
                   value={restaurantForm.name}
@@ -1932,6 +1956,21 @@ export function SuperAdminDashboard() {
                   onChange={(e) => setRestaurantForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
                   placeholder="Logo URL (optional)"
                 />
+                <input
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.adminLogin}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, adminLogin: e.target.value }))}
+                  placeholder="Restaurant admin login"
+                  required
+                />
+                <input
+                  type="password"
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.adminPassword}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, adminPassword: e.target.value }))}
+                  placeholder={editingRestaurantId ? "New admin password (leave blank to keep)" : "Restaurant admin password"}
+                  required={!editingRestaurantId}
+                />
               </div>
               <div className="mt-3 flex gap-2">
                 <button
@@ -1944,7 +1983,14 @@ export function SuperAdminDashboard() {
                   <button
                     type="button"
                     onClick={() => {
-                      setRestaurantForm({ name: "", slug: "", logoUrl: "", serviceMode: "pro" });
+                      setRestaurantForm({
+                        name: "",
+                        slug: "",
+                        logoUrl: "",
+                        serviceMode: "pro",
+                        adminLogin: "",
+                        adminPassword: "",
+                      });
                       setEditingRestaurantId(null);
                     }}
                     className="min-h-10 rounded-xl border border-dark-600 bg-dark-800 px-4 py-2 text-gold-200 hover:bg-dark-700"

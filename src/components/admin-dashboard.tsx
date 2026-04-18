@@ -209,7 +209,7 @@ const dictionary: Record<
   en: {
     checkingSession: "Checking session...",
     adminLogin: "Admin Login",
-    useEnvCredentials: "Use credentials from .env file",
+    useEnvCredentials: "Use credentials assigned to this restaurant",
     login: "Login",
     password: "Password",
     signIn: "Sign in",
@@ -271,7 +271,7 @@ const dictionary: Record<
   ru: {
     checkingSession: "Проверка сессии...",
     adminLogin: "Вход в админку",
-    useEnvCredentials: "Используйте данные из файла .env",
+    useEnvCredentials: "Используйте логин и пароль, назначенные этому ресторану",
     login: "Логин",
     password: "Пароль",
     signIn: "Войти",
@@ -333,7 +333,7 @@ const dictionary: Record<
   az: {
     checkingSession: "Sessiya yoxlanilir...",
     adminLogin: "Admin girisi",
-    useEnvCredentials: ".env faylindaki melumatlardan istifade edin",
+    useEnvCredentials: "Bu restorana teyin edilmis login ve sifreden istifade edin",
     login: "Login",
     password: "Sifre",
     signIn: "Daxil ol",

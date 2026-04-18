@@ -14,36 +14,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Login and password are required." }, { status: 400 });
     }
 
-    const userInfo = await validateAdminCredentials(login, password);
+    let targetRestaurant: { id: number; settings: string | null } | null = null;
+
+    if (restaurantSlug) {
+      targetRestaurant = await prisma.restaurant.findUnique({
+        where: { slug: restaurantSlug },
+        select: { id: true, settings: true },
+      });
+    } else if (requestedRestaurantId) {
+      targetRestaurant = await prisma.restaurant.findUnique({
+        where: { id: requestedRestaurantId },
+        select: { id: true, settings: true },
+      });
+    } else {
+      targetRestaurant = await prisma.restaurant.findFirst({
+        orderBy: { id: "asc" },
+        select: { id: true, settings: true },
+      });
+    }
+
+    if (!targetRestaurant) {
+      return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
+    }
+
+    const userInfo = await validateAdminCredentials(login, password, targetRestaurant.settings);
 
     if (!userInfo) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 
-    let restaurantId: number | undefined;
-
-    if (userInfo.role === "RESTAURANT_ADMIN") {
-      if (restaurantSlug) {
-        const restaurant = await prisma.restaurant.findUnique({
-          where: { slug: restaurantSlug },
-          select: { id: true },
-        });
-
-        if (!restaurant) {
-          return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
-        }
-
-        restaurantId = restaurant.id;
-      } else if (requestedRestaurantId) {
-        restaurantId = requestedRestaurantId;
-      } else {
-        const firstRestaurant = await prisma.restaurant.findFirst({ orderBy: { id: "asc" }, select: { id: true } });
-        if (!firstRestaurant) {
-          return NextResponse.json({ error: "No restaurants found." }, { status: 404 });
-        }
-        restaurantId = firstRestaurant.id;
-      }
-    }
+    const restaurantId = userInfo.role === "RESTAURANT_ADMIN" ? targetRestaurant.id : undefined;
 
     await setAdminSessionCookie(userInfo.role, restaurantId);
 

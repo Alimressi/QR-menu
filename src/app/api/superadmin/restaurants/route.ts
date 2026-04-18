@@ -1,5 +1,6 @@
 import { isSuperAdmin, getCurrentUserInfo } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/superadmin/restaurants - List all restaurants
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, slug, logoUrl, settings } = body;
+    const { name, slug, logoUrl, settings, adminLogin, adminPassword } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -48,6 +49,25 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const normalizedAdminLogin = String(adminLogin || "").trim();
+    const normalizedAdminPassword = String(adminPassword || "");
+
+    if (!normalizedAdminLogin || !normalizedAdminPassword) {
+      return NextResponse.json(
+        { error: "Admin login and password are required." },
+        { status: 400 }
+      );
+    }
+
+    let normalizedSettings: Record<string, unknown> = {};
+    if (settings && typeof settings === "object" && !Array.isArray(settings)) {
+      normalizedSettings = settings as Record<string, unknown>;
+    }
+
+    normalizedSettings.adminLogin = normalizedAdminLogin;
+    normalizedSettings.adminPasswordHash = await bcrypt.hash(normalizedAdminPassword, 10);
+    delete normalizedSettings.adminPassword;
 
     // Check if slug is unique
     const existing = await prisma.restaurant.findUnique({
@@ -66,7 +86,7 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         logoUrl: logoUrl || null,
-        settings: settings ? JSON.stringify(settings) : null,
+        settings: JSON.stringify(normalizedSettings),
       },
     });
 

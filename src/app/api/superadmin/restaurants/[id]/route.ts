@@ -1,5 +1,6 @@
 import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -58,7 +59,54 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const restaurantId = Number(id);
     const body = await request.json();
 
-    const { name, slug, logoUrl, settings } = body;
+    const { name, slug, logoUrl, settings, adminLogin, adminPassword } = body;
+
+    const existingRestaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { settings: true },
+    });
+
+    if (!existingRestaurant) {
+      return NextResponse.json(
+        { error: "Restaurant not found" },
+        { status: 404 }
+      );
+    }
+
+    let mergedSettings: Record<string, unknown> = {};
+    if (existingRestaurant.settings) {
+      try {
+        const parsed = JSON.parse(existingRestaurant.settings) as Record<string, unknown>;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          mergedSettings = parsed;
+        }
+      } catch {
+        mergedSettings = {};
+      }
+    }
+
+    if (settings !== undefined) {
+      if (settings === null) {
+        mergedSettings = {};
+      } else if (typeof settings === "object" && !Array.isArray(settings)) {
+        mergedSettings = {
+          ...mergedSettings,
+          ...(settings as Record<string, unknown>),
+        };
+      }
+    }
+
+    const normalizedAdminLogin = String(adminLogin || "").trim();
+    const normalizedAdminPassword = String(adminPassword || "");
+
+    if (normalizedAdminLogin) {
+      mergedSettings.adminLogin = normalizedAdminLogin;
+    }
+
+    if (normalizedAdminPassword) {
+      mergedSettings.adminPasswordHash = await bcrypt.hash(normalizedAdminPassword, 10);
+      delete mergedSettings.adminPassword;
+    }
 
     // Check if new slug is unique (if changing)
     if (slug) {
@@ -83,7 +131,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ...(name && { name }),
         ...(slug && { slug }),
         ...(logoUrl !== undefined && { logoUrl }),
-        ...(settings !== undefined && { settings: settings === null ? null : JSON.stringify(settings) }),
+        settings: JSON.stringify(mergedSettings),
       },
     });
 
