@@ -18,6 +18,7 @@
     "frank:theme:verify": "node node_modules/tsx/dist/cli.mjs scripts/verify-frank-theme.ts"
   },
   "dependencies": {
+    "@prisma/adapter-neon": "^6.16.2",
     "@prisma/client": "^6.16.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
