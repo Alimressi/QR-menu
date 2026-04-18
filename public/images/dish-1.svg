@@ -1,0 +1,11 @@
+<svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2f4f3f"/>
+      <stop offset="100%" stop-color="#9c8b63"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g1)"/>
+  <circle cx="620" cy="120" r="160" fill="#d4cfb8" fill-opacity="0.28"/>
+  <text x="62" y="248" fill="#f5f4ee" font-size="56" font-family="Georgia, serif">Truffle Bruschetta</text>
+</svg>

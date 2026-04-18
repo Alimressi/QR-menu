@@ -1,0 +1,11 @@
+<svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1f3b2e"/>
+      <stop offset="100%" stop-color="#b8ae89"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g2)"/>
+  <rect x="70" y="90" width="250" height="320" rx="28" fill="#f5f4ee" fill-opacity="0.14"/>
+  <text x="370" y="255" fill="#f5f4ee" font-size="54" font-family="Georgia, serif">Seared Salmon</text>
+</svg>

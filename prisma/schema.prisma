@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model Restaurant {
+  id          Int          @id @default(autoincrement())
+  name        String
+  slug        String       @unique
+  logoUrl     String?
+  settings    String?      // JSON string for theme settings
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  categories  Category[]
+  dishes      Dish[]
+  orders      Order[]
+  waiterCalls WaiterCall[]
+}
+
+model Category {
+  id            Int       @id @default(autoincrement())
+  nameEn        String
+  nameRu        String
+  nameAz        String
+  restaurantId  Int
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dishes        Dish[]
+
+  @@index([restaurantId])
+}
+
+model Dish {
+  id             Int       @id @default(autoincrement())
+  nameEn         String
+  nameRu         String
+  nameAz         String
+  descriptionEn  String
+  descriptionRu  String
+  descriptionAz  String
+  price          Float
+  imageUrl       String
+  imagePositionX Float     @default(50)
+  imagePositionY Float     @default(50)
+  categoryId     Int
+  restaurantId   Int
+  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  orderItems     OrderItem[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  tableNumber       String
+  status            String      @default("new")
+  total             Float
+  restaurantId      Int
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  checkoutSessionId String?
+  paymentIntentId   String?
+  restaurant        Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items             OrderItem[]
+
+  @@index([restaurantId])
+}
+
+model OrderItem {
+  id            Int    @id @default(autoincrement())
+  orderId       Int
+  dishId        Int
+  quantity      Int
+  price         Float
+  nameEn        String
+  nameRu        String
+  nameAz        String
+  order         Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dish          Dish   @relation(fields: [dishId], references: [id], onDelete: Restrict)
+}
+
+model WaiterCall {
+  id           Int        @id @default(autoincrement())
+  tableNumber  String
+  status       String     @default("active")
+  restaurantId Int
+  createdAt    DateTime   @default(now())
+  resolvedAt   DateTime?
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}

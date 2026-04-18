@@ -1,0 +1,12 @@
+<svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a5d49"/>
+      <stop offset="100%" stop-color="#d4cfb8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g4)"/>
+  <circle cx="210" cy="260" r="140" fill="#f5f4ee" fill-opacity="0.2"/>
+  <circle cx="580" cy="180" r="90" fill="#f5f4ee" fill-opacity="0.14"/>
+  <text x="302" y="275" fill="#f5f4ee" font-size="52" font-family="Georgia, serif">Olive Panna Cotta</text>
+</svg>

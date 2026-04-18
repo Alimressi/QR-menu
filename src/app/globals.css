@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #f5f0e6;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-cormorant);
+  --color-gold-50: #faf8f0;
+  --color-gold-100: #f0e8d0;
+  --color-gold-200: #e6d5a8;
+  --color-gold-300: #d4c078;
+  --color-gold-400: #c9a962;
+  --color-gold-500: #b8944f;
+  --color-gold-600: #9a7a3d;
+  --color-gold-700: #7a6030;
+  --color-gold-800: #5c4828;
+  --color-gold-900: #3d3020;
+  --color-dark-50: #f5f5f5;
+  --color-dark-100: #e0e0e0;
+  --color-dark-200: #c2c2c2;
+  --color-dark-300: #a3a3a3;
+  --color-dark-400: #858585;
+  --color-dark-500: #666666;
+  --color-dark-600: #525252;
+  --color-dark-700: #3d3d3d;
+  --color-dark-800: #292929;
+  --color-dark-900: #1a1a1a;
+  --color-dark-950: #0d0d0d;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-manrope), sans-serif;
+  background-image: 
+    radial-gradient(ellipse at 20% 0%, rgba(201, 169, 98, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(201, 169, 98, 0.05) 0%, transparent 40%),
+    linear-gradient(180deg, #0a0a0a 0%, #0d0d0d 100%);
+  background-attachment: fixed;
+}
+
+.fade-up {
+  opacity: 0;
+  animation: fade-up 0.8s ease-out forwards;
+}
+
+.card-glow {
+  box-shadow: 0 4px 24px rgba(201, 169, 98, 0.08), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(201, 169, 98, 0.12), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .fade-up {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* Scoped Dracula theme for superadmin UI only. */
+.superadmin-dracula {
+  color-scheme: dark;
+  color: #f8f8f2;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(189, 147, 249, 0.2) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 100%, rgba(139, 233, 253, 0.14) 0%, transparent 45%),
+    linear-gradient(180deg, #0d1020 0%, #111428 100%);
+}
+
+.superadmin-dracula .bg-dark-950,
+.superadmin-dracula [class*="bg-dark-950"] {
+  background-color: #0b0e1a !important;
+}
+
+.superadmin-dracula .bg-dark-900,
+.superadmin-dracula [class*="bg-dark-900"] {
+  background-color: #14192b !important;
+}
+
+.superadmin-dracula .bg-dark-800,
+.superadmin-dracula [class*="bg-dark-800"] {
+  background-color: #1d2340 !important;
+}
+
+.superadmin-dracula .bg-dark-700,
+.superadmin-dracula [class*="bg-dark-700"] {
+  background-color: #273153 !important;
+}
+
+.superadmin-dracula .border-dark-700,
+.superadmin-dracula .border-dark-600,
+.superadmin-dracula [class*="border-dark-700"],
+.superadmin-dracula [class*="border-dark-600"] {
+  border-color: #3b4a76 !important;
+}
+
+.superadmin-dracula .text-gold-100,
+.superadmin-dracula [class*="text-gold-100"] {
+  color: #f8f8f2 !important;
+}
+
+.superadmin-dracula .text-gold-200,
+.superadmin-dracula [class*="text-gold-200"] {
+  color: #d6deff !important;
+}
+
+.superadmin-dracula .text-gold-300,
+.superadmin-dracula [class*="text-gold-300"] {
+  color: #aab8e6 !important;
+}
+
+.superadmin-dracula .text-gold-400,
+.superadmin-dracula [class*="text-gold-400"] {
+  color: #8be9fd !important;
+}
+
+.superadmin-dracula .text-gold-500,
+.superadmin-dracula [class*="text-gold-500"] {
+  color: #bd93f9 !important;
+}
+
+.superadmin-dracula .bg-gold-600,
+.superadmin-dracula .bg-gold-500,
+.superadmin-dracula [class*="bg-gold-600"],
+.superadmin-dracula [class*="bg-gold-500"] {
+  background-color: #bd93f9 !important;
+  color: #0f1022 !important;
+  box-shadow: 0 8px 18px rgba(189, 147, 249, 0.3) !important;
+}
+
+.superadmin-dracula .hover\:bg-gold-500:hover,
+.superadmin-dracula .hover\:bg-gold-600:hover,
+.superadmin-dracula [class*="hover:bg-gold-500"],
+.superadmin-dracula [class*="hover:bg-gold-600"] {
+  background-color: #caa9fa !important;
+}
+
+.superadmin-dracula [class*="bg-gold-600/20"],
+.superadmin-dracula [class*="bg-gold-500/10"] {
+  background-color: rgba(189, 147, 249, 0.2) !important;
+}
+
+.superadmin-dracula .bg-gold-600\/20,
+.superadmin-dracula .bg-gold-500\/10 {
+  background-color: rgba(189, 147, 249, 0.24) !important;
+}
+
+.superadmin-dracula [class*="bg-rose-600/20"] {
+  background-color: rgba(255, 85, 85, 0.22) !important;
+}
+
+.superadmin-dracula .text-dark-950,
+.superadmin-dracula [class*="text-rose-400"] {
+  color: #ff6e6e !important;
+}
+
+.superadmin-dracula .text-dark-950 {
+  color: #101228 !important;
+}
+
+.superadmin-dracula .hover\:bg-dark-700:hover,
+.superadmin-dracula [class*="hover:bg-dark-700"] {
+  background-color: #2a2f47 !important;
+}
+
+.superadmin-dracula input,
+.superadmin-dracula select,
+.superadmin-dracula textarea {
+  border-color: #3b4a76 !important;
+  background-color: #1b2240 !important;
+  color: #f8f8f2 !important;
+}
+
+.superadmin-dracula input::placeholder,
+.superadmin-dracula textarea::placeholder {
+  color: #95a2d4 !important;
+}
+
+.superadmin-dracula .shadow-sm,
+.superadmin-dracula .shadow-xl,
+.superadmin-dracula .shadow-lg {
+  box-shadow: 0 14px 32px rgba(6, 9, 22, 0.52) !important;
+}
