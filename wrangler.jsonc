@@ -5,6 +5,9 @@
   "keep_vars": true,
   "compatibility_date": "2026-04-18",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NEXT_PUBLIC_BASE_URL": "https://qr-menu-restoran.imran-ask-2006.workers.dev"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
