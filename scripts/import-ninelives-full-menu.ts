@@ -43,6 +43,55 @@ function localized(text: string): LocalizedText {
   };
 }
 
+const categoryTranslations: Record<string, { nameRu: string; nameAz: string }> = {
+  Salads: { nameRu: "Салаты", nameAz: "Salatlar" },
+  Soups: { nameRu: "Супы", nameAz: "Şorbalar" },
+  Appetizers: { nameRu: "Закуски", nameAz: "Qəlyanaltılar" },
+  "Sandwiches & Burgers": { nameRu: "Сэндвичи и бургеры", nameAz: "Sendviçlər və burgerlər" },
+  Pasta: { nameRu: "Паста", nameAz: "Pasta" },
+  Sushi: { nameRu: "Суши", nameAz: "Suşi" },
+  "Main Course": { nameRu: "Основные блюда", nameAz: "Əsas yeməklər" },
+  "Pizza Menu": { nameRu: "Пицца", nameAz: "Pizza" },
+  "Signature Cocktails": { nameRu: "Авторские коктейли", nameAz: "İmza kokteylləri" },
+  "Classic Cocktails": { nameRu: "Классические коктейли", nameAz: "Klassik kokteyllər" },
+  Sour: { nameRu: "Сауэр-коктейли", nameAz: "Sour kokteylləri" },
+  "Hot Alcohol": { nameRu: "Горячие алкогольные напитки", nameAz: "İsti alkoqollu içkilər" },
+  Whiskey: { nameRu: "Виски", nameAz: "Viski" },
+  Vodka: { nameRu: "Водка", nameAz: "Votka" },
+  Tequila: { nameRu: "Текила", nameAz: "Tekila" },
+  Gin: { nameRu: "Джин", nameAz: "Cin" },
+  Rum: { nameRu: "Ром", nameAz: "Rom" },
+  Liqueurs: { nameRu: "Ликеры", nameAz: "Likörlər" },
+  Aperitive: { nameRu: "Аперитивы", nameAz: "Aperitivlər" },
+  Beer: { nameRu: "Пиво", nameAz: "Pivə" },
+  "Shot Section": { nameRu: "Шоты", nameAz: "Shotlar" },
+  Lemonades: { nameRu: "Лимонады", nameAz: "Limonadlar" },
+  "Soft Drinks": { nameRu: "Безалкогольные напитки", nameAz: "Sərinləşdirici içkilər" },
+  Coffee: { nameRu: "Кофе", nameAz: "Qəhvə" },
+  "Ice Coffee": { nameRu: "Айс-кофе", nameAz: "Buzlu qəhvə" },
+  Dessert: { nameRu: "Десерты", nameAz: "Desertlər" },
+  "Local Red Wines": { nameRu: "Местные красные вина", nameAz: "Yerli qırmızı şərablar" },
+  "Local White Wine": { nameRu: "Местные белые вина", nameAz: "Yerli ağ şərablar" },
+  "Local Rose Wine": { nameRu: "Местные розовые вина", nameAz: "Yerli roze şərablar" },
+  Wines: { nameRu: "Вина", nameAz: "Şərablar" },
+  "Classic Wines": { nameRu: "Классические вина", nameAz: "Klassik şərablar" },
+  "Sparkling Wines": { nameRu: "Игристые вина", nameAz: "Köpüklü şərablar" },
+};
+
+function localizedCategory(nameEn: string): LocalizedText {
+  const translated = categoryTranslations[nameEn];
+
+  if (!translated) {
+    return localized(nameEn);
+  }
+
+  return {
+    nameEn,
+    nameRu: translated.nameRu,
+    nameAz: translated.nameAz,
+  };
+}
+
 function option(name: string, price: number): DishOptionSeed {
   return {
     ...localized(name),
@@ -105,7 +154,7 @@ const categories: CategorySeed[] = [
   "Wines",
   "Classic Wines",
   "Sparkling Wines",
-].map((name) => localized(name));
+].map((name) => localizedCategory(name));
 
 const dishes: DishSeed[] = [
   makeDish({

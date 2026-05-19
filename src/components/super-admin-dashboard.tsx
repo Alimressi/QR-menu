@@ -426,6 +426,30 @@ function getCurrencyLabel(mode: RestaurantDesignSettings["currencyMode"], value:
   return `${value.toFixed(2)} manat`;
 }
 
+function getDishName(language: SuperAdminLanguage, dish: Dish) {
+  if (language === "ru") {
+    return dish.nameRu || dish.nameEn;
+  }
+
+  if (language === "az") {
+    return dish.nameAz || dish.nameEn;
+  }
+
+  return dish.nameEn;
+}
+
+function getCategoryNameTranslated(language: SuperAdminLanguage, category: CategoryWithDishes) {
+  if (language === "ru") {
+    return category.nameRu || category.nameEn;
+  }
+
+  if (language === "az") {
+    return category.nameAz || category.nameEn;
+  }
+
+  return category.nameEn;
+}
+
 function getFieldLabel(field: ColorField, labels: (typeof designLabelDictionary)[SuperAdminLanguage]) {
   const map: Record<ColorField, string> = {
     primaryColor: labels.fieldPrimaryColor,
@@ -465,6 +489,7 @@ function getChangedFieldLabel(
   if (field === "buttonRadius") return labels.fieldButtonRadius;
   if (field === "cardRadius") return labels.fieldCardRadius;
   if (field === "currencyMode") return labels.fieldCurrency;
+
   return getFieldLabel(field as ColorField, labels);
 }
 
@@ -1801,9 +1826,9 @@ export function SuperAdminDashboard() {
               >
                 <option value="">{t.selectCategory}</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.nameEn}
-                  </option>
+                    <option key={category.id} value={category.id}>
+                      {getCategoryNameTranslated(language, category)}
+                    </option>
                 ))}
               </select>
 
@@ -1923,7 +1948,7 @@ export function SuperAdminDashboard() {
 
                 {filteredDishes.map((dish) => (
                   <article key={dish.id} className="rounded-xl border border-dark-600 p-3">
-                    <p className="font-medium text-gold-200">{dish.nameEn}</p>
+                      <p className="font-medium text-gold-200">{getDishName(language, dish)}</p>
                     <p className="text-sm text-gold-400">{getCurrencyLabel(designForm.currencyMode, dish.price)}</p>
                     <div className="mt-2 flex gap-2">
                       <button

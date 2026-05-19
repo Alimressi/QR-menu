@@ -223,6 +223,72 @@ const dictionary: Record<Language, Dictionary> = {
   },
 };
 
+type CategoryTranslation = {
+  ru: string;
+  az: string;
+};
+
+const categoryTranslationFallbacks: Record<string, CategoryTranslation> = {
+  salads: { ru: "Салаты", az: "Salatlar" },
+  soups: { ru: "Супы", az: "Şorbalar" },
+  appetizers: { ru: "Закуски", az: "Qəlyanaltılar" },
+  "sandwiches and burgers": { ru: "Сэндвичи и бургеры", az: "Sendviçlər və burgerlər" },
+  pasta: { ru: "Паста", az: "Pasta" },
+  sushi: { ru: "Суши", az: "Suşi" },
+  "main course": { ru: "Основные блюда", az: "Əsas yeməklər" },
+  pizza: { ru: "Пицца", az: "Pizza" },
+  "pizza menu": { ru: "Пицца", az: "Pizza" },
+  "signature cocktails": { ru: "Авторские коктейли", az: "İmza kokteylləri" },
+  "classic cocktails": { ru: "Классические коктейли", az: "Klassik kokteyllər" },
+  sour: { ru: "Сауэр-коктейли", az: "Sour kokteylləri" },
+  "hot alcohol": { ru: "Горячие алкогольные напитки", az: "İsti alkoqollu içkilər" },
+  whiskey: { ru: "Виски", az: "Viski" },
+  vodka: { ru: "Водка", az: "Votka" },
+  tequila: { ru: "Текила", az: "Tekila" },
+  gin: { ru: "Джин", az: "Cin" },
+  rum: { ru: "Ром", az: "Rom" },
+  liqueurs: { ru: "Ликеры", az: "Likörlər" },
+  aperitif: { ru: "Аперитивы", az: "Aperitivlər" },
+  aperitive: { ru: "Аперитивы", az: "Aperitivlər" },
+  beer: { ru: "Пиво", az: "Pivə" },
+  "shot section": { ru: "Шоты", az: "Shotlar" },
+  lemonades: { ru: "Лимонады", az: "Limonadlar" },
+  "soft drinks": { ru: "Безалкогольные напитки", az: "Sərinləşdirici içkilər" },
+  coffee: { ru: "Кофе", az: "Qəhvə" },
+  "ice coffee": { ru: "Айс-кофе", az: "Buzlu qəhvə" },
+  dessert: { ru: "Десерты", az: "Desertlər" },
+  "local red wines": { ru: "Местные красные вина", az: "Yerli qırmızı şərablar" },
+  "local white wine": { ru: "Местные белые вина", az: "Yerli ağ şərablar" },
+  "local rose wine": { ru: "Местные розовые вина", az: "Yerli roze şərablar" },
+  wines: { ru: "Вина", az: "Şərablar" },
+  "classic wines": { ru: "Классические вина", az: "Klassik şərablar" },
+  "sparkling wines": { ru: "Игристые вина", az: "Köpüklü şərablar" },
+};
+
+function normalizeCategoryKey(value: string) {
+  return value.toLowerCase().replace(/&/g, " and ").replace(/\s+/g, " ").trim();
+}
+
+function getCategoryFallbackTranslation(language: Language, category: CategoryWithDishes) {
+  if (language === "en") {
+    return null;
+  }
+
+  const keys = [category.nameEn, category.nameRu, category.nameAz]
+    .map((value) => normalizeCategoryKey(String(value || "")))
+    .filter(Boolean);
+
+  for (const key of keys) {
+    const translation = categoryTranslationFallbacks[key];
+
+    if (translation) {
+      return language === "ru" ? translation.ru : translation.az;
+    }
+  }
+
+  return null;
+}
+
 function getDishName(language: Language, dish: CategoryWithDishes["dishes"][number]) {
   if (language === "ru") {
     return dish.nameRu || dish.nameEn;
@@ -248,15 +314,31 @@ function getDishDescription(language: Language, dish: CategoryWithDishes["dishes
 }
 
 function getCategoryName(language: Language, category: CategoryWithDishes) {
+  const nameEn = String(category.nameEn || "").trim();
+  const nameRu = String(category.nameRu || "").trim();
+  const nameAz = String(category.nameAz || "").trim();
+
   if (language === "ru") {
-    return category.nameRu || category.nameEn;
+    if (nameRu && nameRu !== nameEn) {
+      return nameRu;
+    }
+
+    const fallback = getCategoryFallbackTranslation(language, category);
+
+    return fallback || nameRu || nameAz || nameEn;
   }
 
   if (language === "az") {
-    return category.nameAz || category.nameEn;
+    if (nameAz && nameAz !== nameEn) {
+      return nameAz;
+    }
+
+    const fallback = getCategoryFallbackTranslation(language, category);
+
+    return fallback || nameAz || nameRu || nameEn;
   }
 
-  return category.nameEn;
+  return nameEn || nameRu || nameAz;
 }
 
 function getOrderItemName(language: Language, item: Order["items"][number]) {

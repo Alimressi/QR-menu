@@ -628,7 +628,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
     void refreshAll();
 
-    const pollIntervalMs = isPageVisible ? 8000 : 30000;
+    const pollIntervalMs = isPageVisible ? 30000 : 30000;
 
     const interval = window.setInterval(() => {
       void loadOrders();
