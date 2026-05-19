@@ -53,6 +53,15 @@ body {
   background-attachment: fixed;
 }
 
+button {
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+button:active:not(:disabled) {
+  filter: brightness(0.86) saturate(1.08);
+  transform: scale(0.98);
+}
+
 .fade-up {
   opacity: 0;
   animation: fade-up 0.8s ease-out forwards;
