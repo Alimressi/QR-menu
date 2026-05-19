@@ -14,6 +14,7 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "prisma db seed",
     "ninelives:import": "node node_modules/tsx/dist/cli.mjs scripts/import-ninelives-full-menu.ts",
+    "ninelives:az:normalize": "node node_modules/tsx/dist/cli.mjs scripts/normalize-ninelives-az.ts",
     "frank:setup": "node node_modules/tsx/dist/cli.mjs scripts/setup-frank.ts",
     "frank:theme:apply": "node node_modules/tsx/dist/cli.mjs scripts/apply-frank-theme.ts",
     "frank:theme:verify": "node node_modules/tsx/dist/cli.mjs scripts/verify-frank-theme.ts"
