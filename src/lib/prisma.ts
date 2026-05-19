@@ -1,9 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client/wasm";
 import { PrismaNeon } from "@prisma/adapter-neon";
-
-declare global {
-  var prisma: PrismaClient | undefined;
-}
 
 function createPrismaClient() {
   const connectionString =
@@ -19,10 +15,67 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-const prisma = global.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
+async function runWithClient<T>(fn: (client: PrismaClient) => Promise<T>) {
+  const client = createPrismaClient();
+  try {
+    return await fn(client);
+  } finally {
+    await client.$disconnect().catch(() => undefined);
+  }
 }
+
+function createModelProxy(modelName: string) {
+  return new Proxy(
+    {},
+    {
+      get(_target, methodName) {
+        if (typeof methodName !== "string") {
+          return undefined;
+        }
+
+        return (...args: unknown[]) =>
+          runWithClient(async (client) => {
+            const model = (client as unknown as Record<string, unknown>)[modelName] as
+              | Record<string, (...innerArgs: unknown[]) => Promise<unknown>>
+              | undefined;
+
+            if (!model || typeof model[methodName] !== "function") {
+              throw new Error(`Unknown Prisma model method: ${modelName}.${methodName}`);
+            }
+
+            return model[methodName](...args);
+          });
+      },
+    }
+  );
+}
+
+const prisma = new Proxy(
+  {},
+  {
+    get(_target, propertyName) {
+      if (typeof propertyName !== "string") {
+        return undefined;
+      }
+
+      if (propertyName.startsWith("$")) {
+        return (...args: unknown[]) =>
+          runWithClient(async (client) => {
+            const method = (client as unknown as Record<string, unknown>)[propertyName] as
+              | ((...innerArgs: unknown[]) => Promise<unknown>)
+              | undefined;
+
+            if (typeof method !== "function") {
+              throw new Error(`Unknown Prisma client method: ${propertyName}`);
+            }
+
+            return method(...args);
+          });
+      }
+
+      return createModelProxy(propertyName);
+    },
+  }
+) as unknown as PrismaClient;
 
 export default prisma;
