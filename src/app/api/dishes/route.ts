@@ -18,13 +18,47 @@ function parseNumber(value: unknown) {
   return Number(normalized);
 }
 
+function normalizeDishOptions(input: unknown) {
+  if (!Array.isArray(input)) {
+    return [] as Array<{ nameEn: string; nameRu: string; nameAz: string; price: number }>;
+  }
+
+  const normalized: Array<{ nameEn: string; nameRu: string; nameAz: string; price: number }> = [];
+
+  for (const rawOption of input) {
+    const rawNameEn = String((rawOption as { nameEn?: unknown })?.nameEn || "").trim();
+    const rawNameRu = String((rawOption as { nameRu?: unknown })?.nameRu || "").trim();
+    const rawNameAz = String((rawOption as { nameAz?: unknown })?.nameAz || "").trim();
+    const fallbackName = rawNameAz || rawNameEn || rawNameRu;
+    const price = parseNumber((rawOption as { price?: unknown })?.price);
+
+    if (!fallbackName || !Number.isFinite(price)) {
+      continue;
+    }
+
+    normalized.push({
+      nameEn: rawNameEn || fallbackName,
+      nameRu: rawNameRu || fallbackName,
+      nameAz: rawNameAz || fallbackName,
+      price,
+    });
+  }
+
+  return normalized;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const restaurantId = searchParams.get("restaurantId");
 
   const dishes = await prisma.dish.findMany({
     where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
-    include: { category: true },
+    include: {
+      category: true,
+      options: {
+        orderBy: { id: "asc" },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -55,6 +89,7 @@ export async function POST(request: NextRequest) {
     const rawDescriptionRu = String(body?.descriptionRu || "").trim();
     const rawDescriptionAz = String(body?.descriptionAz || "").trim();
     const fallbackDescription = rawDescriptionAz || rawDescriptionEn || rawDescriptionRu;
+    const options = normalizeDishOptions(body?.options);
 
     const data = {
       nameEn: rawNameEn || fallbackName,
@@ -79,7 +114,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "restaurantId is required." }, { status: 400 });
     }
 
-    const dish = await prisma.dish.create({ data });
+    const dish = await prisma.dish.create({
+      data: {
+        ...data,
+        options: options.length > 0 ? { create: options } : undefined,
+      },
+      include: {
+        options: {
+          orderBy: { id: "asc" },
+        },
+      },
+    });
 
     return NextResponse.json(dish, { status: 201 });
   } catch {

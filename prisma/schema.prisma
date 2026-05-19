@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "client"
 }
 
@@ -14,7 +14,7 @@ model Restaurant {
   name        String
   slug        String       @unique
   logoUrl     String?
-  settings    String?      // JSON string for theme settings
+  settings    String? // JSON string for theme settings
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   categories  Category[]
@@ -24,19 +24,19 @@ model Restaurant {
 }
 
 model Category {
-  id            Int       @id @default(autoincrement())
-  nameEn        String
-  nameRu        String
-  nameAz        String
-  restaurantId  Int
-  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  dishes        Dish[]
+  id           Int        @id @default(autoincrement())
+  nameEn       String
+  nameRu       String
+  nameAz       String
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dishes       Dish[]
 
   @@index([restaurantId])
 }
 
 model Dish {
-  id             Int       @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   nameEn         String
   nameRu         String
   nameAz         String
@@ -45,18 +45,30 @@ model Dish {
   descriptionAz  String
   price          Float
   imageUrl       String
-  imagePositionX Float     @default(50)
-  imagePositionY Float     @default(50)
+  imagePositionX Float        @default(50)
+  imagePositionY Float        @default(50)
   categoryId     Int
   restaurantId   Int
-  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurant     Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   orderItems     OrderItem[]
+  options        DishOption[]
 
   @@index([restaurantId])
   @@index([categoryId])
+}
+
+model DishOption {
+  id        Int         @id @default(autoincrement())
+  dishId    Int
+  nameEn    String
+  nameRu    String
+  nameAz    String
+  price     Float // Доплата за опцию (может быть 0)
+  dish      Dish        @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  OrderItem OrderItem[]
 }
 
 model Order {
@@ -76,16 +88,21 @@ model Order {
 }
 
 model OrderItem {
-  id            Int    @id @default(autoincrement())
-  orderId       Int
-  dishId        Int
-  quantity      Int
-  price         Float
-  nameEn        String
-  nameRu        String
-  nameAz        String
-  order         Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  dish          Dish   @relation(fields: [dishId], references: [id], onDelete: Restrict)
+  id           Int         @id @default(autoincrement())
+  orderId      Int
+  dishId       Int
+  optionId     Int? // выбранная опция (если есть)
+  quantity     Int
+  price        Float
+  nameEn       String
+  nameRu       String
+  nameAz       String
+  optionNameEn String?
+  optionNameRu String?
+  optionNameAz String?
+  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dish         Dish        @relation(fields: [dishId], references: [id], onDelete: Restrict)
+  option       DishOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
 }
 
 model WaiterCall {

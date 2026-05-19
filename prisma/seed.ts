@@ -1,15 +1,30 @@
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL or DIRECT_DATABASE_URL must be set for seeding.");
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaNeon({ connectionString }),
+});
 
 async function main() {
-  // Clear existing data
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.waiterCall.deleteMany();
-  await prisma.dish.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.restaurant.deleteMany();
+  const allowDestructiveSeed = process.env.ALLOW_DESTRUCTIVE_SEED === "true";
+
+  // Destructive reset is opt-in to avoid accidental menu loss in shared/prod DBs.
+  if (allowDestructiveSeed) {
+    await prisma.orderItem.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.waiterCall.deleteMany();
+    await prisma.dish.deleteMany();
+    await prisma.category.deleteMany();
+    await prisma.restaurant.deleteMany();
+  } else {
+    console.log("[seed] Skipping destructive cleanup. Set ALLOW_DESTRUCTIVE_SEED=true to enable full reset.");
+  }
 
   // Create first restaurant (Nine Lives Bar)
   const restaurant = await prisma.restaurant.create({

@@ -1,5 +1,14 @@
 export type Language = "en" | "ru" | "az";
 
+export type DishOption = {
+  id: number;
+  dishId: number;
+  nameEn: string;
+  nameRu: string;
+  nameAz: string;
+  price: number; // Доплата за опцию
+};
+
 export type Dish = {
   id: number;
   nameEn: string;
@@ -13,6 +22,7 @@ export type Dish = {
   imagePositionX: number;
   imagePositionY: number;
   categoryId: number;
+  options?: DishOption[];
 };
 
 export type CategoryWithDishes = {
@@ -26,11 +36,15 @@ export type CategoryWithDishes = {
 export type OrderItem = {
   id: number;
   dishId: number;
+  optionId?: number;
   quantity: number;
   price: number;
   nameEn: string;
   nameRu: string;
   nameAz: string;
+  optionNameEn?: string;
+  optionNameRu?: string;
+  optionNameAz?: string;
 };
 
 export type Order = {

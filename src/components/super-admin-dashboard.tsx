@@ -1071,6 +1071,7 @@ export function SuperAdminDashboard() {
     setMenuUrl(url);
 
     const generateQr = async () => {
+      const QRCode = await import("qrcode");
       const response = await fetch(`/api/superadmin/qr?restaurantId=${selectedRestaurant.id}`, { cache: "no-store" });
       if (!response.ok) {
         setTableQrs([]);
@@ -1078,10 +1079,29 @@ export function SuperAdminDashboard() {
       }
 
       const data = await response.json() as {
-        qrCodes: Array<{ table: string; url: string; dataUrl: string }>;
+        qrCodes: Array<{ table: string; url: string }>;
       };
 
-      setTableQrs(data.qrCodes || []);
+      const qrEntries = await Promise.all(
+        (data.qrCodes || []).map(async (entry) => {
+          const dataUrl = await QRCode.toDataURL(entry.url, {
+            width: 400,
+            margin: 2,
+            color: {
+              dark: "#000000",
+              light: "#ffffff",
+            },
+          });
+
+          return {
+            table: entry.table,
+            url: entry.url,
+            dataUrl,
+          };
+        }),
+      );
+
+      setTableQrs(qrEntries);
     };
 
     void generateQr();

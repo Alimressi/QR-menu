@@ -1,7 +1,13 @@
-import { PrismaClient } from "@prisma/client/wasm";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import type { PrismaClient } from "@prisma/client";
 
-function createPrismaClient() {
+type PrismaClientLike = PrismaClient;
+
+function isCloudflareWorkerRuntime() {
+  return typeof (globalThis as { WebSocketPair?: unknown }).WebSocketPair !== "undefined";
+}
+
+async function createPrismaClient(): Promise<PrismaClientLike> {
   const connectionString =
     process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
 
@@ -12,11 +18,18 @@ function createPrismaClient() {
   }
 
   const adapter = new PrismaNeon({ connectionString });
-  return new PrismaClient({ adapter });
+
+  if (isCloudflareWorkerRuntime()) {
+    const { PrismaClient } = await import("@prisma/client/wasm");
+    return new PrismaClient({ adapter }) as PrismaClientLike;
+  }
+
+  const { PrismaClient } = await import("@prisma/client");
+  return new PrismaClient({ adapter }) as PrismaClientLike;
 }
 
-async function runWithClient<T>(fn: (client: PrismaClient) => Promise<T>) {
-  const client = createPrismaClient();
+async function runWithClient<T>(fn: (client: PrismaClientLike) => Promise<T>) {
+  const client = await createPrismaClient();
   try {
     return await fn(client);
   } finally {

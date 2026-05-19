@@ -18,6 +18,35 @@ function parseNumber(value: unknown) {
   return Number(normalized);
 }
 
+function normalizeDishOptions(input: unknown) {
+  if (!Array.isArray(input)) {
+    return [] as Array<{ nameEn: string; nameRu: string; nameAz: string; price: number }>;
+  }
+
+  const normalized: Array<{ nameEn: string; nameRu: string; nameAz: string; price: number }> = [];
+
+  for (const rawOption of input) {
+    const rawNameEn = String((rawOption as { nameEn?: unknown })?.nameEn || "").trim();
+    const rawNameRu = String((rawOption as { nameRu?: unknown })?.nameRu || "").trim();
+    const rawNameAz = String((rawOption as { nameAz?: unknown })?.nameAz || "").trim();
+    const fallbackName = rawNameAz || rawNameEn || rawNameRu;
+    const price = parseNumber((rawOption as { price?: unknown })?.price);
+
+    if (!fallbackName || !Number.isFinite(price)) {
+      continue;
+    }
+
+    normalized.push({
+      nameEn: rawNameEn || fallbackName,
+      nameRu: rawNameRu || fallbackName,
+      nameAz: rawNameAz || fallbackName,
+      price,
+    });
+  }
+
+  return normalized;
+}
+
 type Params = {
   params: Promise<{ id: string }>;
 };
@@ -51,6 +80,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const rawDescriptionRu = String(body?.descriptionRu || "").trim();
     const rawDescriptionAz = String(body?.descriptionAz || "").trim();
     const fallbackDescription = rawDescriptionAz || rawDescriptionEn || rawDescriptionRu;
+    const options = normalizeDishOptions(body?.options);
 
     const data = {
       nameEn: rawNameEn || fallbackName,
@@ -71,9 +101,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (!Number.isFinite(data.price)) return NextResponse.json({ error: "price must be a valid number." }, { status: 400 });
     if (!Number.isInteger(data.categoryId)) return NextResponse.json({ error: "categoryId is required." }, { status: 400 });
 
-    const dish = await prisma.dish.update({
-      where: { id: dishId },
-      data,
+    const dish = await prisma.$transaction(async (tx) => {
+      await tx.dish.update({
+        where: { id: dishId },
+        data,
+      });
+
+      await tx.dishOption.deleteMany({ where: { dishId } });
+
+      if (options.length > 0) {
+        await tx.dishOption.createMany({
+          data: options.map((option) => ({
+            dishId,
+            nameEn: option.nameEn,
+            nameRu: option.nameRu,
+            nameAz: option.nameAz,
+            price: option.price,
+          })),
+        });
+      }
+
+      return tx.dish.findUnique({
+        where: { id: dishId },
+        include: {
+          options: {
+            orderBy: { id: "asc" },
+          },
+        },
+      });
     });
 
     return NextResponse.json(dish);

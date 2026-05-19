@@ -20,7 +20,13 @@ export async function GET(request: NextRequest, { params }: Params) {
       include: {
         categories: {
           include: {
-            dishes: true,
+            dishes: {
+              include: {
+                options: {
+                  orderBy: { id: "asc" },
+                },
+              },
+            },
           },
         },
         _count: {

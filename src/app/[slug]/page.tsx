@@ -1,6 +1,7 @@
 import { MenuClient } from "@/components/menu-client";
 import prisma from "@/lib/prisma";
 import { getRestaurantSettings } from "@/lib/restaurant";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,25 @@ export const revalidate = 0;
 type Params = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { slug } = await params;
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { name: true },
+  });
+
+  if (!restaurant) {
+    return {
+      title: "Restaurant",
+    };
+  }
+
+  return {
+    title: restaurant.name,
+  };
+}
 
 export default async function RestaurantPage({ params }: Params) {
   const { slug } = await params;
@@ -27,7 +47,13 @@ export default async function RestaurantPage({ params }: Params) {
     where: { restaurantId: restaurant.id },
     include: {
       dishes: {
-        where: { restaurantId: restaurant.id },
+        include: {
+          options: {
+            orderBy: {
+              id: "asc",
+            },
+          },
+        },
         orderBy: {
           createdAt: "desc",
         },

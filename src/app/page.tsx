@@ -23,7 +23,13 @@ export default async function Home() {
     where: { restaurantId: defaultRestaurant.id },
     include: {
       dishes: {
-        where: { restaurantId: defaultRestaurant.id },
+        include: {
+          options: {
+            orderBy: {
+              id: "asc",
+            },
+          },
+        },
         orderBy: {
           createdAt: "desc",
         },

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { CategoryWithDishes, Language, Order } from "@/types";
-import { Minus, Plus, ShoppingBag, Trash2, Bell, User } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, Bell, User, Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -46,6 +46,7 @@ type Props = {
 type Dictionary = {
   title: string;
   subtitle: string;
+  menuLabel: string;
   tableNumber: string;
   qrTableDetected: string;
   placeOrder: string;
@@ -76,12 +77,22 @@ type Dictionary = {
   callWaiterSuccess: string;
   callWaiterFailed: string;
   waiterOnTheWay: string;
+  noItemsInCategory: string;
+  removeItemAria: string;
+  decreaseQtyAria: string;
+  increaseQtyAria: string;
+  missingRestaurantContext: string;
+  requiredOptionError: string;
+  chooseOption: string;
+  optionLabel: string;
+  browseCategories: string;
 };
 
 const dictionary: Record<Language, Dictionary> = {
   en: {
     title: "Nine Lives",
     subtitle: "Craft cocktails. Fine dishes. Timeless atmosphere.",
+    menuLabel: "Bar & Lounge QR Menu",
     tableNumber: "Table number",
     qrTableDetected: "Detected from QR",
     placeOrder: "Place order",
@@ -112,10 +123,20 @@ const dictionary: Record<Language, Dictionary> = {
     callWaiterSuccess: "Waiter is on the way!",
     callWaiterFailed: "Failed to call waiter. Please try again.",
     waiterOnTheWay: "Waiter called",
+    noItemsInCategory: "No items in this category yet.",
+    removeItemAria: "Remove item",
+    decreaseQtyAria: "Decrease quantity",
+    increaseQtyAria: "Increase quantity",
+    missingRestaurantContext: "Restaurant context is missing. Please reload menu from QR link.",
+    requiredOptionError: "Please choose an option for this dish before adding it.",
+    chooseOption: "Choose option",
+    optionLabel: "Option",
+    browseCategories: "Browse categories",
   },
   ru: {
     title: "Nine Lives",
     subtitle: "Авторские коктейли. Избранные блюда. Неподвластная времени атмосфера.",
+    menuLabel: "QR-меню бара и лаунжа",
     tableNumber: "Номер стола",
     qrTableDetected: "Определен по QR",
     placeOrder: "Сделать заказ",
@@ -146,10 +167,20 @@ const dictionary: Record<Language, Dictionary> = {
     callWaiterSuccess: "Официант уже идет к вам!",
     callWaiterFailed: "Не удалось вызвать официанта. Попробуйте еще раз.",
     waiterOnTheWay: "Официант вызван",
+    noItemsInCategory: "В этой категории пока нет блюд.",
+    removeItemAria: "Удалить позицию",
+    decreaseQtyAria: "Уменьшить количество",
+    increaseQtyAria: "Увеличить количество",
+    missingRestaurantContext: "Контекст ресторана отсутствует. Пожалуйста, откройте меню снова по QR-ссылке.",
+    requiredOptionError: "Перед добавлением выберите вариант блюда.",
+    chooseOption: "Выберите вариант",
+    optionLabel: "Вариант",
+    browseCategories: "Категории",
   },
   az: {
     title: "Nine Lives",
     subtitle: "Həmkar kokteyllər. Seçilmiş yeməklər. Zamansız atmosfer.",
+    menuLabel: "Bar və lounge QR menyu",
     tableNumber: "Masa nömrəsi",
     qrTableDetected: "QR-dan təyin edildi",
     placeOrder: "Sifariş et",
@@ -180,16 +211,25 @@ const dictionary: Record<Language, Dictionary> = {
     callWaiterSuccess: "Ofisiant sizə tərəf gəlir!",
     callWaiterFailed: "Ofisiant çağırmaq alınmadı. Yenidən cəhd edin.",
     waiterOnTheWay: "Ofisiant çağırıldı",
+    noItemsInCategory: "Bu kateqoriyada hələlik yemək yoxdur.",
+    removeItemAria: "Məhsulu sil",
+    decreaseQtyAria: "Miqdarı azalt",
+    increaseQtyAria: "Miqdarı artır",
+    missingRestaurantContext: "Restoran məlumatı tapılmadı. Zəhmət olmasa menyunu QR linki ilə yenidən açın.",
+    requiredOptionError: "Əlavə etməzdən əvvəl yemək variantını seçin.",
+    chooseOption: "Variant seçin",
+    optionLabel: "Variant",
+    browseCategories: "Kateqoriyalar",
   },
 };
 
 function getDishName(language: Language, dish: CategoryWithDishes["dishes"][number]) {
   if (language === "ru") {
-    return dish.nameRu;
+    return dish.nameRu || dish.nameEn;
   }
 
   if (language === "az") {
-    return dish.nameAz;
+    return dish.nameAz || dish.nameEn;
   }
 
   return dish.nameEn;
@@ -197,11 +237,11 @@ function getDishName(language: Language, dish: CategoryWithDishes["dishes"][numb
 
 function getDishDescription(language: Language, dish: CategoryWithDishes["dishes"][number]) {
   if (language === "ru") {
-    return dish.descriptionRu;
+    return dish.descriptionRu || dish.descriptionAz || dish.descriptionEn;
   }
 
   if (language === "az") {
-    return dish.descriptionAz;
+    return dish.descriptionAz || dish.descriptionRu || dish.descriptionEn;
   }
 
   return dish.descriptionEn;
@@ -209,11 +249,11 @@ function getDishDescription(language: Language, dish: CategoryWithDishes["dishes
 
 function getCategoryName(language: Language, category: CategoryWithDishes) {
   if (language === "ru") {
-    return category.nameRu;
+    return category.nameRu || category.nameEn;
   }
 
   if (language === "az") {
-    return category.nameAz;
+    return category.nameAz || category.nameEn;
   }
 
   return category.nameEn;
@@ -221,14 +261,41 @@ function getCategoryName(language: Language, category: CategoryWithDishes) {
 
 function getOrderItemName(language: Language, item: Order["items"][number]) {
   if (language === "ru") {
-    return item.nameRu;
+    return item.nameRu || item.nameEn;
   }
 
   if (language === "az") {
-    return item.nameAz;
+    return item.nameAz || item.nameEn;
   }
 
   return item.nameEn;
+}
+
+function getDishOptionName(
+  language: Language,
+  option: { nameEn: string; nameRu: string; nameAz: string },
+) {
+  if (language === "ru") {
+    return option.nameRu || option.nameEn;
+  }
+
+  if (language === "az") {
+    return option.nameAz || option.nameEn;
+  }
+
+  return option.nameEn;
+}
+
+function getOrderItemOptionName(language: Language, item: Order["items"][number]) {
+  if (language === "ru") {
+    return item.optionNameRu || item.optionNameEn || "";
+  }
+
+  if (language === "az") {
+    return item.optionNameAz || item.optionNameEn || "";
+  }
+
+  return item.optionNameEn || "";
 }
 
 const TABLE_SESSION_STORAGE_KEY = "qr-table-session";
@@ -280,10 +347,10 @@ function formatCurrency(value: number, mode: "manat" | "azn" | "symbol") {
   }
 
   if (mode === "symbol") {
-    return `₼ ${value.toFixed(2)}`;
+    return `${value.toFixed(2)} ₼`;
   }
 
-  return `${value.toFixed(2)} manat`;
+  return `${value.toFixed(2)} ₼`;
 }
 
 function isValidTableSession(value: unknown): value is {
@@ -317,11 +384,13 @@ export function MenuClient({
   restaurantName,
 }: Props) {
   const [liveCategories, setLiveCategories] = useState<CategoryWithDishes[]>(categories);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [language, setLanguage] = useState<Language>("en");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
   const [qrSessionToken, setQrSessionToken] = useState("");
   const [cart, setCart] = useState<Record<number, number>>({});
+  const [selectedOptionByDish, setSelectedOptionByDish] = useState<Record<number, number | undefined>>({});
   const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -329,17 +398,36 @@ export function MenuClient({
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [isBasketOpen, setIsBasketOpen] = useState(false);
   const [isBasketVisible, setIsBasketVisible] = useState(false);
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [dishModalDishId, setDishModalDishId] = useState<number | null>(null);
+  const [isDishModalOpen, setIsDishModalOpen] = useState(false);
+  const [isDishModalVisible, setIsDishModalVisible] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [dishDragY, setDishDragY] = useState(0);
+  const [isDishDragging, setIsDishDragging] = useState(false);
   const [isTableSessionExpired, setIsTableSessionExpired] = useState(false);
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [callingWaiter, setCallingWaiter] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
+  const [isCategoryRailPinned, setIsCategoryRailPinned] = useState(false);
+  const [categoryRailHeight, setCategoryRailHeight] = useState(0);
   const [runtimeServiceMode, setRuntimeServiceMode] = useState<"lite" | "pro">(
     settings?.serviceMode === "lite" ? "lite" : "pro",
   );
+  const stickyCategoriesRef = useRef<HTMLDivElement | null>(null);
+  const categoryRailTriggerRef = useRef<HTMLDivElement | null>(null);
+  const categoryRailAnchorRef = useRef<HTMLDivElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const touchStartScrollTopRef = useRef(0);
+  const dishTouchStartYRef = useRef<number | null>(null);
+  const dishTouchStartScrollTopRef = useRef(0);
+  const basketSheetRef = useRef<HTMLElement | null>(null);
+  const dishSheetRef = useRef<HTMLElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
+  const dishModalCloseTimerRef = useRef<number | null>(null);
+  const lastClickedCategoryIdRef = useRef<number | null>(null);
+  const pendingCategoryScrollIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -361,21 +449,23 @@ export function MenuClient({
   const allDishes = useMemo(() => liveCategories.flatMap((category) => category.dishes), [liveCategories]);
 
   const cartItems = useMemo(() => {
-    return Object.entries(cart)
-      .map(([dishId, quantity]) => {
-        const dish = allDishes.find((item) => item.id === Number(dishId));
+    return Object.entries(cart).flatMap(([dishId, quantity]) => {
+      const dish = allDishes.find((item) => item.id === Number(dishId));
 
-        if (!dish) {
-          return null;
-        }
+      if (!dish) {
+        return [];
+      }
 
-        return { dish, quantity };
-      })
-      .filter((item): item is { dish: CategoryWithDishes["dishes"][number]; quantity: number } => Boolean(item));
-  }, [allDishes, cart]);
+      const selectedOptionId = selectedOptionByDish[dish.id];
+      const selectedOption = dish.options?.find((option) => option.id === selectedOptionId);
+      const unitPrice = dish.price + (selectedOption?.price ?? 0);
+
+      return [{ dish, quantity, selectedOption, unitPrice }];
+    });
+  }, [allDishes, cart, selectedOptionByDish]);
 
   const total = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.dish.price * item.quantity, 0);
+    return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   }, [cartItems]);
   const activeOrderTotal = activeOrder?.total ?? 0;
   const basketGrandTotal = activeOrderTotal + total;
@@ -618,6 +708,157 @@ export function MenuClient({
   }, [categories]);
 
   useEffect(() => {
+    setActiveCategoryId((previous) => {
+      if (liveCategories.length === 0) {
+        return null;
+      }
+
+      if (previous !== null && liveCategories.some((category) => category.id === previous)) {
+        return previous;
+      }
+
+      return liveCategories[0]?.id ?? null;
+    });
+  }, [liveCategories]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const updatePinnedState = () => {
+      const trigger = categoryRailTriggerRef.current;
+      const anchor = categoryRailAnchorRef.current;
+      const rail = document.getElementById("sticky-category-rail");
+      if (!trigger || !anchor || !rail) {
+        return;
+      }
+
+      const nextHeight = Math.round(rail.getBoundingClientRect().height);
+      setCategoryRailHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+
+      const shouldPin = trigger.getBoundingClientRect().top <= 0;
+      setIsCategoryRailPinned((prev) => (prev === shouldPin ? prev : shouldPin));
+    };
+
+    updatePinnedState();
+    window.addEventListener("scroll", updatePinnedState, { passive: true });
+    window.addEventListener("resize", updatePinnedState);
+
+    return () => {
+      window.removeEventListener("scroll", updatePinnedState);
+      window.removeEventListener("resize", updatePinnedState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || liveCategories.length === 0) {
+      return;
+    }
+
+    const categoryIds = liveCategories.map((category) => category.id);
+
+    const updateActiveCategory = () => {
+      const stickyRail = document.getElementById("sticky-category-rail");
+      const stickyHeight = stickyRail?.getBoundingClientRect().height ?? 0;
+      const stickyOffset = Math.max(stickyHeight + 16, 0);
+      let currentId = categoryIds[0];
+
+      for (const categoryId of categoryIds) {
+        const element = document.getElementById(`category-${categoryId}`);
+        if (!element) {
+          continue;
+        }
+
+        if (element.getBoundingClientRect().top - stickyOffset <= 0) {
+          currentId = categoryId;
+        } else {
+          break;
+        }
+      }
+
+      setActiveCategoryId((prev) => {
+        if (lastClickedCategoryIdRef.current !== null && prev === lastClickedCategoryIdRef.current) {
+          if (currentId !== lastClickedCategoryIdRef.current) {
+            lastClickedCategoryIdRef.current = null;
+            return currentId;
+          }
+
+          return prev;
+        }
+
+        return prev === currentId ? prev : currentId;
+      });
+    };
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        updateActiveCategory();
+        ticking = false;
+      });
+    };
+
+    updateActiveCategory();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [liveCategories]);
+
+  useEffect(() => {
+    if (activeCategoryId === null) {
+      return;
+    }
+
+    const rail = stickyCategoriesRef.current;
+    if (!rail) {
+      return;
+    }
+
+    const activeButton = rail.querySelector(`[data-category-id="${activeCategoryId}"]`) as HTMLElement | null;
+    if (!activeButton) {
+      return;
+    }
+
+    const railRect = rail.getBoundingClientRect();
+    const buttonRect = activeButton.getBoundingClientRect();
+    const targetLeft =
+      rail.scrollLeft +
+      (buttonRect.left - railRect.left) -
+      (railRect.width / 2 - buttonRect.width / 2);
+
+    rail.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior: "smooth",
+    });
+  }, [activeCategoryId]);
+
+  useEffect(() => {
+    if (isCategoryMenuOpen) {
+      return;
+    }
+
+    const pendingId = pendingCategoryScrollIdRef.current;
+    if (pendingId === null) {
+      return;
+    }
+
+    pendingCategoryScrollIdRef.current = null;
+    window.setTimeout(() => {
+      scrollToCategory(pendingId);
+    }, 30);
+  }, [isCategoryMenuOpen]);
+
+  useEffect(() => {
     if (!restaurantId) {
       return;
     }
@@ -645,22 +886,72 @@ export function MenuClient({
   }, [isPageVisible, restaurantId]);
 
   useEffect(() => {
-    if (!isBasketOpen) {
+    const isAnyOverlayOpen = isBasketOpen || isDishModalOpen || isCategoryMenuOpen;
+
+    if (!isAnyOverlayOpen) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
+    const scrollY = window.scrollY;
+    const previousBodyStyles = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousBodyStyles.position;
+      document.body.style.top = previousBodyStyles.top;
+      document.body.style.left = previousBodyStyles.left;
+      document.body.style.right = previousBodyStyles.right;
+      document.body.style.width = previousBodyStyles.width;
+      document.body.style.overflow = previousBodyStyles.overflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+      window.scrollTo({ top: scrollY, left: 0, behavior: "instant" as ScrollBehavior });
     };
-  }, [isBasketOpen]);
+  }, [isBasketOpen, isDishModalOpen, isCategoryMenuOpen]);
+
+  useEffect(() => {
+    if (!isBasketOpen || (!message && !error)) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const sheet = basketSheetRef.current;
+      if (!sheet) {
+        return;
+      }
+
+      sheet.scrollTo({
+        top: sheet.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+  }, [error, isBasketOpen, message]);
 
   useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
         window.clearTimeout(closeTimerRef.current);
+      }
+
+      if (dishModalCloseTimerRef.current) {
+        window.clearTimeout(dishModalCloseTimerRef.current);
       }
     };
   }, []);
@@ -695,7 +986,25 @@ export function MenuClient({
       return;
     }
 
-    element.scrollIntoView({ behavior: "smooth", block: "start" });
+    const stickyRail = document.getElementById("sticky-category-rail");
+    const stickyHeight = stickyRail?.getBoundingClientRect().height ?? 0;
+    const stickyOffset = Math.max(stickyHeight + 14, 0);
+    const targetTop = element.getBoundingClientRect().top + window.scrollY - stickyOffset;
+    lastClickedCategoryIdRef.current = categoryId;
+    setActiveCategoryId(categoryId);
+    window.scrollTo({ top: Math.max(targetTop, 0), behavior: "smooth" });
+  }
+
+  function getSelectedDishOption(dish: CategoryWithDishes["dishes"][number]) {
+    const selectedOptionId = selectedOptionByDish[dish.id];
+    return dish.options?.find((option) => option.id === selectedOptionId);
+  }
+
+  function selectDishOption(dishId: number, optionId: number) {
+    setSelectedOptionByDish((prev) => ({
+      ...prev,
+      [dishId]: optionId,
+    }));
   }
 
   function getSelectedQty(dishId: number) {
@@ -715,6 +1024,17 @@ export function MenuClient({
   }
 
   function addToCart(dishId: number) {
+    const dish = allDishes.find((item) => item.id === dishId);
+    if (!dish) {
+      return;
+    }
+
+    if (dish.options && dish.options.length > 0 && !selectedOptionByDish[dishId]) {
+      setError(t.requiredOptionError);
+      openDishModal(dishId);
+      return;
+    }
+
     const qty = getSelectedQty(dishId);
 
     setCart((prev) => ({
@@ -723,7 +1043,34 @@ export function MenuClient({
     }));
   }
 
+  function openDishModal(dishId: number) {
+    setDishModalDishId(dishId);
+    setIsDishModalOpen(true);
+
+    window.requestAnimationFrame(() => {
+      setIsDishModalVisible(true);
+    });
+  }
+
+  function closeDishModal() {
+    setIsDishDragging(false);
+    setDishDragY(0);
+    setIsDishModalVisible(false);
+
+    if (dishModalCloseTimerRef.current) {
+      window.clearTimeout(dishModalCloseTimerRef.current);
+    }
+
+    dishModalCloseTimerRef.current = window.setTimeout(() => {
+      setIsDishModalOpen(false);
+      setDishModalDishId(null);
+      dishModalCloseTimerRef.current = null;
+    }, 260);
+  }
+
   function updateCartItemQty(dishId: number, delta: number) {
+    let removed = false;
+
     setCart((prev) => {
       const current = prev[dishId] || 0;
       const next = current + delta;
@@ -731,6 +1078,7 @@ export function MenuClient({
       if (next <= 0) {
         const copy = { ...prev };
         delete copy[dishId];
+        removed = true;
         return copy;
       }
 
@@ -739,6 +1087,14 @@ export function MenuClient({
         [dishId]: next,
       };
     });
+
+    if (removed) {
+      setSelectedOptionByDish((optionMap) => {
+        const nextOptions = { ...optionMap };
+        delete nextOptions[dishId];
+        return nextOptions;
+      });
+    }
   }
 
   function removeFromCart(dishId: number) {
@@ -746,6 +1102,12 @@ export function MenuClient({
       const copy = { ...prev };
       delete copy[dishId];
       return copy;
+    });
+
+    setSelectedOptionByDish((prev) => {
+      const next = { ...prev };
+      delete next[dishId];
+      return next;
     });
   }
 
@@ -780,7 +1142,9 @@ export function MenuClient({
 
   function onSheetTouchStart(event: React.TouchEvent<HTMLElement>) {
     touchStartYRef.current = event.touches[0]?.clientY ?? null;
-    setIsDragging(true);
+    touchStartScrollTopRef.current = basketSheetRef.current?.scrollTop ?? 0;
+    setIsDragging(false);
+    setDragY(0);
   }
 
   function onSheetTouchMove(event: React.TouchEvent<HTMLElement>) {
@@ -790,17 +1154,81 @@ export function MenuClient({
 
     const currentY = event.touches[0]?.clientY ?? touchStartYRef.current;
     const nextDrag = Math.max(0, currentY - touchStartYRef.current);
+
+    if (nextDrag <= 0) {
+      return;
+    }
+
+    const sheet = basketSheetRef.current;
+    const atTop = (sheet?.scrollTop ?? 0) <= 0 && touchStartScrollTopRef.current <= 0;
+
+    if (!atTop) {
+      return;
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    setIsDragging(true);
     setDragY(nextDrag);
   }
 
   function onSheetTouchEnd() {
-    const shouldClose = dragY > 90;
+    const shouldClose = isDragging && dragY > 90;
     setIsDragging(false);
     setDragY(0);
     touchStartYRef.current = null;
+    touchStartScrollTopRef.current = 0;
 
     if (shouldClose) {
       closeBasket();
+    }
+  }
+
+  function onDishSheetTouchStart(event: React.TouchEvent<HTMLElement>) {
+    dishTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+    dishTouchStartScrollTopRef.current = dishSheetRef.current?.scrollTop ?? 0;
+    setIsDishDragging(false);
+    setDishDragY(0);
+  }
+
+  function onDishSheetTouchMove(event: React.TouchEvent<HTMLElement>) {
+    if (dishTouchStartYRef.current === null) {
+      return;
+    }
+
+    const currentY = event.touches[0]?.clientY ?? dishTouchStartYRef.current;
+    const nextDrag = Math.max(0, currentY - dishTouchStartYRef.current);
+
+    if (nextDrag <= 0) {
+      return;
+    }
+
+    const sheet = dishSheetRef.current;
+    const atTop = (sheet?.scrollTop ?? 0) <= 0 && dishTouchStartScrollTopRef.current <= 0;
+
+    if (!atTop) {
+      return;
+    }
+
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    setIsDishDragging(true);
+    setDishDragY(nextDrag);
+  }
+
+  function onDishSheetTouchEnd() {
+    const shouldClose = isDishDragging && dishDragY > 90;
+    setIsDishDragging(false);
+    setDishDragY(0);
+    dishTouchStartYRef.current = null;
+    dishTouchStartScrollTopRef.current = 0;
+
+    if (shouldClose) {
+      closeDishModal();
     }
   }
 
@@ -810,7 +1238,7 @@ export function MenuClient({
     }
 
     if (!restaurantId) {
-      setError("Restaurant context is missing. Please reload menu from QR link.");
+      setError(t.missingRestaurantContext);
       return;
     }
 
@@ -846,7 +1274,11 @@ export function MenuClient({
           tableNumber: tableNumber.trim(),
           qrToken: qrSessionToken,
           restaurantId,
-          items: cartItems.map((item) => ({ dishId: item.dish.id, quantity: item.quantity })),
+          items: cartItems.map((item) => ({
+            dishId: item.dish.id,
+            quantity: item.quantity,
+            optionId: item.selectedOption?.id,
+          })),
         }),
       });
 
@@ -881,6 +1313,7 @@ export function MenuClient({
       );
       setActiveOrder(nextOrder);
       setCart({});
+      setSelectedOptionByDish({});
     } catch (orderError) {
       setError(orderError instanceof Error ? orderError.message : t.failed);
     } finally {
@@ -894,7 +1327,7 @@ export function MenuClient({
     }
 
     if (!restaurantId) {
-      setError("Restaurant context is missing. Please reload menu from QR link.");
+      setError(t.missingRestaurantContext);
       return;
     }
 
@@ -974,7 +1407,9 @@ export function MenuClient({
             <div className="mt-2 space-y-1">
               {activeOrder.items.map((item) => (
                 <p key={item.id} className="text-xs" style={{ color: design.textColor }}>
-                  {getOrderItemName(language, item)} x{item.quantity} ({formatCurrency(item.price, design.currencyMode)})
+                  {getOrderItemName(language, item)}
+                  {getOrderItemOptionName(language, item) ? ` (${getOrderItemOptionName(language, item)})` : ""}
+                  {` x${item.quantity} (${formatCurrency(item.price, design.currencyMode)})`}
                 </p>
               ))}
             </div>
@@ -991,14 +1426,19 @@ export function MenuClient({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium" style={{ color: design.textColor }}>{getDishName(language, item.dish)}</p>
-                    <p className="text-xs" style={{ color: design.mutedTextColor }}>{item.quantity} x {formatCurrency(item.dish.price, design.currencyMode)}</p>
+                    {item.selectedOption ? (
+                      <p className="text-xs" style={{ color: design.mutedTextColor }}>
+                        {t.optionLabel}: {getDishOptionName(language, item.selectedOption)}
+                      </p>
+                    ) : null}
+                    <p className="text-xs" style={{ color: design.mutedTextColor }}>{item.quantity} x {formatCurrency(item.unitPrice, design.currencyMode)}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeFromCart(item.dish.id)}
                     className="min-h-9 min-w-9 rounded-lg border"
                     style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.errorColor }}
-                    aria-label="Remove item"
+                    aria-label={t.removeItemAria}
                   >
                     <Trash2 size={14} className="mx-auto" />
                   </button>
@@ -1010,7 +1450,7 @@ export function MenuClient({
                     onClick={() => updateCartItemQty(item.dish.id, -1)}
                     className="min-h-9 min-w-9 rounded-lg border"
                     style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
-                    aria-label="Decrease quantity"
+                    aria-label={t.decreaseQtyAria}
                   >
                     <Minus size={14} className="mx-auto" />
                   </button>
@@ -1020,11 +1460,32 @@ export function MenuClient({
                     onClick={() => updateCartItemQty(item.dish.id, 1)}
                     className="min-h-9 min-w-9 rounded-lg border"
                     style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
-                    aria-label="Increase quantity"
+                    aria-label={t.increaseQtyAria}
                   >
                     <Plus size={14} className="mx-auto" />
                   </button>
                 </div>
+
+                {item.dish.options && item.dish.options.length > 0 ? (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs" style={{ color: design.mutedTextColor }}>
+                      {t.chooseOption}
+                    </label>
+                    <select
+                      value={selectedOptionByDish[item.dish.id] ?? ""}
+                      onChange={(event) => selectDishOption(item.dish.id, Number(event.target.value))}
+                      className="min-h-9 w-full rounded-lg border px-2 py-1 text-xs"
+                      style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+                    >
+                      <option value="" disabled>{t.chooseOption}</option>
+                      {item.dish.options.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {getDishOptionName(language, option)} (+{formatCurrency(option.price, design.currencyMode)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
               </div>
             ))
           )}
@@ -1079,7 +1540,7 @@ export function MenuClient({
         <div className="relative">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.4em]" style={{ color: design.mutedTextColor }}>Bar & Lounge QR Menu</p>
+              <p className="text-xs uppercase tracking-[0.4em]" style={{ color: design.mutedTextColor }}>{t.menuLabel}</p>
               <h1 className="mt-3 font-serif text-3xl sm:text-5xl" style={{ color: design.textColor }}>{design.brandName}</h1>
               <p className="mt-3 max-w-2xl" style={{ color: design.mutedTextColor }}>{design.brandSubtitle}</p>
             </div>
@@ -1131,43 +1592,89 @@ export function MenuClient({
             </div>
           </div>
 
-          <div className="mt-6">
-            <p className="mb-2 text-[11px] uppercase tracking-[0.3em] sm:text-xs sm:tracking-[0.35em]" style={{ color: design.mutedTextColor }}>{t.categories}</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {liveCategories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => scrollToCategory(category.id)}
-                  className="min-h-11 whitespace-nowrap px-4 py-2 text-sm transition hover:opacity-90"
-                  style={{
-                    borderRadius: design.buttonRadius,
-                    border: `1px solid ${design.borderColor}`,
-                    background: design.surfaceColor,
-                    color: design.mutedTextColor,
-                  }}
-                >
-                  {getCategoryName(language, category)}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </header>
 
+      <div ref={categoryRailTriggerRef} className="h-px" />
+
+      <div
+        ref={categoryRailAnchorRef}
+        className="mb-4"
+        style={isCategoryRailPinned ? { minHeight: `${Math.max(categoryRailHeight, 88)}px` } : undefined}
+      >
+        <div
+          className={isCategoryRailPinned ? "fixed inset-x-0 top-0 z-40 px-3 pt-0 sm:px-6 lg:px-8" : ""}
+          style={isCategoryRailPinned ? { background: withAlpha(design.backgroundTo, 0.92) } : undefined}
+        >
+          <div
+            id="sticky-category-rail"
+            className="-mx-1 rounded-2xl border p-3 backdrop-blur"
+            style={{
+              borderColor: design.borderColor,
+              background: withAlpha(design.panelColor, 0.9),
+            }}
+          >
+            <p className="mb-3 px-1 text-[13px] uppercase tracking-[0.3em] sm:text-sm sm:tracking-[0.35em]" style={{ color: design.mutedTextColor }}>
+              {t.categories}
+            </p>
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCategoryMenuOpen(true)}
+                className="min-h-10 min-w-10 shrink-0 rounded-lg border"
+                style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+                aria-label={t.browseCategories}
+              >
+                <Menu size={17} className="mx-auto" />
+              </button>
+              <div ref={stickyCategoriesRef} className="menu-chip-scroll flex flex-1 items-center gap-3 overflow-x-auto pb-1">
+                {liveCategories.map((category) => {
+                  const isActive = activeCategoryId === category.id;
+                  return (
+                    <button
+                      key={`sticky-${category.id}`}
+                      data-category-id={category.id}
+                      type="button"
+                      onClick={() => scrollToCategory(category.id)}
+                      className="min-h-14 shrink-0 whitespace-nowrap px-5 py-3 text-sm transition hover:opacity-90 sm:min-h-16 sm:px-6 sm:text-base"
+                      style={{
+                        borderRadius: design.buttonRadius,
+                        border: `1px solid ${design.borderColor}`,
+                        background: isActive ? design.activeChipBackground : design.surfaceColor,
+                        color: isActive ? design.activeChipTextColor : design.mutedTextColor,
+                      }}
+                    >
+                      {getCategoryName(language, category)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px] lg:gap-8">
         <section className="space-y-8">
-          {liveCategories.map((category, categoryIndex) => (
-            <div id={`category-${category.id}`} key={category.id} className="fade-up scroll-mt-6" style={{ animationDelay: `${categoryIndex * 90}ms` }}>
+
+          {liveCategories.map((category) => (
+            <div id={`category-${category.id}`} key={category.id} className="scroll-mt-28 sm:scroll-mt-32 lg:scroll-mt-24">
               <h2 className="mb-4 border-b pb-3 font-serif text-2xl" style={{ borderColor: design.dividerColor, color: design.categoryTitleColor }}>
                 {getCategoryName(language, category)}
               </h2>
+
+              {category.dishes.length === 0 ? (
+                <div className="rounded-xl border p-4 text-sm" style={{ borderColor: design.borderColor, color: design.mutedTextColor, background: withAlpha(design.surfaceColor, 0.7) }}>
+                  {t.noItemsInCategory}
+                </div>
+              ) : null}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {category.dishes.map((dish) => (
                   <article
                     key={dish.id}
                     className="group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm"
+                    onClick={() => openDishModal(dish.id)}
                     style={{
                       borderRadius: design.cardRadius,
                       borderColor: design.borderColor,
@@ -1192,7 +1699,7 @@ export function MenuClient({
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="font-serif text-xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
                         <p
-                          className="rounded-full px-3 py-1 text-sm font-semibold"
+                          className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold leading-none sm:text-[0.95rem]"
                           style={{ backgroundColor: design.primaryColor, color: design.accentTextColor }}
                         >
                           {formatCurrency(dish.price, design.currencyMode)}
@@ -1204,7 +1711,10 @@ export function MenuClient({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => updateSelectedQty(dish.id, -1)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateSelectedQty(dish.id, -1);
+                          }}
                           className="min-h-11 min-w-11 rounded-lg border p-2 transition"
                           style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
                         >
@@ -1213,7 +1723,10 @@ export function MenuClient({
                         <span className="min-w-8 text-center text-sm font-medium" style={{ color: design.textColor }}>{getSelectedQty(dish.id)}</span>
                         <button
                           type="button"
-                          onClick={() => updateSelectedQty(dish.id, 1)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            updateSelectedQty(dish.id, 1);
+                          }}
                           className="min-h-11 min-w-11 rounded-lg border p-2 transition"
                           style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
                         >
@@ -1222,7 +1735,10 @@ export function MenuClient({
 
                         <button
                           type="button"
-                          onClick={() => addToCart(dish.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            addToCart(dish.id);
+                          }}
                           className="ml-auto min-h-11 px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
                           style={{
                             borderRadius: design.buttonRadius,
@@ -1233,6 +1749,28 @@ export function MenuClient({
                           {t.add}
                         </button>
                       </div>
+
+                      {dish.options && dish.options.length > 0 ? (
+                        <div>
+                          <label className="mb-1 block text-xs" style={{ color: design.mutedTextColor }}>
+                            {t.chooseOption}
+                          </label>
+                          <select
+                            value={selectedOptionByDish[dish.id] ?? ""}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={(event) => selectDishOption(dish.id, Number(event.target.value))}
+                            className="min-h-10 w-full rounded-lg border px-2 py-1 text-sm"
+                            style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+                          >
+                            <option value="" disabled>{t.chooseOption}</option>
+                            {dish.options.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {getDishOptionName(language, option)} (+{formatCurrency(option.price, design.currencyMode)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : null}
                     </div>
                   </article>
                 ))}
@@ -1280,6 +1818,9 @@ export function MenuClient({
             style={{ borderColor: design.borderColor, background: design.panelColor,
               transform: `translateY(${isDragging ? dragY : isBasketVisible ? 0 : 480}px)`,
             }}
+            ref={(node) => {
+              basketSheetRef.current = node;
+            }}
             onTouchStart={onSheetTouchStart}
             onTouchMove={onSheetTouchMove}
             onTouchEnd={onSheetTouchEnd}
@@ -1297,6 +1838,196 @@ export function MenuClient({
             </div>
             {renderBasketContent()}
           </section>
+        </div>
+      ) : null}
+
+      {isCategoryMenuOpen ? (
+        <div className="fixed inset-0 z-[60]">
+          <button
+            type="button"
+            className="absolute inset-0"
+            style={{ background: withAlpha(design.overlayColor, 0.64) }}
+            onClick={() => setIsCategoryMenuOpen(false)}
+            aria-label={t.close}
+          />
+          <aside
+            className="absolute left-0 top-0 flex h-full w-[86%] max-w-sm flex-col overflow-hidden border-r p-4"
+            style={{ borderColor: design.borderColor, background: design.panelColor }}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-2xl" style={{ color: design.textColor }}>{t.categories}</h3>
+              <button
+                type="button"
+                onClick={() => setIsCategoryMenuOpen(false)}
+                className="min-h-10 min-w-10 rounded-lg border"
+                style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+                aria-label={t.close}
+              >
+                <X size={16} className="mx-auto" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-8 pr-1">
+              {liveCategories.map((category) => {
+                const isActive = activeCategoryId === category.id;
+
+                return (
+                  <button
+                    key={`menu-${category.id}`}
+                    type="button"
+                    onClick={() => {
+                      pendingCategoryScrollIdRef.current = category.id;
+                      setIsCategoryMenuOpen(false);
+                    }}
+                    className="w-full rounded-xl border px-4 py-3 text-left"
+                    style={{
+                      borderColor: design.borderColor,
+                      background: isActive ? design.activeChipBackground : design.controlSurfaceColor,
+                      color: isActive ? design.activeChipTextColor : design.textColor,
+                    }}
+                  >
+                    {getCategoryName(language, category)}
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
+      {isDishModalOpen && dishModalDishId !== null ? (
+        <div className="fixed inset-0 z-[65]" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className={`absolute inset-0 transition-opacity duration-300 ${isDishModalVisible ? "opacity-100" : "opacity-0"}`}
+            style={{ background: withAlpha(design.overlayColor, 0.7) }}
+            onClick={closeDishModal}
+            aria-label={t.close}
+          />
+
+          {(() => {
+            const dish = allDishes.find((item) => item.id === dishModalDishId);
+            if (!dish) {
+              return null;
+            }
+
+            const selectedOption = getSelectedDishOption(dish);
+            const finalPrice = dish.price + (selectedOption?.price ?? 0);
+
+            return (
+              <section
+                className="absolute inset-x-0 bottom-0 max-h-[95vh] overflow-y-auto rounded-t-3xl border-t pb-6 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  borderColor: design.borderColor,
+                  background: design.panelColor,
+                  transform: `translateY(${isDishDragging ? dishDragY : isDishModalVisible ? 0 : 560}px)`,
+                }}
+                ref={(node) => {
+                  dishSheetRef.current = node;
+                }}
+                onTouchStart={onDishSheetTouchStart}
+                onTouchMove={onDishSheetTouchMove}
+                onTouchEnd={onDishSheetTouchEnd}
+              >
+                <div className="mx-auto mb-3 mt-2 h-1.5 w-14 rounded-full" style={{ background: design.mutedTextColor }} />
+                <button
+                  type="button"
+                  onClick={closeDishModal}
+                  className="absolute right-4 top-4 z-20 min-h-10 min-w-10 rounded-full border"
+                  style={{ borderColor: design.borderColor, background: withAlpha(design.controlSurfaceColor, 0.75), color: design.textColor }}
+                  aria-label={t.close}
+                >
+                  <X size={16} className="mx-auto" />
+                </button>
+
+                <div className="px-4 pt-2">
+                  <div className="relative mx-auto aspect-[16/10] w-full max-w-[760px] overflow-hidden rounded-2xl border"
+                    style={{ borderColor: design.borderColor, background: withAlpha(design.controlSurfaceColor, 0.55) }}
+                  >
+                    <Image
+                      src={dish.imageUrl}
+                      alt={getDishName(language, dish)}
+                      fill
+                      sizes="(min-width: 1024px) 760px, 100vw"
+                      quality={95}
+                      className="h-full w-full object-contain"
+                      style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="px-4 pt-4">
+                  <h3 className="font-serif text-3xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
+                  <p className="mt-2 text-sm leading-6" style={{ color: design.mutedTextColor }}>{getDishDescription(language, dish)}</p>
+
+                  {dish.options && dish.options.length > 0 ? (
+                    <div className="mt-4">
+                      <label className="mb-2 block text-sm" style={{ color: design.mutedTextColor }}>{t.chooseOption}</label>
+                      <div className="space-y-2">
+                        {dish.options.map((option) => {
+                          const isSelected = selectedOptionByDish[dish.id] === option.id;
+
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => selectDishOption(dish.id, option.id)}
+                              className="w-full rounded-xl border px-3 py-2 text-left"
+                              style={{
+                                borderColor: design.borderColor,
+                                background: isSelected ? design.activeChipBackground : design.controlSurfaceColor,
+                                color: isSelected ? design.activeChipTextColor : design.textColor,
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span>{getDishOptionName(language, option)}</span>
+                                <span className="text-sm">+{formatCurrency(option.price, design.currencyMode)}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5 flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-xl border p-1.5" style={{ borderColor: design.borderColor }}>
+                      <button
+                        type="button"
+                        onClick={() => updateSelectedQty(dish.id, -1)}
+                        className="min-h-11 min-w-11 rounded-lg border"
+                        style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
+                      >
+                        <Minus size={16} className="mx-auto" />
+                      </button>
+                      <span className="min-w-8 text-center" style={{ color: design.textColor }}>{getSelectedQty(dish.id)}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateSelectedQty(dish.id, 1)}
+                        className="min-h-11 min-w-11 rounded-lg border"
+                        style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
+                      >
+                        <Plus size={16} className="mx-auto" />
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addToCart(dish.id);
+                        if (!dish.options || dish.options.length === 0 || selectedOptionByDish[dish.id]) {
+                          closeDishModal();
+                        }
+                      }}
+                      className="min-h-12 flex-1 rounded-xl px-4 py-3 text-base font-semibold"
+                      style={{ background: design.primaryColor, color: design.accentTextColor }}
+                    >
+                      {t.add} {formatCurrency(finalPrice, design.currencyMode)}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
         </div>
       ) : null}
     </div>

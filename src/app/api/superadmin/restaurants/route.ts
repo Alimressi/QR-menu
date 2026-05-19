@@ -3,6 +3,39 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
+function getDefaultRestaurantSettings() {
+  return {
+    serviceMode: "pro",
+    brandName: "Nine Lives",
+    brandSubtitle: "Craft cocktails. Fine dishes. Timeless atmosphere.",
+    primaryColor: "#b8944f",
+    accentTextColor: "#120e08",
+    backgroundFrom: "#0a0a0a",
+    backgroundTo: "#0d0d0d",
+    surfaceColor: "rgba(18,18,18,0.86)",
+    textColor: "#f0e8d0",
+    mutedTextColor: "#c9b28d",
+    borderColor: "rgba(201,169,98,0.35)",
+    buttonRadius: "14px",
+    cardRadius: "20px",
+    panelColor: "#161616",
+    overlayColor: "#000000",
+    controlSurfaceColor: "#2a2a2a",
+    activeChipBackground: "#b8944f",
+    activeChipTextColor: "#120e08",
+    inactiveChipBackground: "#1f1f1f",
+    inactiveChipTextColor: "#f0e8d0",
+    dividerColor: "rgba(201,169,98,0.35)",
+    successColor: "#34d399",
+    errorColor: "#f87171",
+    categoryTitleColor: "#f0e8d0",
+    qtyButtonBackground: "#2a2a2a",
+    qtyButtonTextColor: "#f0e8d0",
+    qtyButtonBorderColor: "rgba(201,169,98,0.35)",
+    currencyMode: "manat",
+  };
+}
+
 // GET /api/superadmin/restaurants - List all restaurants
 export async function GET(request: NextRequest) {
   try {
@@ -60,9 +93,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let normalizedSettings: Record<string, unknown> = {};
+    let normalizedSettings: Record<string, unknown> = getDefaultRestaurantSettings();
     if (settings && typeof settings === "object" && !Array.isArray(settings)) {
-      normalizedSettings = settings as Record<string, unknown>;
+      normalizedSettings = {
+        ...normalizedSettings,
+        ...(settings as Record<string, unknown>),
+      };
     }
 
     normalizedSettings.adminLogin = normalizedAdminLogin;

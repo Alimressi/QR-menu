@@ -10,7 +10,11 @@ export async function GET(request: NextRequest) {
     where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
     include: {
       dishes: {
-        where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
+        include: {
+          options: {
+            orderBy: { id: "asc" },
+          },
+        },
         orderBy: { createdAt: "desc" },
       },
     },

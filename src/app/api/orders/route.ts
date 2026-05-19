@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const qrToken = String(body?.qrToken || "").trim();
     const providedRestaurantId = Number(body?.restaurantId);
     const rawItems = Array.isArray(body?.items) ? body.items : [];
-    type NormalizedItem = { dishId: number; quantity: number };
+    type NormalizedItem = { dishId: number; quantity: number; optionId: number | null };
 
     if (!tableNumber || rawItems.length === 0) {
       return NextResponse.json({ error: "Table number and items are required." }, { status: 400 });
@@ -102,9 +102,16 @@ export async function POST(request: Request) {
     for (const item of rawItems) {
       const dishId = Number((item as { dishId?: unknown }).dishId);
       const quantity = Number((item as { quantity?: unknown }).quantity);
+      const rawOptionId = (item as { optionId?: unknown }).optionId;
+      const optionId = rawOptionId === undefined || rawOptionId === null ? null : Number(rawOptionId);
 
-      if (Number.isInteger(dishId) && Number.isInteger(quantity) && quantity > 0) {
-        normalizedItems.push({ dishId, quantity });
+      if (
+        Number.isInteger(dishId) &&
+        Number.isInteger(quantity) &&
+        quantity > 0 &&
+        (optionId === null || Number.isInteger(optionId))
+      ) {
+        normalizedItems.push({ dishId, quantity, optionId });
       }
     }
 
@@ -125,6 +132,18 @@ export async function POST(request: Request) {
     }
 
     const dishMap = new Map(dishes.map((dish) => [dish.id, dish]));
+    const optionIds = [...new Set(normalizedItems.map((item) => item.optionId).filter((id): id is number => id !== null))];
+    const options = optionIds.length > 0
+      ? await prisma.dishOption.findMany({
+          where: {
+            id: { in: optionIds },
+            dish: {
+              restaurantId,
+            },
+          },
+        })
+      : [];
+    const optionMap = new Map(options.map((option) => [option.id, option]));
 
     const items = normalizedItems.map((item) => {
       const dish = dishMap.get(item.dishId);
@@ -133,13 +152,31 @@ export async function POST(request: Request) {
         throw new Error("Dish not found during order creation.");
       }
 
+      const selectedOption = item.optionId !== null ? optionMap.get(item.optionId) : null;
+
+      if (item.optionId !== null && (!selectedOption || selectedOption.dishId !== dish.id)) {
+        throw new Error("Dish option is invalid.");
+      }
+
+      const hasOptions = options.some((option) => option.dishId === dish.id);
+
+      if (hasOptions && !selectedOption) {
+        throw new Error("Dish option is required.");
+      }
+
+      const price = dish.price + (selectedOption?.price ?? 0);
+
       return {
         dishId: dish.id,
+        optionId: selectedOption?.id ?? null,
         quantity: item.quantity,
-        price: dish.price,
+        price,
         nameEn: dish.nameEn,
         nameRu: dish.nameRu,
         nameAz: dish.nameAz,
+        optionNameEn: selectedOption?.nameEn ?? null,
+        optionNameRu: selectedOption?.nameRu ?? null,
+        optionNameAz: selectedOption?.nameAz ?? null,
       };
     });
 
@@ -181,13 +218,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ order, mergedIntoExisting: false }, { status: 201 });
     }
 
-    const existingItemsMap = new Map(existingOrder.items.map((item) => [item.dishId, item]));
+    const existingItemsMap = new Map(existingOrder.items.map((item) => [`${item.dishId}:${item.optionId ?? "none"}`, item]));
 
-    const newItemsToCreate = items.filter((item) => !existingItemsMap.has(item.dishId));
+    const newItemsToCreate = items.filter((item) => !existingItemsMap.has(`${item.dishId}:${item.optionId ?? "none"}`));
 
     await prisma.$transaction(async (tx) => {
       for (const item of items) {
-        const existingItem = existingItemsMap.get(item.dishId);
+        const existingItem = existingItemsMap.get(`${item.dishId}:${item.optionId ?? "none"}`);
 
         if (existingItem) {
           await tx.orderItem.update({
@@ -204,11 +241,15 @@ export async function POST(request: Request) {
           data: newItemsToCreate.map((item) => ({
             orderId: existingOrder.id,
             dishId: item.dishId,
+            optionId: item.optionId,
             quantity: item.quantity,
             price: item.price,
             nameEn: item.nameEn,
             nameRu: item.nameRu,
             nameAz: item.nameAz,
+            optionNameEn: item.optionNameEn,
+            optionNameRu: item.optionNameRu,
+            optionNameAz: item.optionNameAz,
           })),
         });
       }
@@ -237,7 +278,18 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ order: updatedOrder, mergedIntoExisting: true }, { status: 200 });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error) {
+      const knownErrors = [
+        "Dish option is invalid.",
+        "Dish option is required.",
+      ];
+
+      if (knownErrors.includes(error.message)) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+    }
+
     return NextResponse.json({ error: "Failed to create order." }, { status: 500 });
   }
 }

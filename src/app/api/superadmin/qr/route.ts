@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { createTableAccessKey } from "@/lib/qr-token";
 import { getRestaurantTableCountFromSettings } from "@/lib/restaurant";
 import { NextResponse } from "next/server";
-import QRCode from "qrcode";
 
 export async function GET(request: Request) {
   try {
@@ -32,28 +31,16 @@ export async function GET(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
     const tableCount = getRestaurantTableCountFromSettings(restaurant.settings);
 
-    const results = await Promise.all(
-      Array.from({ length: tableCount }, async (_, index) => {
-        const table = String(index + 1);
-        const accessKey = createTableAccessKey(table, restaurant.slug);
-        const url = `${baseUrl}/${restaurant.slug}?table=${encodeURIComponent(table)}&ak=${encodeURIComponent(accessKey)}`;
+    const results = Array.from({ length: tableCount }, (_, index) => {
+      const table = String(index + 1);
+      const accessKey = createTableAccessKey(table, restaurant.slug);
+      const url = `${baseUrl}/${restaurant.slug}?table=${encodeURIComponent(table)}&ak=${encodeURIComponent(accessKey)}`;
 
-        const dataUrl = await QRCode.toDataURL(url, {
-          width: 400,
-          margin: 2,
-          color: {
-            dark: "#000000",
-            light: "#ffffff",
-          },
-        });
-
-        return {
-          table,
-          url,
-          dataUrl,
-        };
-      })
-    );
+      return {
+        table,
+        url,
+      };
+    });
 
     return NextResponse.json({ qrCodes: results });
   } catch (error) {

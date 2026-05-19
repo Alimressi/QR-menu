@@ -71,6 +71,33 @@ body {
   box-shadow: 0 12px 40px rgba(201, 169, 98, 0.12), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+.menu-chip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 169, 98, 0.45) rgba(201, 169, 98, 0.12);
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+
+.menu-chip-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.menu-chip-scroll::-webkit-scrollbar-track {
+  background: rgba(201, 169, 98, 0.12);
+  border-radius: 999px;
+}
+
+.menu-chip-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, rgba(201, 169, 98, 0.55), rgba(184, 148, 79, 0.8));
+  border-radius: 999px;
+  border: 1px solid rgba(10, 10, 10, 0.35);
+}
+
+.menu-chip-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, rgba(212, 192, 120, 0.75), rgba(184, 148, 79, 0.95));
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

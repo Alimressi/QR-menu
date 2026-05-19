@@ -490,6 +490,18 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     return item.nameEn;
   }
 
+  function getOrderItemOptionName(item: Order["items"][number]) {
+    if (language === "ru") {
+      return item.optionNameRu || item.optionNameEn || "";
+    }
+
+    if (language === "az") {
+      return item.optionNameAz || item.optionNameEn || "";
+    }
+
+    return item.optionNameEn || "";
+  }
+
   function getStatusLabel(status: (typeof statuses)[number]) {
     if (status === "new") {
       return t.statusNew;
@@ -1067,7 +1079,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
               <ul className="mt-3 space-y-2 text-sm" style={{ color: design.textColor }}>
                 {order.items.map((item) => (
                   <li key={item.id}>
-                    {getOrderItemName(item)} x{item.quantity} ({formatCurrency(item.price, design.currencyMode)})
+                    {getOrderItemName(item)}
+                    {getOrderItemOptionName(item) ? ` (${getOrderItemOptionName(item)})` : ""}
+                    {` x${item.quantity} (${formatCurrency(item.price, design.currencyMode)})`}
                   </li>
                 ))}
               </ul>
@@ -1128,7 +1142,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
               <ul className="mt-3 space-y-2 text-sm" style={{ color: design.textColor }}>
                 {order.items.map((item) => (
                   <li key={item.id}>
-                    {getOrderItemName(item)} x{item.quantity} ({formatCurrency(item.price, design.currencyMode)})
+                    {getOrderItemName(item)}
+                    {getOrderItemOptionName(item) ? ` (${getOrderItemOptionName(item)})` : ""}
+                    {` x${item.quantity} (${formatCurrency(item.price, design.currencyMode)})`}
                   </li>
                 ))}
               </ul>

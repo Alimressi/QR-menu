@@ -14,7 +14,10 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Nine Lives | QR Menu",
+  title: {
+    default: "QR Menu",
+    template: "%s | QR Menu",
+  },
   description: "Elegant bar & lounge QR menu. Craft cocktails, fine dishes, timeless atmosphere.",
 };
 
