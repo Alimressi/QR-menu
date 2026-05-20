@@ -1,8 +1,5 @@
 import { MenuClient } from "@/components/menu-client";
-import prisma from "@/lib/prisma";
-import { getRestaurantSettings } from "@/lib/restaurant";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,69 +10,32 @@ type Params = {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-    select: { name: true },
-  });
-
-  if (!restaurant) {
-    return {
-      title: "Restaurant",
-    };
+  // Fetch from the cached edge API — no Prisma/WASM needed in SSR.
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/public/restaurant?slug=${encodeURIComponent(slug)}`,
+      { next: { revalidate: 300 } },
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { restaurant?: { name?: string } };
+      if (data.restaurant?.name) {
+        return { title: data.restaurant.name };
+      }
+    }
+  } catch {
+    // fallback below
   }
-
-  return {
-    title: restaurant.name,
-  };
+  return { title: slug };
 }
 
 export default async function RestaurantPage({ params }: Params) {
   const { slug } = await params;
 
-  // Get restaurant by slug
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-  });
-
-  if (!restaurant) {
-    notFound();
-  }
-
-  // Get categories and dishes for this restaurant
-  const categories = await prisma.category.findMany({
-    where: { restaurantId: restaurant.id },
-    include: {
-      dishes: {
-        include: {
-          options: {
-            orderBy: {
-              id: "asc",
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
-    orderBy: {
-      id: "asc",
-    },
-  });
-
-  const settings = await getRestaurantSettings(slug);
-
+  // No DB queries in SSR — eliminates Prisma WASM cold-start CPU spikes (CF Error 1102).
+  // MenuClient fetches all data client-side from cached API routes.
   return (
     <div className="min-h-screen pb-10">
-      <MenuClient 
-        categories={categories} 
-        restaurantId={restaurant.id}
-        restaurantSlug={restaurant.slug}
-        settings={settings}
-        logoUrl={restaurant.logoUrl}
-        restaurantName={restaurant.name}
-      />
+      <MenuClient categories={[]} restaurantSlug={slug} />
     </div>
   );
 }

@@ -454,6 +454,12 @@ export function MenuClient({
 }: Props) {
   const [liveCategories, setLiveCategories] = useState<CategoryWithDishes[]>(categories);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
+  // Mutable copies of server-provided (or client-fetched) restaurant data
+  const [liveRestaurantId, setLiveRestaurantId] = useState<number | undefined>(restaurantId);
+  const [liveSettings, setLiveSettings] = useState<Props["settings"]>(settings);
+  const [liveRestaurantName, setLiveRestaurantName] = useState<string | undefined>(restaurantName);
+  // True only when page was opened without SSR data (cold-start optimisation)
+  const [isDataLoading, setIsDataLoading] = useState(!restaurantId && !!restaurantSlug);
   const [language, setLanguage] = useState<Language>("en");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
@@ -517,6 +523,50 @@ export function MenuClient({
 
   const allDishes = useMemo(() => liveCategories.flatMap((category) => category.dishes), [liveCategories]);
 
+  // Client-side data fetch: runs only when the page was server-rendered without
+  // DB data (no restaurantId from SSR). This eliminates Prisma WASM cold-start
+  // errors (CF Error 1102) by keeping SSR CPU-free.
+  useEffect(() => {
+    if (restaurantId || !restaurantSlug) return;
+
+    let cancelled = false;
+    const fetchInitialData = async () => {
+      try {
+        const res = await fetch(`/api/public/restaurant?slug=${encodeURIComponent(restaurantSlug)}`);
+        if (!res.ok || cancelled) return;
+        const { restaurant } = (await res.json()) as {
+          restaurant: { id: number; name: string; settings?: string | null };
+        };
+        if (cancelled) return;
+
+        const parsedSettings = restaurant.settings
+          ? (JSON.parse(restaurant.settings) as Props["settings"])
+          : {};
+        setLiveRestaurantId(restaurant.id);
+        setLiveRestaurantName(restaurant.name);
+        setLiveSettings(parsedSettings);
+
+        const catRes = await fetch(`/api/categories?restaurantId=${restaurant.id}`);
+        if (!catRes.ok || cancelled) return;
+        const cats = (await catRes.json()) as CategoryWithDishes[];
+        if (!cancelled) {
+          setLiveCategories(cats);
+          setActiveCategoryId(cats[0]?.id ?? null);
+        }
+      } catch {
+        // silent — page still renders, just without data
+      } finally {
+        if (!cancelled) setIsDataLoading(false);
+      }
+    };
+
+    void fetchInitialData();
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const cartItems = useMemo(() => {
     return Object.entries(cart).flatMap(([dishId, quantity]) => {
       const dish = allDishes.find((item) => item.id === Number(dishId));
@@ -542,33 +592,33 @@ export function MenuClient({
   const t = dictionary[language];
   const isLiteMode = runtimeServiceMode === "lite";
   const design = {
-    brandName: settings?.brandName || restaurantName || t.title,
-    brandSubtitle: settings?.brandSubtitle || t.subtitle,
-    primaryColor: settings?.primaryColor || "#b8944f",
-    accentTextColor: settings?.accentTextColor || "#120e08",
-    backgroundFrom: settings?.backgroundFrom || "#0a0a0a",
-    backgroundTo: settings?.backgroundTo || "#0d0d0d",
-    surfaceColor: settings?.surfaceColor || "rgba(18,18,18,0.86)",
-    textColor: settings?.textColor || "#f0e8d0",
-    mutedTextColor: settings?.mutedTextColor || "#c9b28d",
-    borderColor: settings?.borderColor || "rgba(201,169,98,0.35)",
-    buttonRadius: normalizeRadius(settings?.buttonRadius, "14px"),
-    cardRadius: normalizeRadius(settings?.cardRadius, "20px"),
-    panelColor: settings?.panelColor || "#161616",
-    overlayColor: settings?.overlayColor || "#000000",
-    controlSurfaceColor: settings?.controlSurfaceColor || "#2a2a2a",
-    activeChipBackground: settings?.activeChipBackground || "#b8944f",
-    activeChipTextColor: settings?.activeChipTextColor || "#120e08",
-    inactiveChipBackground: settings?.inactiveChipBackground || "#1f1f1f",
-    inactiveChipTextColor: settings?.inactiveChipTextColor || "#f0e8d0",
-    dividerColor: settings?.dividerColor || "rgba(201,169,98,0.35)",
-    successColor: settings?.successColor || "#34d399",
-    errorColor: settings?.errorColor || "#f87171",
-    categoryTitleColor: settings?.categoryTitleColor || (settings?.textColor || "#f0e8d0"),
-    qtyButtonBackground: settings?.qtyButtonBackground || settings?.controlSurfaceColor || "#2a2a2a",
-    qtyButtonTextColor: settings?.qtyButtonTextColor || settings?.textColor || "#f0e8d0",
-    qtyButtonBorderColor: settings?.qtyButtonBorderColor || settings?.borderColor || "rgba(201,169,98,0.35)",
-    currencyMode: settings?.currencyMode || "manat",
+    brandName: liveSettings?.brandName || liveRestaurantName || t.title,
+    brandSubtitle: liveSettings?.brandSubtitle || t.subtitle,
+    primaryColor: liveSettings?.primaryColor || "#b8944f",
+    accentTextColor: liveSettings?.accentTextColor || "#120e08",
+    backgroundFrom: liveSettings?.backgroundFrom || "#0a0a0a",
+    backgroundTo: liveSettings?.backgroundTo || "#0d0d0d",
+    surfaceColor: liveSettings?.surfaceColor || "rgba(18,18,18,0.86)",
+    textColor: liveSettings?.textColor || "#f0e8d0",
+    mutedTextColor: liveSettings?.mutedTextColor || "#c9b28d",
+    borderColor: liveSettings?.borderColor || "rgba(201,169,98,0.35)",
+    buttonRadius: normalizeRadius(liveSettings?.buttonRadius, "14px"),
+    cardRadius: normalizeRadius(liveSettings?.cardRadius, "20px"),
+    panelColor: liveSettings?.panelColor || "#161616",
+    overlayColor: liveSettings?.overlayColor || "#000000",
+    controlSurfaceColor: liveSettings?.controlSurfaceColor || "#2a2a2a",
+    activeChipBackground: liveSettings?.activeChipBackground || "#b8944f",
+    activeChipTextColor: liveSettings?.activeChipTextColor || "#120e08",
+    inactiveChipBackground: liveSettings?.inactiveChipBackground || "#1f1f1f",
+    inactiveChipTextColor: liveSettings?.inactiveChipTextColor || "#f0e8d0",
+    dividerColor: liveSettings?.dividerColor || "rgba(201,169,98,0.35)",
+    successColor: liveSettings?.successColor || "#34d399",
+    errorColor: liveSettings?.errorColor || "#f87171",
+    categoryTitleColor: liveSettings?.categoryTitleColor || (liveSettings?.textColor || "#f0e8d0"),
+    qtyButtonBackground: liveSettings?.qtyButtonBackground || liveSettings?.controlSurfaceColor || "#2a2a2a",
+    qtyButtonTextColor: liveSettings?.qtyButtonTextColor || liveSettings?.textColor || "#f0e8d0",
+    qtyButtonBorderColor: liveSettings?.qtyButtonBorderColor || liveSettings?.borderColor || "rgba(201,169,98,0.35)",
+    currencyMode: liveSettings?.currencyMode || "manat",
   };
 
   function getStatusLabel(status: Order["status"]) {
@@ -588,7 +638,7 @@ export function MenuClient({
   }
 
   const fetchActiveOrder = useCallback(async (currentTable: string) => {
-    if (!restaurantId || isLiteMode) {
+    if (!liveRestaurantId || isLiteMode) {
       setActiveOrder(null);
       return;
     }
@@ -601,7 +651,7 @@ export function MenuClient({
     }
 
     const response = await fetch(
-      `/api/orders/active?tableNumber=${encodeURIComponent(normalizedTable)}&restaurantId=${restaurantId}`,
+      `/api/orders/active?tableNumber=${encodeURIComponent(normalizedTable)}&restaurantId=${liveRestaurantId}`,
       {
         cache: "no-store",
       },
@@ -613,11 +663,11 @@ export function MenuClient({
 
     const data = (await response.json()) as { order: Order | null };
     setActiveOrder(data.order);
-  }, [isLiteMode, restaurantId]);
+  }, [isLiteMode, liveRestaurantId]);
 
   useEffect(() => {
-    setRuntimeServiceMode(settings?.serviceMode === "lite" ? "lite" : "pro");
-  }, [settings?.serviceMode]);
+    setRuntimeServiceMode(liveSettings?.serviceMode === "lite" ? "lite" : "pro");
+  }, [liveSettings?.serviceMode]);
 
   useEffect(() => {
     const restoreStoredSession = () => {
@@ -1258,7 +1308,7 @@ export function MenuClient({
       return;
     }
 
-    if (!restaurantId) {
+    if (!liveRestaurantId) {
       setError(t.missingRestaurantContext);
       return;
     }
@@ -1294,7 +1344,7 @@ export function MenuClient({
         body: JSON.stringify({
           tableNumber: tableNumber.trim(),
           qrToken: qrSessionToken,
-          restaurantId,
+          restaurantId: liveRestaurantId,
           items: cartItems.map((item) => ({
             dishId: item.dish.id,
             quantity: item.quantity,
@@ -1347,7 +1397,7 @@ export function MenuClient({
       return;
     }
 
-    if (!restaurantId) {
+    if (!liveRestaurantId) {
       setError(t.missingRestaurantContext);
       return;
     }
@@ -1365,7 +1415,7 @@ export function MenuClient({
       const response = await fetch("/api/waiter-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableNumber: effectiveTable.trim(), restaurantId }),
+        body: JSON.stringify({ tableNumber: effectiveTable.trim(), restaurantId: liveRestaurantId }),
       });
 
       const data = (await response.json()) as { success?: boolean; error?: string };
@@ -1550,6 +1600,16 @@ export function MenuClient({
         borderRadius: "26px",
       }}
     >
+      {isDataLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <div
+            className="h-10 w-10 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: design.primaryColor, borderTopColor: "transparent" }}
+          />
+          <p className="text-sm" style={{ color: design.mutedTextColor }}>Загрузка меню…</p>
+        </div>
+      ) : null}
+      {!isDataLoading ? (<>
       <header
         className="fade-up mb-6 rounded-2xl border p-4 shadow-2xl sm:mb-10 sm:rounded-3xl sm:p-10 relative overflow-hidden"
         style={{
@@ -2068,6 +2128,8 @@ export function MenuClient({
           </button>
         </div>
       ) : null}
+      </>
+      ) : null /* isDataLoading */}
     </div>
   );
 }
