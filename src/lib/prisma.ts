@@ -7,7 +7,12 @@ function isCloudflareWorkerRuntime() {
   return typeof (globalThis as { WebSocketPair?: unknown }).WebSocketPair !== "undefined";
 }
 
-async function createPrismaClient(): Promise<PrismaClientLike> {
+// Module-level singleton — persists across requests within the same Worker isolate.
+// This avoids re-initialising the Prisma WASM module on every request, which was the
+// primary cause of Cloudflare Error 1102 (CPU time exceeded on the free tier).
+let _sharedClientPromise: Promise<PrismaClientLike> | null = null;
+
+async function initPrismaClient(): Promise<PrismaClientLike> {
   const connectionString =
     process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
 
@@ -28,13 +33,15 @@ async function createPrismaClient(): Promise<PrismaClientLike> {
   return new PrismaClient({ adapter }) as PrismaClientLike;
 }
 
-async function runWithClient<T>(fn: (client: PrismaClientLike) => Promise<T>) {
-  const client = await createPrismaClient();
-  try {
-    return await fn(client);
-  } finally {
-    await client.$disconnect().catch(() => undefined);
+function getSharedClient(): Promise<PrismaClientLike> {
+  if (!_sharedClientPromise) {
+    _sharedClientPromise = initPrismaClient().catch((err: unknown) => {
+      // Reset on failure so the next call retries initialisation.
+      _sharedClientPromise = null;
+      throw err;
+    });
   }
+  return _sharedClientPromise;
 }
 
 function createModelProxy(modelName: string) {
@@ -47,7 +54,7 @@ function createModelProxy(modelName: string) {
         }
 
         return (...args: unknown[]) =>
-          runWithClient(async (client) => {
+          getSharedClient().then((client) => {
             const model = (client as unknown as Record<string, unknown>)[modelName] as
               | Record<string, (...innerArgs: unknown[]) => Promise<unknown>>
               | undefined;
@@ -73,7 +80,7 @@ const prisma = new Proxy(
 
       if (propertyName.startsWith("$")) {
         return (...args: unknown[]) =>
-          runWithClient(async (client) => {
+          getSharedClient().then((client) => {
             const method = (client as unknown as Record<string, unknown>)[propertyName] as
               | ((...innerArgs: unknown[]) => Promise<unknown>)
               | undefined;
