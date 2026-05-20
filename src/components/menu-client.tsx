@@ -559,15 +559,18 @@ export function MenuClient({
         // Step 2 — always fetch categories (SSR may have returned [] on cold start).
         if (rid) {
           const catRes = await fetch(`/api/categories?restaurantId=${rid}`);
-          if (!catRes.ok || cancelled) return;
-          const cats = (await catRes.json()) as CategoryWithDishes[];
+          // Treat both a non-ok response AND an empty array as "not ready yet" —
+          // both happen when Prisma WASM is still cold-starting.
+          const cats: CategoryWithDishes[] = catRes.ok
+            ? ((await catRes.json()) as CategoryWithDishes[])
+            : [];
 
           if (!cancelled && cats.length > 0) {
             setLiveCategories(cats);
             setActiveCategoryId(cats[0]?.id ?? null);
-          } else if (!cancelled && cats.length === 0) {
-            // Empty response — Prisma isolate was cold. Wait briefly, then retry
-            // with cache:no-store so Cloudflare doesn't serve the stale empty array.
+          } else if (!cancelled) {
+            // Empty or error — wait for the Worker isolate to warm up, then retry
+            // bypassing the CDN cache so we hit a live (warm) Worker.
             await new Promise<void>((resolve) => setTimeout(resolve, 2000));
             if (cancelled) return;
             const retryRes = await fetch(`/api/categories?restaurantId=${rid}`, {

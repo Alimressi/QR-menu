@@ -6,31 +6,39 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const restaurantId = searchParams.get("restaurantId");
 
-  const categories = await prisma.category.findMany({
-    where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
-    include: {
-      dishes: {
-        include: {
-          options: {
-            orderBy: { id: "asc" },
+  try {
+    const categories = await prisma.category.findMany({
+      where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
+      include: {
+        dishes: {
+          include: {
+            options: {
+              orderBy: { id: "asc" },
+            },
           },
+          orderBy: { createdAt: "desc" },
         },
-        orderBy: { createdAt: "desc" },
       },
-    },
-    orderBy: { id: "asc" },
-  });
+      orderBy: { id: "asc" },
+    });
 
-  return NextResponse.json(categories, {
-    headers: {
-      // Only cache non-empty responses. An empty array likely means a cold-start
-      // DB failure — caching it would poison the edge for 5 minutes.
-      "Cache-Control":
-        categories.length > 0
-          ? "public, s-maxage=300, stale-while-revalidate=600"
-          : "no-store",
-    },
-  });
+    return NextResponse.json(categories, {
+      headers: {
+        // Only cache non-empty responses. An empty array likely means a cold-start
+        // DB failure — caching it would poison the edge for 5 minutes.
+        "Cache-Control":
+          categories.length > 0
+            ? "public, s-maxage=300, stale-while-revalidate=600"
+            : "no-store",
+      },
+    });
+  } catch {
+    // Prisma WASM cold-start failure — return empty with no-store so the client
+    // fallback can retry on a warm isolate instead of getting a cached 500.
+    return NextResponse.json([], {
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {
