@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { CategoryWithDishes, Language, Order } from "@/types";
-import { Minus, Plus, ShoppingBag, Trash2, Bell, User, Menu, X } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, Bell, Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -1561,37 +1561,11 @@ export function MenuClient({
         <div className="relative">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.4em]" style={{ color: design.mutedTextColor }}>{t.menuLabel}</p>
-              <h1 className="mt-3 font-serif text-3xl sm:text-5xl" style={{ color: design.textColor }}>{design.brandName}</h1>
+              <h1 className="font-serif text-3xl sm:text-5xl" style={{ color: design.textColor }}>{design.brandName}</h1>
               <p className="mt-3 max-w-2xl" style={{ color: design.mutedTextColor }}>{design.brandSubtitle}</p>
             </div>
 
             <div className="flex items-center gap-3">
-              {!isLiteMode ? (
-                <button
-                  type="button"
-                  onClick={callWaiter}
-                  disabled={callingWaiter || waiterCalled}
-                  className={`flex min-h-11 items-center gap-2 px-4 py-2.5 text-sm font-medium transition ${
-                    waiterCalled
-                      ? "bg-emerald-600/20 text-emerald-400 border border-emerald-600/40"
-                      : "hover:opacity-90"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
-                  style={!waiterCalled ? { backgroundColor: design.primaryColor, color: design.accentTextColor, borderRadius: design.buttonRadius } : undefined}
-                >
-                  {waiterCalled ? (
-                    <>
-                      <User size={16} />
-                      <span className="hidden sm:inline">{t.waiterOnTheWay}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Bell size={16} className="animate-pulse" />
-                      <span className="hidden sm:inline">{t.callWaiter}</span>
-                    </>
-                  )}
-                </button>
-              ) : null}
 
               <div className="flex rounded-full border p-1" style={{ borderColor: design.borderColor, background: design.controlSurfaceColor }}>
                 {(["en", "ru", "az"] as Language[]).map((lang) => (
@@ -2049,6 +2023,49 @@ export function MenuClient({
               </section>
             );
           })()}
+        </div>
+      ) : null}
+      {/* Floating waiter call button */}
+      {!isLiteMode ? (
+        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <button
+            type="button"
+            onClick={callWaiter}
+            disabled={callingWaiter || waiterCalled}
+            className="pointer-events-auto relative flex items-center gap-3 px-7 py-4 shadow-2xl transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              borderRadius: "100px",
+              background: waiterCalled
+                ? "rgba(16,185,129,0.12)"
+                : design.primaryColor,
+              color: waiterCalled ? "#34d399" : design.accentTextColor,
+              border: waiterCalled ? "1.5px solid rgba(16,185,129,0.45)" : "none",
+              backdropFilter: "blur(16px)",
+              boxShadow: waiterCalled
+                ? "0 8px 32px rgba(16,185,129,0.2)"
+                : `0 8px 32px ${design.primaryColor}55`,
+            }}
+          >
+            {!waiterCalled && !callingWaiter && (
+              <span
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: design.primaryColor, opacity: 0.2 }}
+              />
+            )}
+            {waiterCalled ? (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span className="text-sm font-semibold tracking-wide">{t.waiterOnTheWay}</span>
+              </>
+            ) : (
+              <>
+                <Bell size={20} />
+                <span className="text-sm font-semibold tracking-wide">{t.callWaiter}</span>
+              </>
+            )}
+          </button>
         </div>
       ) : null}
     </div>
