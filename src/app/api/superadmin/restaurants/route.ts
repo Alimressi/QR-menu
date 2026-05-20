@@ -101,6 +101,11 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Use the actual restaurant name as brand name (caller didn't override it).
+    if (!normalizedSettings.brandName || normalizedSettings.brandName === "Nine Lives") {
+      normalizedSettings.brandName = name;
+    }
+
     normalizedSettings.adminLogin = normalizedAdminLogin;
     normalizedSettings.adminPasswordHash = await bcrypt.hash(normalizedAdminPassword, 10);
     delete normalizedSettings.adminPassword;
