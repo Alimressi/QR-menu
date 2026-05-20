@@ -410,19 +410,6 @@ function withAlpha(color: string, alpha: number) {
   return color;
 }
 
-function parseServiceModeFromRawSettings(rawSettings: string | null | undefined) {
-  if (!rawSettings) {
-    return "pro" as const;
-  }
-
-  try {
-    const parsed = JSON.parse(rawSettings) as { serviceMode?: unknown };
-    return parsed.serviceMode === "lite" ? "lite" : "pro";
-  } catch {
-    return "pro" as const;
-  }
-}
-
 function formatCurrency(value: number, mode: "manat" | "azn" | "symbol") {
   if (mode === "azn") {
     return `AZN ${value.toFixed(2)}`;
@@ -631,33 +618,6 @@ export function MenuClient({
   useEffect(() => {
     setRuntimeServiceMode(settings?.serviceMode === "lite" ? "lite" : "pro");
   }, [settings?.serviceMode]);
-
-  useEffect(() => {
-    if (!restaurantSlug) {
-      return;
-    }
-
-    const refreshServiceMode = async () => {
-      const response = await fetch(`/api/public/restaurant?slug=${encodeURIComponent(restaurantSlug)}`, {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data = (await response.json()) as { restaurant?: { settings?: string | null } };
-      setRuntimeServiceMode(parseServiceModeFromRawSettings(data.restaurant?.settings));
-    };
-
-    void refreshServiceMode();
-    const intervalMs = isPageVisible ? 8000 : 30000;
-    const interval = window.setInterval(() => {
-      void refreshServiceMode();
-    }, intervalMs);
-
-    return () => window.clearInterval(interval);
-  }, [isPageVisible, restaurantSlug]);
 
   useEffect(() => {
     const restoreStoredSession = () => {
@@ -940,32 +900,7 @@ export function MenuClient({
     }, 30);
   }, [isCategoryMenuOpen]);
 
-  useEffect(() => {
-    if (!restaurantId) {
-      return;
-    }
-
-    const refreshMenu = async () => {
-      const response = await fetch(`/api/categories?restaurantId=${restaurantId}`, { cache: "no-store" });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data = (await response.json()) as CategoryWithDishes[];
-      setLiveCategories(data);
-    };
-
-    void refreshMenu();
-
-    const menuRefreshIntervalMs = isPageVisible ? 12000 : 90000;
-
-    const interval = window.setInterval(() => {
-      void refreshMenu();
-    }, menuRefreshIntervalMs);
-
-    return () => window.clearInterval(interval);
-  }, [isPageVisible, restaurantId]);
+  // Categories are loaded from server-rendered props and refreshed only after full page reload.
 
   useEffect(() => {
     const isAnyOverlayOpen = isBasketOpen || isDishModalOpen || isCategoryMenuOpen;
@@ -1053,11 +988,15 @@ export function MenuClient({
 
     void fetchActiveOrder(normalized);
 
-    const activeOrderPollIntervalMs = isPageVisible ? 10000 : 30000;
+    // Poll only when the tab is visible; stop entirely in the background
+    // to save Cloudflare request quota (was 10 s active / 30 s hidden).
+    if (!isPageVisible) {
+      return;
+    }
 
     const interval = window.setInterval(() => {
       void fetchActiveOrder(normalized);
-    }, activeOrderPollIntervalMs);
+    }, 60000); // 60 s when visible
 
     return () => window.clearInterval(interval);
   }, [fetchActiveOrder, isLiteMode, isPageVisible, tableNumber]);

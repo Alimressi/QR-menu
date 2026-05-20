@@ -24,5 +24,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ restaurant });
+  return NextResponse.json({ restaurant }, {
+    headers: {
+      // Cache at the edge for 5 min; serve stale for up to 10 min while revalidating.
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
 }

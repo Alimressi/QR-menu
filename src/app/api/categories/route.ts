@@ -21,7 +21,12 @@ export async function GET(request: NextRequest) {
     orderBy: { id: "asc" },
   });
 
-  return NextResponse.json(categories);
+  return NextResponse.json(categories, {
+    headers: {
+      // Cache at the edge for 5 min; serve stale for up to 10 min while revalidating.
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
