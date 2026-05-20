@@ -23,8 +23,12 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(categories, {
     headers: {
-      // Cache at the edge for 5 min; serve stale for up to 10 min while revalidating.
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      // Only cache non-empty responses. An empty array likely means a cold-start
+      // DB failure — caching it would poison the edge for 5 minutes.
+      "Cache-Control":
+        categories.length > 0
+          ? "public, s-maxage=300, stale-while-revalidate=600"
+          : "no-store",
     },
   });
 }

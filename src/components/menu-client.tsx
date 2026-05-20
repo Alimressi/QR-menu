@@ -561,9 +561,24 @@ export function MenuClient({
           const catRes = await fetch(`/api/categories?restaurantId=${rid}`);
           if (!catRes.ok || cancelled) return;
           const cats = (await catRes.json()) as CategoryWithDishes[];
-          if (!cancelled) {
+
+          if (!cancelled && cats.length > 0) {
             setLiveCategories(cats);
             setActiveCategoryId(cats[0]?.id ?? null);
+          } else if (!cancelled && cats.length === 0) {
+            // Empty response — Prisma isolate was cold. Wait briefly, then retry
+            // with cache:no-store so Cloudflare doesn't serve the stale empty array.
+            await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+            if (cancelled) return;
+            const retryRes = await fetch(`/api/categories?restaurantId=${rid}`, {
+              cache: "no-store",
+            });
+            if (!retryRes.ok || cancelled) return;
+            const catsRetry = (await retryRes.json()) as CategoryWithDishes[];
+            if (!cancelled) {
+              setLiveCategories(catsRetry);
+              setActiveCategoryId(catsRetry[0]?.id ?? null);
+            }
           }
         }
       } catch {
