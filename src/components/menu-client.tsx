@@ -1627,6 +1627,34 @@ export function MenuClient({
 
             <div className="flex items-center gap-3">
 
+              {!isLiteMode ? (
+                <button
+                  type="button"
+                  onClick={callWaiter}
+                  disabled={callingWaiter || waiterCalled}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{
+                    borderRadius: "100px",
+                    background: waiterCalled ? "rgba(16,185,129,0.12)" : design.primaryColor,
+                    color: waiterCalled ? "#34d399" : design.accentTextColor,
+                    border: waiterCalled ? "1.5px solid rgba(16,185,129,0.4)" : "none",
+                    minHeight: "40px",
+                  }}
+                >
+                  {waiterCalled ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <span>{t.waiterOnTheWay}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={15} />
+                      <span>{t.callWaiter}</span>
+                    </>
+                  )}
+                </button>
+              ) : null}
+
               <div className="flex rounded-full border p-1" style={{ borderColor: design.borderColor, background: design.controlSurfaceColor }}>
                 {(["en", "ru", "az"] as Language[]).map((lang) => (
                   <button
@@ -2085,50 +2113,7 @@ export function MenuClient({
           })()}
         </div>
       ) : null}
-      {/* Floating waiter call button */}
-      {!isLiteMode ? (
-        <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <button
-            type="button"
-            onClick={callWaiter}
-            disabled={callingWaiter || waiterCalled}
-            className="pointer-events-auto relative flex items-center gap-3 px-7 py-4 shadow-2xl transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              borderRadius: "100px",
-              background: waiterCalled
-                ? "rgba(16,185,129,0.12)"
-                : design.primaryColor,
-              color: waiterCalled ? "#34d399" : design.accentTextColor,
-              border: waiterCalled ? "1.5px solid rgba(16,185,129,0.45)" : "none",
-              backdropFilter: "blur(16px)",
-              boxShadow: waiterCalled
-                ? "0 8px 32px rgba(16,185,129,0.2)"
-                : `0 8px 32px ${design.primaryColor}55`,
-            }}
-          >
-            {!waiterCalled && !callingWaiter && (
-              <span
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: design.primaryColor, opacity: 0.2 }}
-              />
-            )}
-            {waiterCalled ? (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span className="text-sm font-semibold tracking-wide">{t.waiterOnTheWay}</span>
-              </>
-            ) : (
-              <>
-                <Bell size={20} />
-                <span className="text-sm font-semibold tracking-wide">{t.callWaiter}</span>
-              </>
-            )}
-          </button>
-        </div>
-      ) : null}
-      </>
+          </>
       ) : null /* isDataLoading */}
     </div>
   );
