@@ -458,8 +458,9 @@ export function MenuClient({
   const [liveRestaurantId, setLiveRestaurantId] = useState<number | undefined>(restaurantId);
   const [liveSettings, setLiveSettings] = useState<Props["settings"]>(settings);
   const [liveRestaurantName, setLiveRestaurantName] = useState<string | undefined>(restaurantName);
-  // True only when page was opened without SSR data (cold-start optimisation)
-  const [isDataLoading, setIsDataLoading] = useState(!restaurantId && !!restaurantSlug);
+  // True when categories haven't arrived yet (either no SSR data, or SSR fetched restaurant
+  // but /api/categories cold-started and returned []).  Client useEffect refetches as fallback.
+  const [isDataLoading, setIsDataLoading] = useState(categories.length === 0 && !!restaurantSlug);
   const [language, setLanguage] = useState<Language>("en");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
@@ -523,35 +524,47 @@ export function MenuClient({
 
   const allDishes = useMemo(() => liveCategories.flatMap((category) => category.dishes), [liveCategories]);
 
-  // Client-side data fetch: runs only when the page was server-rendered without
-  // DB data (no restaurantId from SSR). This eliminates Prisma WASM cold-start
-  // errors (CF Error 1102) by keeping SSR CPU-free.
+  // Client-side fallback fetch.
+  // Runs when:
+  //   a) SSR had no restaurantId at all (full cold-start path), OR
+  //   b) SSR got the restaurant but /api/categories timed-out / cold-started and
+  //      returned [] — in that case restaurantId prop is set but categories is empty.
   useEffect(() => {
-    if (restaurantId || !restaurantSlug) return;
+    // Nothing to do if we already have categories, or no slug to look up.
+    if (categories.length > 0 || !restaurantSlug) return;
 
     let cancelled = false;
     const fetchInitialData = async () => {
       try {
-        const res = await fetch(`/api/public/restaurant?slug=${encodeURIComponent(restaurantSlug)}`);
-        if (!res.ok || cancelled) return;
-        const { restaurant } = (await res.json()) as {
-          restaurant: { id: number; name: string; settings?: string | null };
-        };
-        if (cancelled) return;
+        let rid = restaurantId;
 
-        const parsedSettings = restaurant.settings
-          ? (JSON.parse(restaurant.settings) as Props["settings"])
-          : {};
-        setLiveRestaurantId(restaurant.id);
-        setLiveRestaurantName(restaurant.name);
-        setLiveSettings(parsedSettings);
+        // Step 1 — fetch restaurant only if SSR didn't give us one.
+        if (!rid) {
+          const res = await fetch(`/api/public/restaurant?slug=${encodeURIComponent(restaurantSlug)}`);
+          if (!res.ok || cancelled) return;
+          const { restaurant } = (await res.json()) as {
+            restaurant: { id: number; name: string; settings?: string | null };
+          };
+          if (cancelled) return;
 
-        const catRes = await fetch(`/api/categories?restaurantId=${restaurant.id}`);
-        if (!catRes.ok || cancelled) return;
-        const cats = (await catRes.json()) as CategoryWithDishes[];
-        if (!cancelled) {
-          setLiveCategories(cats);
-          setActiveCategoryId(cats[0]?.id ?? null);
+          rid = restaurant.id;
+          const parsedSettings = restaurant.settings
+            ? (JSON.parse(restaurant.settings) as Props["settings"])
+            : {};
+          setLiveRestaurantId(rid);
+          setLiveRestaurantName(restaurant.name);
+          setLiveSettings(parsedSettings);
+        }
+
+        // Step 2 — always fetch categories (SSR may have returned [] on cold start).
+        if (rid) {
+          const catRes = await fetch(`/api/categories?restaurantId=${rid}`);
+          if (!catRes.ok || cancelled) return;
+          const cats = (await catRes.json()) as CategoryWithDishes[];
+          if (!cancelled) {
+            setLiveCategories(cats);
+            setActiveCategoryId(cats[0]?.id ?? null);
+          }
         }
       } catch {
         // silent — page still renders, just without data
