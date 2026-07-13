@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ dataUrl });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to generate QR code" }, { status: 500 });
   }
 }

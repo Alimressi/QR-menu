@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     return NextResponse.json({ restaurant });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch restaurant" },
       { status: 500 }
@@ -142,7 +142,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     return NextResponse.json({ restaurant });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to update restaurant" },
       { status: 500 }
@@ -165,7 +165,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete restaurant" },
       { status: 500 }

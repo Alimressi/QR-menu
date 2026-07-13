@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, call });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to create waiter call" },
       { status: 500 }
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ calls });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch calls" },
       { status: 500 }

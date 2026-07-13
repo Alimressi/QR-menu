@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: Params) {
     });
 
     return NextResponse.json({ success: true, call });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to update waiter call" },
       { status: 500 }

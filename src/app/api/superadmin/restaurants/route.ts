@@ -1,4 +1,4 @@
-import { isSuperAdmin, getCurrentUserInfo } from "@/lib/auth";
+import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ restaurant }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to create restaurant" },
       { status: 500 }

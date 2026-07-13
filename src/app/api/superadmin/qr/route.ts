@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ qrCodes: results });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to generate QR codes" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { CategoryWithDishes, Dish } from "@/types";
+import { RestaurantDesign, formatCurrency } from "@/lib/design";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -35,38 +36,20 @@ type DishForm = {
   imagePositionY: string;
 };
 
-type RestaurantDesignSettings = {
+// Super-admin edits the full settings: the shared render contract (RestaurantDesign)
+// plus editor-only fields (brand text, base palette, table count, quantity buttons…).
+type RestaurantDesignSettings = RestaurantDesign & {
   basePrimaryColor: string;
   baseSecondaryColor: string;
   baseNeutralColor: string;
   brandName: string;
   brandSubtitle: string;
-  primaryColor: string;
-  accentTextColor: string;
-  backgroundFrom: string;
-  backgroundTo: string;
-  surfaceColor: string;
-  textColor: string;
-  mutedTextColor: string;
-  borderColor: string;
-  buttonRadius: string;
-  cardRadius: string;
   tableCount: string;
-  panelColor: string;
   overlayColor: string;
-  controlSurfaceColor: string;
-  activeChipBackground: string;
-  activeChipTextColor: string;
-  inactiveChipBackground: string;
-  inactiveChipTextColor: string;
-  dividerColor: string;
-  successColor: string;
-  errorColor: string;
   categoryTitleColor: string;
   qtyButtonBackground: string;
   qtyButtonTextColor: string;
   qtyButtonBorderColor: string;
-  currencyMode: "manat" | "azn" | "symbol";
 };
 
 type ColorField =
@@ -414,17 +397,6 @@ const colorFieldGroups: Array<{ titleKey: "sectionHeader" | "sectionCategoryDish
   },
 ];
 
-function getCurrencyLabel(mode: RestaurantDesignSettings["currencyMode"], value: number) {
-  if (mode === "azn") {
-    return `AZN ${value.toFixed(2)}`;
-  }
-
-  if (mode === "symbol") {
-    return `₼ ${value.toFixed(2)}`;
-  }
-
-  return `${value.toFixed(2)} manat`;
-}
 
 function getDishName(language: SuperAdminLanguage, dish: Dish) {
   if (language === "ru") {
@@ -1008,26 +980,14 @@ export function SuperAdminDashboard() {
     : [];
 
   const loadRestaurants = useCallback(async () => {
-    console.log("[DEBUG] Loading restaurants...");
     const response = await fetch("/api/superadmin/restaurants");
-    console.log("[DEBUG] Response status:", response.status, response.ok);
     if (response.ok) {
       const data = await response.json();
-      console.log("[DEBUG] Restaurants data:", data);
       setRestaurants(data.restaurants || []);
       // Select first restaurant by default if none selected
       if (data.restaurants?.length > 0) {
-        setSelectedRestaurantId((current) => {
-          // Only set if no restaurant is currently selected
-          if (!current) {
-            console.log("[DEBUG] Selecting first restaurant:", data.restaurants[0].id);
-            return data.restaurants[0].id;
-          }
-          return current;
-        });
+        setSelectedRestaurantId((current) => current || data.restaurants[0].id);
       }
-    } else {
-      console.error("[DEBUG] Failed to load restaurants:", response.status);
     }
   }, []);
 
@@ -1050,20 +1010,15 @@ export function SuperAdminDashboard() {
 
   const checkSession = useCallback(async () => {
     try {
-      console.log("[DEBUG] Checking session...");
       // Check session and get user info
       const response = await fetch("/api/admin/me");
-      console.log("[DEBUG] Session check response:", response.status, response.ok);
       if (response.ok) {
         const data = await response.json();
-        console.log("[DEBUG] Session data:", data);
         // Verify user is SUPER_ADMIN
         if (data.role === "SUPER_ADMIN") {
-          console.log("[DEBUG] User is SUPER_ADMIN, loading restaurants...");
           setAuthenticated(true);
           void loadRestaurants();
         } else {
-          console.log("[DEBUG] User is not SUPER_ADMIN:", data.role);
           // Do not clear shared cookies here: another dashboard tab may be using them.
           setAuthenticated(false);
         }
@@ -1365,7 +1320,7 @@ export function SuperAdminDashboard() {
         <div className="mt-4 rounded-xl border p-4" style={{ borderColor: design.borderColor, background: design.panelColor }}>
           <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: design.dividerColor }}>
             <span style={{ color: design.textColor }}>{designLabels.totalLabel}</span>
-            <strong style={{ color: design.primaryColor }}>{getCurrencyLabel(design.currencyMode, 18.4)}</strong>
+            <strong style={{ color: design.primaryColor }}>{formatCurrency(18.4, design.currencyMode)}</strong>
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-sm" style={{ color: design.successColor }}>{designLabels.successSample}</span>
@@ -1379,7 +1334,6 @@ export function SuperAdminDashboard() {
   async function onLogin(event: React.FormEvent) {
     event.preventDefault();
     setAuthError("");
-    console.log("[DEBUG] Logging in as super admin...");
 
     const response = await fetch("/api/superadmin/login", {
       method: "POST",
@@ -1387,14 +1341,11 @@ export function SuperAdminDashboard() {
       body: JSON.stringify({ login, password }),
     });
 
-    console.log("[DEBUG] Login response:", response.status, response.ok);
     if (!response.ok) {
       setAuthError("Invalid super admin credentials");
       return;
     }
 
-    const data = await response.json();
-    console.log("[DEBUG] Login data:", data);
     setAuthenticated(true);
     void loadRestaurants();
   }
@@ -1949,7 +1900,7 @@ export function SuperAdminDashboard() {
                 {filteredDishes.map((dish) => (
                   <article key={dish.id} className="rounded-xl border border-dark-600 p-3">
                       <p className="font-medium text-gold-200">{getDishName(language, dish)}</p>
-                    <p className="text-sm text-gold-400">{getCurrencyLabel(designForm.currencyMode, dish.price)}</p>
+                    <p className="text-sm text-gold-400">{formatCurrency(dish.price, designForm.currencyMode)}</p>
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"

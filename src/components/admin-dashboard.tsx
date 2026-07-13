@@ -1,143 +1,15 @@
 "use client";
 
-import { CategoryWithDishes, Dish, Order } from "@/types";
-import Image from "next/image";
+import { Order } from "@/types";
+import {
+  RestaurantDesign,
+  defaultDesign,
+  formatCurrency,
+  parseRestaurantDesign,
+} from "@/lib/design";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type AdminLanguage = "en" | "ru" | "az";
-
-type DishForm = {
-  nameEn: string;
-  nameRu: string;
-  nameAz: string;
-  descriptionEn: string;
-  descriptionRu: string;
-  descriptionAz: string;
-  price: string;
-  imageUrl: string;
-  categoryId: string;
-  imagePositionX: string;
-  imagePositionY: string;
-};
-
-const emptyDishForm: DishForm = {
-  nameEn: "",
-  nameRu: "",
-  nameAz: "",
-  descriptionEn: "",
-  descriptionRu: "",
-  descriptionAz: "",
-  price: "",
-  imageUrl: "",
-  categoryId: "",
-  imagePositionX: "50",
-  imagePositionY: "50",
-};
-
-type RestaurantDesign = {
-  primaryColor: string;
-  accentTextColor: string;
-  backgroundFrom: string;
-  backgroundTo: string;
-  surfaceColor: string;
-  textColor: string;
-  mutedTextColor: string;
-  borderColor: string;
-  buttonRadius: string;
-  cardRadius: string;
-  panelColor: string;
-  controlSurfaceColor: string;
-  activeChipBackground: string;
-  activeChipTextColor: string;
-  inactiveChipBackground: string;
-  inactiveChipTextColor: string;
-  dividerColor: string;
-  successColor: string;
-  errorColor: string;
-  currencyMode: "manat" | "azn" | "symbol";
-};
-
-const defaultAdminDesign: RestaurantDesign = {
-  primaryColor: "#b8944f",
-  accentTextColor: "#120e08",
-  backgroundFrom: "#0a0a0a",
-  backgroundTo: "#0d0d0d",
-  surfaceColor: "rgba(18,18,18,0.86)",
-  textColor: "#f0e8d0",
-  mutedTextColor: "#c9b28d",
-  borderColor: "rgba(201,169,98,0.35)",
-  buttonRadius: "14px",
-  cardRadius: "20px",
-  panelColor: "#161616",
-  controlSurfaceColor: "#2a2a2a",
-  activeChipBackground: "#b8944f",
-  activeChipTextColor: "#120e08",
-  inactiveChipBackground: "#1f1f1f",
-  inactiveChipTextColor: "#f0e8d0",
-  dividerColor: "rgba(201,169,98,0.35)",
-  successColor: "#34d399",
-  errorColor: "#f87171",
-  currencyMode: "manat",
-};
-
-function normalizeRadius(value: string | undefined, fallbackPx: string) {
-  if (!value) {
-    return fallbackPx;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return fallbackPx;
-  }
-
-  if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  const parsed = Number.parseFloat(trimmed);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return fallbackPx;
-  }
-
-  return `${parsed}px`;
-}
-
-function parseRestaurantDesign(rawSettings: unknown): RestaurantDesign {
-  let parsed: Record<string, unknown> = {};
-
-  if (typeof rawSettings === "string") {
-    try {
-      parsed = JSON.parse(rawSettings) as Record<string, unknown>;
-    } catch {
-      parsed = {};
-    }
-  } else if (rawSettings && typeof rawSettings === "object") {
-    parsed = rawSettings as Record<string, unknown>;
-  }
-
-  return {
-    ...defaultAdminDesign,
-    ...parsed,
-    buttonRadius: normalizeRadius(typeof parsed.buttonRadius === "string" ? parsed.buttonRadius : undefined, "14px"),
-    cardRadius: normalizeRadius(typeof parsed.cardRadius === "string" ? parsed.cardRadius : undefined, "20px"),
-    currencyMode:
-      parsed.currencyMode === "azn" || parsed.currencyMode === "symbol" || parsed.currencyMode === "manat"
-        ? parsed.currencyMode
-        : defaultAdminDesign.currencyMode,
-  };
-}
-
-function formatCurrency(value: number, mode: "manat" | "azn" | "symbol") {
-  if (mode === "azn") {
-    return `AZN ${value.toFixed(2)}`;
-  }
-
-  if (mode === "symbol") {
-    return `₼ ${value.toFixed(2)}`;
-  }
-
-  return `${value.toFixed(2)} manat`;
-}
 
 const statuses = ["new", "preparing", "ready", "paid"] as const;
 
@@ -190,10 +62,6 @@ const dictionary: Record<
     tableLabel: string;
     edit: string;
     delete: string;
-    uploadingImage: string;
-    uploadFailed: string;
-    saveDishFailed: string;
-    addCategoryFailed: string;
     saving: string;
     statusNew: string;
     statusPreparing: string;
@@ -253,10 +121,6 @@ const dictionary: Record<
     tableLabel: "Table",
     edit: "Edit",
     delete: "Delete",
-    uploadingImage: "Uploading image...",
-    uploadFailed: "Upload failed.",
-    saveDishFailed: "Failed to save dish.",
-    addCategoryFailed: "Failed to add category.",
     saving: "Saving...",
     statusNew: "new",
     statusPreparing: "preparing",
@@ -315,10 +179,6 @@ const dictionary: Record<
     tableLabel: "Стол",
     edit: "Изменить",
     delete: "Удалить",
-    uploadingImage: "Загрузка изображения...",
-    uploadFailed: "Ошибка загрузки.",
-    saveDishFailed: "Не удалось сохранить блюдо.",
-    addCategoryFailed: "Не удалось добавить категорию.",
     saving: "Сохранение...",
     statusNew: "новый",
     statusPreparing: "готовится",
@@ -377,10 +237,6 @@ const dictionary: Record<
     tableLabel: "Masa",
     edit: "Redakte et",
     delete: "Sil",
-    uploadingImage: "Sekil yuklenir...",
-    uploadFailed: "Yukleme ugursuz oldu.",
-    saveDishFailed: "Yemek saxlanmadi.",
-    addCategoryFailed: "Kateqoriya elave olunmadi.",
     saving: "Saxlanilir...",
     statusNew: "yeni",
     statusPreparing: "hazirlanir",
@@ -408,27 +264,13 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>("");
-  const [restaurantDesign, setRestaurantDesign] = useState<RestaurantDesign>(defaultAdminDesign);
+  const [restaurantDesign, setRestaurantDesign] = useState<RestaurantDesign>(defaultDesign);
 
   const [tab, setTab] = useState<"active-orders" | "order-history" | "waiter-calls">("active-orders");
 
   const [historyTableFilter, setHistoryTableFilter] = useState("all");
   const [waiterCalls, setWaiterCalls] = useState<Array<{ id: number; tableNumber: string; status: string; createdAt: string }>>([]);
-
-  // Legacy states (not used for RESTAURANT_ADMIN)
-  const [categories, setCategories] = useState<CategoryWithDishes[]>([]);
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [dishForm, setDishForm] = useState<DishForm>(emptyDishForm);
-  const [editingDishId, setEditingDishId] = useState<number | null>(null);
-  const [savingDish, setSavingDish] = useState(false);
-  const [categoryEn, setCategoryEn] = useState("");
-  const [categoryRu, setCategoryRu] = useState("");
-  const [categoryAz, setCategoryAz] = useState("");
-  const [busyMessage, setBusyMessage] = useState("");
-  const [menuUrl, setMenuUrl] = useState("");
-  const [tableQrs, setTableQrs] = useState<Array<{ table: string; url: string; dataUrl: string }>>([]);
   const [isPageVisible, setIsPageVisible] = useState(true);
 
   const t = dictionary[language];
@@ -467,7 +309,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
   const applyLoggedOutTheme = useCallback(() => {
     setRestaurantId(null);
-    setUserRole(null);
 
     if (restaurantSlug) {
       void loadPublicRestaurantTheme();
@@ -475,7 +316,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     }
 
     setRestaurantName("");
-    setRestaurantDesign(defaultAdminDesign);
+    setRestaurantDesign(defaultDesign);
   }, [loadPublicRestaurantTheme, restaurantSlug]);
 
   function getOrderItemName(item: Order["items"][number]) {
@@ -543,7 +384,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
         }
 
         setAuthenticated(true);
-        setUserRole(data.role);
         setRestaurantId(data.restaurantId);
         setRestaurantDesign(parseRestaurantDesign(data.restaurant?.settings));
         if (data.restaurant?.name) {
@@ -575,26 +415,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     setWaiterCalls(data.calls || []);
   }, [restaurantId]);
 
-  const loadMenu = useCallback(async () => {
-    if (!restaurantId) return;
-
-    const [categoriesResponse, dishesResponse] = await Promise.all([
-      fetch(`/api/categories?restaurantId=${restaurantId}`),
-      fetch(`/api/dishes?restaurantId=${restaurantId}`),
-    ]);
-
-    if (categoriesResponse.ok) {
-      setCategories(await categoriesResponse.json());
-    }
-
-    if (dishesResponse.ok) {
-      setDishes(await dishesResponse.json());
-    }
-  }, [restaurantId]);
-
   const refreshAll = useCallback(async () => {
-    await Promise.all([loadOrders(), loadMenu(), loadWaiterCalls()]);
-  }, [loadMenu, loadOrders, loadWaiterCalls]);
+    await Promise.all([loadOrders(), loadWaiterCalls()]);
+  }, [loadOrders, loadWaiterCalls]);
 
   useEffect(() => {
     void loadPublicRestaurantTheme();
@@ -628,7 +451,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
     void refreshAll();
 
-    const pollIntervalMs = isPageVisible ? 30000 : 30000;
+    // Poll faster while the tab is focused (waiter is watching), slow down in the
+    // background to save the serverless DB compute budget.
+    const pollIntervalMs = isPageVisible ? 15000 : 60000;
 
     const interval = window.setInterval(() => {
       void loadOrders();
@@ -637,56 +462,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
     return () => window.clearInterval(interval);
   }, [authenticated, isPageVisible, loadOrders, loadWaiterCalls, refreshAll]);
-
-  useEffect(() => {
-    if (!authenticated || typeof window === "undefined") {
-      return;
-    }
-
-    const url = `${window.location.origin}/`;
-    setMenuUrl(url);
-
-    const generateQr = async () => {
-      const QRCode = await import("qrcode");
-
-      const response = await fetch("/api/admin/qr-links", { cache: "no-store" });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data = (await response.json()) as { links: Array<{ table: string; url: string }> };
-      const tableEntries = await Promise.all(
-        data.links.map(async (entry) => {
-          const dataUrl = await QRCode.toDataURL(entry.url, {
-            width: 280,
-            margin: 1,
-            color: {
-              dark: "#1f3b2e",
-              light: "#ffffff",
-            },
-          });
-
-          return {
-            table: entry.table,
-            url: entry.url,
-            dataUrl,
-          };
-        }),
-      );
-
-      setTableQrs(tableEntries);
-    };
-
-    void generateQr();
-  }, [authenticated]);
-
-  const categoryOptions = useMemo(() => {
-    return categories.map((category) => ({
-      id: category.id,
-      label: `${category.nameEn} / ${category.nameRu} / ${category.nameAz}`,
-    }));
-  }, [categories]);
 
   const activeOrders = useMemo(
     () => orders.filter((order) => order.status !== "paid"),
@@ -755,29 +530,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     await loadOrders();
   }
 
-  async function onImageUpload(file: File) {
-    const formData = new FormData();
-    formData.append("file", file);
-    setBusyMessage(t.uploadingImage);
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || t.uploadFailed);
-      }
-
-      setDishForm((prev) => ({ ...prev, imageUrl: data.imageUrl }));
-    } finally {
-      setBusyMessage("");
-    }
-  }
-
   async function resolveWaiterCall(callId: number) {
     await fetch(`/api/waiter-call/${callId}`, {
       method: "PATCH",
@@ -785,106 +537,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
       body: JSON.stringify({ status: "resolved" }),
     });
     await loadWaiterCalls();
-  }
-
-  async function saveDish(event: React.FormEvent) {
-    event.preventDefault();
-    if (!restaurantId) {
-      setBusyMessage("Restaurant context is missing.");
-      return;
-    }
-    setSavingDish(true);
-
-    try {
-      const payload = {
-        nameEn: dishForm.nameEn,
-        nameRu: dishForm.nameRu,
-        nameAz: dishForm.nameAz,
-        descriptionEn: dishForm.descriptionEn,
-        descriptionRu: dishForm.descriptionRu,
-        descriptionAz: dishForm.descriptionAz,
-        price: Number(dishForm.price),
-        imageUrl: dishForm.imageUrl,
-        categoryId: Number(dishForm.categoryId),
-        restaurantId,
-        imagePositionX: Number(dishForm.imagePositionX),
-        imagePositionY: Number(dishForm.imagePositionY),
-      };
-
-      const isEdit = editingDishId !== null;
-      const endpoint = isEdit ? `/api/dishes/${editingDishId}` : "/api/dishes";
-      const method = isEdit ? "PATCH" : "POST";
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data?.error || "Failed to save dish.");
-      }
-
-      setDishForm(emptyDishForm);
-      setEditingDishId(null);
-      await loadMenu();
-    } catch (error) {
-      setBusyMessage(error instanceof Error ? error.message : t.saveDishFailed);
-    } finally {
-      setSavingDish(false);
-    }
-  }
-
-  function editDish(dish: Dish) {
-    setEditingDishId(dish.id);
-    setDishForm({
-      nameEn: dish.nameEn,
-      nameRu: dish.nameRu,
-      nameAz: dish.nameAz,
-      descriptionEn: dish.descriptionEn,
-      descriptionRu: dish.descriptionRu,
-      descriptionAz: dish.descriptionAz,
-      price: String(dish.price),
-      imageUrl: dish.imageUrl,
-      categoryId: String(dish.categoryId),
-      imagePositionX: String(dish.imagePositionX ?? 50),
-      imagePositionY: String(dish.imagePositionY ?? 50),
-    });
-  }
-
-  async function removeDish(dishId: number) {
-    await fetch(`/api/dishes/${dishId}`, { method: "DELETE" });
-    await loadMenu();
-  }
-
-  async function addCategory(event: React.FormEvent) {
-    event.preventDefault();
-    if (!restaurantId) {
-      setBusyMessage("Restaurant context is missing.");
-      return;
-    }
-
-    const response = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nameEn: categoryEn,
-        nameRu: categoryRu,
-        nameAz: categoryAz,
-        restaurantId,
-      }),
-    });
-
-    if (!response.ok) {
-      setBusyMessage(t.addCategoryFailed);
-      return;
-    }
-
-    setCategoryEn("");
-    setCategoryRu("");
-    setCategoryAz("");
-    await loadMenu();
   }
 
   if (loadingAuth) {
@@ -1191,7 +843,6 @@ export function AdminDashboard({ restaurantSlug }: Props) {
         </section>
       ) : null}
 
-      {busyMessage ? <p className="mt-4 text-sm" style={{ color: design.mutedTextColor }}>{busyMessage}</p> : null}
       </div>
     </main>
   );

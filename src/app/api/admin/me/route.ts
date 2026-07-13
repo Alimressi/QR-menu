@@ -36,7 +36,7 @@ export async function GET() {
       restaurantId: userInfo.restaurantId,
       restaurant,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to get user info" },
       { status: 500 }
