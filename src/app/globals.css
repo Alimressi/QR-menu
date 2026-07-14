@@ -81,30 +81,62 @@ button:active:not(:disabled) {
 }
 
 .menu-chip-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(201, 169, 98, 0.45) rgba(201, 169, 98, 0.12);
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
   overscroll-behavior-x: contain;
+  /* Snap chips and keep the active one clear of the left fade. */
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 10px;
+  /* Fade both edges so it reads as "scroll for more" without a scrollbar. */
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 20px,
+    #000 calc(100% - 32px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 20px,
+    #000 calc(100% - 32px),
+    transparent 100%
+  );
 }
 
 .menu-chip-scroll::-webkit-scrollbar {
-  height: 8px;
+  display: none;
 }
 
-.menu-chip-scroll::-webkit-scrollbar-track {
-  background: rgba(201, 169, 98, 0.12);
-  border-radius: 999px;
+.menu-chip-scroll > * {
+  scroll-snap-align: start;
 }
 
-.menu-chip-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, rgba(201, 169, 98, 0.55), rgba(184, 148, 79, 0.8));
-  border-radius: 999px;
-  border: 1px solid rgba(10, 10, 10, 0.35);
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(201, 169, 98, 0.08);
 }
 
-.menu-chip-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, rgba(212, 192, 120, 0.75), rgba(184, 148, 79, 0.95));
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0,
+    rgba(201, 169, 98, 0.12) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes fade-up {
@@ -125,6 +157,10 @@ button:active:not(:disabled) {
 
   .fade-up {
     opacity: 1;
+    animation: none;
+  }
+
+  .skeleton::after {
     animation: none;
   }
 }

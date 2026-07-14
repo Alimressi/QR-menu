@@ -359,6 +359,23 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     return t.statusPaid;
   }
 
+  // Traffic-light colours so the waiter can read order state at a glance.
+  function getStatusColor(status: string) {
+    if (status === "new") {
+      return "#f87171"; // red — needs attention
+    }
+
+    if (status === "preparing") {
+      return "#fbbf24"; // amber — in progress
+    }
+
+    if (status === "ready") {
+      return "#34d399"; // green — ready to serve
+    }
+
+    return design.mutedTextColor; // paid — settled
+  }
+
   const checkSession = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/me");
@@ -707,11 +724,31 @@ export function AdminDashboard({ restaurantSlug }: Props) {
           ) : null}
 
           {activeOrders.map((order) => (
-            <article key={order.id} className="rounded-2xl border p-4 shadow-sm" style={{ borderColor: design.borderColor, background: design.panelColor }}>
+            <article
+              key={order.id}
+              className="rounded-2xl border p-4 shadow-sm"
+              style={{
+                borderColor: design.borderColor,
+                background: design.panelColor,
+                borderLeft: `5px solid ${getStatusColor(order.status)}`,
+              }}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
-                  <p className="text-sm" style={{ color: design.mutedTextColor }}>{t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)}</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-xs font-semibold leading-none"
+                      style={{
+                        color: getStatusColor(order.status),
+                        background: `color-mix(in srgb, ${getStatusColor(order.status)} 18%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${getStatusColor(order.status)} 45%, transparent)`,
+                      }}
+                    >
+                      {getStatusLabel(order.status)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm" style={{ color: design.mutedTextColor }}>{t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)}</p>
                 </div>
 
                 <select

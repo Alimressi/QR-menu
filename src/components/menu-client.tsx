@@ -1632,12 +1632,52 @@ export function MenuClient({
       }}
     >
       {isDataLoading ? (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div aria-hidden="true">
+          {/* Header placeholder */}
           <div
-            className="h-10 w-10 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: design.primaryColor, borderTopColor: "transparent" }}
-          />
-          <p className="text-sm" style={{ color: design.mutedTextColor }}>Загрузка меню…</p>
+            className="mb-6 rounded-2xl border p-4 sm:mb-10 sm:rounded-3xl sm:p-10"
+            style={{ borderColor: design.borderColor, background: design.surfaceColor }}
+          >
+            <div className="skeleton h-9 w-2/3 max-w-sm rounded-lg sm:h-12" />
+            <div className="skeleton mt-4 h-4 w-1/2 max-w-md rounded" />
+          </div>
+
+          {/* Category chips placeholder */}
+          <div className="mb-8 flex gap-3 overflow-hidden">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="skeleton h-12 w-28 shrink-0"
+                style={{ borderRadius: design.buttonRadius }}
+              />
+            ))}
+          </div>
+
+          {/* Dish cards placeholder */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="overflow-hidden border"
+                style={{ borderRadius: design.cardRadius, borderColor: design.borderColor, background: design.surfaceColor }}
+              >
+                <div className="skeleton aspect-[21/11] w-full" />
+                <div className="space-y-3 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="skeleton h-6 w-1/2 rounded" />
+                    <div className="skeleton h-7 w-16 rounded-full" />
+                  </div>
+                  <div className="skeleton h-4 w-3/4 rounded" />
+                  <div className="skeleton h-4 w-2/3 rounded" />
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="skeleton h-11 w-11 rounded-lg" />
+                    <div className="skeleton h-11 w-11 rounded-lg" />
+                    <div className="skeleton ml-auto h-11 w-20" style={{ borderRadius: design.buttonRadius }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {!isDataLoading ? (<>
