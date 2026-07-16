@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const login = String(body?.login || "").trim();
-    const password = String(body?.password || "");
+    const password = String(body?.password || "").trim();
     const restaurantSlug = String(body?.restaurantSlug || "").trim();
     const requestedRestaurantId = Number(body?.restaurantId);
 
@@ -15,31 +15,44 @@ export async function POST(request: Request) {
     }
 
     let targetRestaurant: { id: number; settings: string | null } | null = null;
+    let userInfo: Awaited<ReturnType<typeof validateAdminCredentials>> = null;
 
-    if (restaurantSlug) {
-      targetRestaurant = await prisma.restaurant.findUnique({
-        where: { slug: restaurantSlug },
-        select: { id: true, settings: true },
-      });
-    } else if (requestedRestaurantId) {
-      targetRestaurant = await prisma.restaurant.findUnique({
-        where: { id: requestedRestaurantId },
-        select: { id: true, settings: true },
-      });
+    if (restaurantSlug || requestedRestaurantId) {
+      // Explicit restaurant context: validate against exactly that restaurant.
+      targetRestaurant = restaurantSlug
+        ? await prisma.restaurant.findUnique({
+            where: { slug: restaurantSlug },
+            select: { id: true, settings: true },
+          })
+        : await prisma.restaurant.findUnique({
+            where: { id: requestedRestaurantId },
+            select: { id: true, settings: true },
+          });
+
+      if (!targetRestaurant) {
+        return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
+      }
+
+      userInfo = await validateAdminCredentials(login, password, targetRestaurant.settings);
     } else {
-      targetRestaurant = await prisma.restaurant.findFirst({
-        orderBy: { id: "asc" },
+      // No restaurant in context (e.g. the bare /admin page): find the restaurant
+      // whose admin credentials match, instead of silently defaulting to the first
+      // one — which used to reject valid logins for every restaurant but that one.
+      const allRestaurants = await prisma.restaurant.findMany({
         select: { id: true, settings: true },
       });
+
+      for (const restaurant of allRestaurants) {
+        const candidate = await validateAdminCredentials(login, password, restaurant.settings);
+        if (candidate) {
+          targetRestaurant = restaurant;
+          userInfo = candidate;
+          break;
+        }
+      }
     }
 
-    if (!targetRestaurant) {
-      return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
-    }
-
-    const userInfo = await validateAdminCredentials(login, password, targetRestaurant.settings);
-
-    if (!userInfo) {
+    if (!userInfo || !targetRestaurant) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 

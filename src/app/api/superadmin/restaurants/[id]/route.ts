@@ -103,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     const normalizedAdminLogin = String(adminLogin || "").trim();
-    const normalizedAdminPassword = String(adminPassword || "");
+    const normalizedAdminPassword = String(adminPassword || "").trim();
 
     if (normalizedAdminLogin) {
       mergedSettings.adminLogin = normalizedAdminLogin;

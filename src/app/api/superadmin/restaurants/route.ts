@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedAdminLogin = String(adminLogin || "").trim();
-    const normalizedAdminPassword = String(adminPassword || "");
+    const normalizedAdminPassword = String(adminPassword || "").trim();
 
     if (!normalizedAdminLogin || !normalizedAdminPassword) {
       return NextResponse.json(
