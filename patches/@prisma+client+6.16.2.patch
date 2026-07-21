@@ -1,19 +1,21 @@
 diff --git a/node_modules/@prisma/client/wasm.mjs b/node_modules/@prisma/client/wasm.mjs
 new file mode 100644
-index 0000000..2e0c7bc
+index 0000000..275910a
 --- /dev/null
 +++ b/node_modules/@prisma/client/wasm.mjs
-@@ -0,0 +1,38 @@
-+// Local dev shim: @prisma/client@6.16.2 declares an ESM "import" condition for
-+// ./wasm pointing at this file, but the package/generator only ships wasm.js (CJS),
-+// so bundlers (Turbopack/webpack) fail to resolve `@prisma/client/wasm` during
-+// `next dev`. This re-exports the CJS module so the ESM path resolves. It is only
-+// referenced from the Cloudflare-Workers branch of src/lib/prisma.ts and never runs
-+// under local Node. Not committed (node_modules); regenerate if reinstalling deps.
-+import { createRequire } from "module";
-+
-+const require = createRequire(import.meta.url);
-+const mod = require("./wasm.js");
+@@ -0,0 +1,40 @@
++// Shim: @prisma/client@6.16.2 declares an ESM "import" condition for ./wasm that
++// points at this file, but the generator only ships wasm.js (CJS). Bundlers
++// (Turbopack/webpack) resolve `@prisma/client/wasm` through the "import" branch,
++// so this file must exist and re-export the CJS module.
++//
++// It is used by the Cloudflare-Workers branch of src/lib/prisma.ts. Use a STATIC
++// default import so the bundler inlines wasm.js at build time — a runtime
++// createRequire("./wasm.js") works in Node but throws `No such module "wasm.js"`
++// on Cloudflare Workers, which have no dynamic require.
++//
++// Not committed directly (node_modules); applied via patches/ + patch-package.
++import mod from "./wasm.js";
 +
 +export const {
 +  Prisma,
