@@ -1853,7 +1853,9 @@ export function MenuClient({
 
                     <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:block sm:space-y-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2 sm:gap-3">
-                        <h3 className="line-clamp-2 min-w-0 break-words font-serif text-base sm:line-clamp-none sm:text-xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
+                        {/* Phones: title and description get fixed two-line boxes so every
+                            card ends up exactly the same height. sm+ sizes naturally. */}
+                        <h3 className="line-clamp-2 h-12 min-w-0 break-words font-serif text-base sm:line-clamp-none sm:h-auto sm:text-xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
                         <p
                           className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]"
                           style={{ backgroundColor: design.primaryColor, color: design.accentTextColor }}
@@ -1862,7 +1864,7 @@ export function MenuClient({
                         </p>
                       </div>
 
-                      <p className="line-clamp-2 text-xs leading-snug sm:line-clamp-none sm:text-sm sm:leading-6" style={{ color: design.mutedTextColor }}>{getDishDescription(language, dish)}</p>
+                      <p className="line-clamp-2 h-[33px] text-xs leading-snug sm:line-clamp-none sm:h-auto sm:text-sm sm:leading-6" style={{ color: design.mutedTextColor }}>{getDishDescription(language, dish)}</p>
 
                       <div className="mt-auto flex items-center gap-1.5 sm:mt-0 sm:gap-2">
                         <button
@@ -1906,8 +1908,10 @@ export function MenuClient({
                         </button>
                       </div>
 
+                      {/* Hidden on phones so every card is the same height — tapping Add
+                          on an option dish opens the modal, which has the same picker. */}
                       {dish.options && dish.options.length > 0 ? (
-                        <div>
+                        <div className="hidden sm:block">
                           <label className="mb-1 block text-xs" style={{ color: design.mutedTextColor }}>
                             {t.chooseOption}
                           </label>
