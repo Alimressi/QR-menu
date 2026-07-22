@@ -17,8 +17,58 @@ import {
   getFieldLabel,
 } from "./super-admin/i18n";
 import { generatePaletteFromThreeColors } from "./super-admin/palette";
+import { DishCard } from "@/components/dish-card";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+/**
+ * Drag target laid over the dish photo in the editor: dragging picks the focal
+ * point that object-position uses, so the admin sees the exact menu framing.
+ */
+function FramingOverlay({
+  x,
+  y,
+  onChange,
+}: {
+  x: number;
+  y: number;
+  onChange: (x: number, y: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  const apply = (clientX: number, clientY: number) => {
+    const box = ref.current?.getBoundingClientRect();
+    if (!box || !box.width || !box.height) return;
+    const nextX = Math.round(Math.min(100, Math.max(0, ((clientX - box.left) / box.width) * 100)));
+    const nextY = Math.round(Math.min(100, Math.max(0, ((clientY - box.top) / box.height) * 100)));
+    onChange(nextX, nextY);
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="absolute inset-0 cursor-crosshair touch-none"
+      onPointerDown={(event) => {
+        dragging.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        apply(event.clientX, event.clientY);
+      }}
+      onPointerMove={(event) => {
+        if (dragging.current) apply(event.clientX, event.clientY);
+      }}
+      onPointerUp={(event) => {
+        dragging.current = false;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }}
+    >
+      <div
+        className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/90 shadow-[0_0_0_2px_rgba(0,0,0,0.45)]"
+        style={{ left: `${x}%`, top: `${y}%` }}
+      />
+    </div>
+  );
+}
 
 
 const emptyDishForm: DishForm = {
@@ -281,6 +331,22 @@ export function SuperAdminDashboard() {
     );
   }, [dishes, normalizedDishSearchQuery]);
   const savedDesign = selectedRestaurant ? parseRestaurantDesign(selectedRestaurant.settings) : defaultDesign;
+
+  // Dish form data shaped for the shared menu card, in the admin's language.
+  const dishCardPreview = useMemo(() => {
+    const byLanguage = (en: string, ru: string, az: string) =>
+      (language === "ru" ? ru : language === "az" ? az : en) || en;
+
+    return {
+      name: byLanguage(dishForm.nameEn, dishForm.nameRu, dishForm.nameAz) || "—",
+      description: byLanguage(dishForm.descriptionEn, dishForm.descriptionRu, dishForm.descriptionAz),
+      price: Number(dishForm.price) || 0,
+      imageUrl: dishForm.imageUrl,
+      imagePositionX: dishForm.imagePositionX,
+      imagePositionY: dishForm.imagePositionY,
+    };
+  }, [dishForm, language]);
+
   const changedDesignFields = selectedRestaurant
     ? (Object.keys(defaultDesign) as Array<keyof RestaurantDesignSettings>).filter(
         (key) => String(savedDesign[key]) !== String(designForm[key]),
@@ -1092,19 +1158,55 @@ export function SuperAdminDashboard() {
               </select>
 
               {dishForm.imageUrl ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gold-400">{t.framingPreview}</p>
-                  <div className="relative h-32 overflow-hidden rounded-lg border border-dark-600">
-                    <Image
-                      src={dishForm.imageUrl}
-                      alt="Preview"
-                      fill
-                      className="object-cover"
-                      style={{
-                        objectPosition: `${dishForm.imagePositionX}% ${dishForm.imagePositionY}%`,
-                      }}
-                    />
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gold-400">{t.framingPreview}</p>
+                    <p className="text-xs text-gold-400/60">{t.framingHint}</p>
                   </div>
+
+                  {/* The very same <DishCard/> the guest menu renders, so this
+                      preview cannot drift from the real thing. */}
+                  <div className="flex flex-wrap items-start gap-5">
+                    <div>
+                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-gold-400/70">{t.previewPhone}</p>
+                      <div className="w-[366px] max-w-full">
+                        <DishCard
+                          variant="phone"
+                          staticImage
+                          dish={dishCardPreview}
+                          design={savedDesign}
+                          addLabel={designLabels.addButton}
+                          imageOverlay={
+                            <FramingOverlay
+                              x={Number(dishForm.imagePositionX) || 50}
+                              y={Number(dishForm.imagePositionY) || 50}
+                              onChange={(nextX, nextY) =>
+                                setDishForm((prev) => ({
+                                  ...prev,
+                                  imagePositionX: String(nextX),
+                                  imagePositionY: String(nextY),
+                                }))
+                              }
+                            />
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-gold-400/70">{t.previewDesktop}</p>
+                      <div className="w-[420px] max-w-full">
+                        <DishCard
+                          variant="desktop"
+                          staticImage
+                          dish={dishCardPreview}
+                          design={savedDesign}
+                          addLabel={designLabels.addButton}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-xs text-gold-400">{t.positionX}</label>

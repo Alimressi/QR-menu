@@ -3,6 +3,7 @@
 import { CategoryWithDishes, Language, Order } from "@/types";
 import { Minus, Plus, ShoppingBag, Trash2, Bell, Menu, X } from "lucide-react";
 import Image from "next/image";
+import { DishCard } from "@/components/dish-card";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
@@ -1825,93 +1826,25 @@ export function MenuClient({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {category.dishes.map((dish) => (
-                  <article
+                  <DishCard
                     key={dish.id}
-                    className="group card-hover card-glow mx-auto flex w-full max-w-[420px] overflow-hidden border shadow-sm sm:block"
-                    onClick={() => openDishModal(dish.id)}
-                    style={{
-                      borderRadius: design.cardRadius,
-                      borderColor: design.borderColor,
-                      background: design.surfaceColor,
+                    dish={{
+                      name: getDishName(language, dish),
+                      description: getDishDescription(language, dish),
+                      price: dish.price,
+                      imageUrl: dish.imageUrl,
+                      imagePositionX: dish.imagePositionX,
+                      imagePositionY: dish.imagePositionY,
                     }}
-                  >
-                    {/* Phone: compact row with a 140px thumbnail so 3 dishes fit a screen.
-                        sm+ : the original full-width banner card. */}
-                    <div className="relative w-[140px] shrink-0 overflow-hidden sm:aspect-[21/11] sm:w-full">
-                      <Image
-                        src={dish.imageUrl}
-                        alt={getDishName(language, dish)}
-                        fill
-                        sizes="(max-width: 640px) 140px, 420px"
-                        quality={95}
-                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                        style={{
-                          objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%`,
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:block sm:space-y-3 sm:p-4">
-                      <div className="flex items-start justify-between gap-2 sm:gap-3">
-                        {/* Phones: title and description get fixed two-line boxes so every
-                            card ends up exactly the same height. sm+ sizes naturally. */}
-                        <h3 className="line-clamp-2 h-12 min-w-0 break-words font-serif text-base sm:line-clamp-none sm:h-auto sm:text-xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
-                        <p
-                          className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]"
-                          style={{ backgroundColor: design.primaryColor, color: design.accentTextColor }}
-                        >
-                          {formatCurrency(dish.price, design.currencyMode)}
-                        </p>
-                      </div>
-
-                      <p className="line-clamp-2 h-[33px] text-xs leading-snug sm:line-clamp-none sm:h-auto sm:text-sm sm:leading-6" style={{ color: design.mutedTextColor }}>{getDishDescription(language, dish)}</p>
-
-                      <div className="mt-auto flex items-center gap-1.5 sm:mt-0 sm:gap-2">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateSelectedQty(dish.id, -1);
-                          }}
-                          className="min-h-10 min-w-10 rounded-lg border p-1.5 transition sm:min-h-11 sm:min-w-11 sm:p-2"
-                          style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
-                        >
-                          <Minus size={16} className="mx-auto" />
-                        </button>
-                        <span className="min-w-6 text-center text-sm font-medium sm:min-w-8" style={{ color: design.textColor }}>{getSelectedQty(dish.id)}</span>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            updateSelectedQty(dish.id, 1);
-                          }}
-                          className="min-h-10 min-w-10 rounded-lg border p-1.5 transition sm:min-h-11 sm:min-w-11 sm:p-2"
-                          style={{ borderColor: design.qtyButtonBorderColor, background: design.qtyButtonBackground, color: design.qtyButtonTextColor }}
-                        >
-                          <Plus size={16} className="mx-auto" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            addToCart(dish.id);
-                          }}
-                          className="ml-auto min-h-10 px-3 py-2 text-xs font-semibold transition hover:opacity-90 sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm"
-                          style={{
-                            borderRadius: design.buttonRadius,
-                            backgroundColor: design.primaryColor,
-                            color: design.accentTextColor,
-                          }}
-                        >
-                          {t.add}
-                        </button>
-                      </div>
-
-                      {/* Hidden on phones so every card is the same height — tapping Add
-                          on an option dish opens the modal, which has the same picker. */}
-                      {dish.options && dish.options.length > 0 ? (
-                        <div className="hidden sm:block">
+                    design={design}
+                    addLabel={t.add}
+                    qty={getSelectedQty(dish.id)}
+                    onOpen={() => openDishModal(dish.id)}
+                    onQtyChange={(delta) => updateSelectedQty(dish.id, delta)}
+                    onAdd={() => addToCart(dish.id)}
+                    optionsSlot={
+                      dish.options && dish.options.length > 0 ? (
+                        <>
                           <label className="mb-1 block text-xs" style={{ color: design.mutedTextColor }}>
                             {t.chooseOption}
                           </label>
@@ -1929,10 +1862,10 @@ export function MenuClient({
                               </option>
                             ))}
                           </select>
-                        </div>
-                      ) : null}
-                    </div>
-                  </article>
+                        </>
+                      ) : null
+                    }
+                  />
                 ))}
               </div>
             </div>
