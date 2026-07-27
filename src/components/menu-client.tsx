@@ -653,6 +653,17 @@ export function MenuClient({
     currencyMode: liveSettings?.currencyMode || "manat",
   };
 
+  // The page <body> has a fixed dark gradient in globals.css (fine for dark
+  // restaurants). Paint it with the active theme so a light restaurant doesn't
+  // show a dark frame around the menu on wide screens / overscroll.
+  useEffect(() => {
+    const previous = document.body.style.background;
+    document.body.style.background = `linear-gradient(180deg, ${design.backgroundFrom} 0%, ${design.backgroundTo} 100%)`;
+    return () => {
+      document.body.style.background = previous;
+    };
+  }, [design.backgroundFrom, design.backgroundTo]);
+
   function getStatusLabel(status: Order["status"]) {
     if (status === "new") {
       return t.statusNew;
