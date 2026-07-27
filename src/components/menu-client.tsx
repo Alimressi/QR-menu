@@ -1849,9 +1849,7 @@ export function MenuClient({
                     }}
                     design={design}
                     addLabel={t.add}
-                    qty={getSelectedQty(dish.id)}
                     onOpen={() => openDishModal(dish.id)}
-                    onQtyChange={(delta) => updateSelectedQty(dish.id, delta)}
                     onAdd={() => addToCart(dish.id)}
                     optionsSlot={
                       dish.options && dish.options.length > 0 ? (

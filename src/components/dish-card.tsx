@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { Minus, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CurrencyMode } from "@/lib/design";
 
@@ -94,24 +93,14 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "text-sm leading-6",
   },
   controls: {
-    responsive: "mt-auto flex items-center gap-1.5 sm:mt-0 sm:gap-2",
-    phone: "mt-auto flex items-center gap-1.5",
-    desktop: "flex items-center gap-2",
-  },
-  qtyButton: {
-    responsive: "min-h-10 min-w-10 rounded-lg border p-1.5 transition sm:min-h-11 sm:min-w-11 sm:p-2",
-    phone: "min-h-10 min-w-10 rounded-lg border p-1.5 transition",
-    desktop: "min-h-11 min-w-11 rounded-lg border p-2 transition",
-  },
-  qtyValue: {
-    responsive: "min-w-6 text-center text-sm font-medium sm:min-w-8",
-    phone: "min-w-6 text-center text-sm font-medium",
-    desktop: "min-w-8 text-center text-sm font-medium",
+    responsive: "mt-auto sm:mt-0",
+    phone: "mt-auto",
+    desktop: "",
   },
   addButton: {
-    responsive: "ml-auto min-h-10 px-3 py-2 text-xs font-semibold transition hover:opacity-90 sm:min-h-11 sm:px-4 sm:py-2.5 sm:text-sm",
-    phone: "ml-auto min-h-10 px-3 py-2 text-xs font-semibold transition hover:opacity-90",
-    desktop: "ml-auto min-h-11 px-4 py-2.5 text-sm font-semibold transition hover:opacity-90",
+    responsive: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90 sm:min-h-11 sm:py-2.5 sm:text-sm",
+    phone: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90",
+    desktop: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
   },
   // The option picker is hidden on phones so every card keeps the same height.
   options: {
@@ -126,10 +115,8 @@ type Props = {
   design: DishCardDesign;
   addLabel: string;
   variant?: DishCardVariant;
-  qty?: number;
   /** Interactive menu wiring — omitted in previews, which render inert. */
   onOpen?: () => void;
-  onQtyChange?: (delta: number) => void;
   onAdd?: () => void;
   /** Option <select> block, menu only. */
   optionsSlot?: ReactNode;
@@ -144,9 +131,7 @@ export function DishCard({
   design,
   addLabel,
   variant = "responsive",
-  qty = 1,
   onOpen,
-  onQtyChange,
   onAdd,
   optionsSlot,
   imageOverlay,
@@ -194,41 +179,8 @@ export function DishCard({
           {dish.description}
         </p>
 
+        {/* One clear "Add" (adds 1) — quantity is chosen in the dish modal. */}
         <div className={pick(CLASSES.controls, variant)}>
-          <button
-            type="button"
-            onClick={(event) => {
-              stop(event);
-              onQtyChange?.(-1);
-            }}
-            className={pick(CLASSES.qtyButton, variant)}
-            style={{
-              borderColor: design.qtyButtonBorderColor,
-              background: design.qtyButtonBackground,
-              color: design.qtyButtonTextColor,
-            }}
-          >
-            <Minus size={16} className="mx-auto" />
-          </button>
-          <span className={pick(CLASSES.qtyValue, variant)} style={{ color: design.textColor }}>
-            {qty}
-          </span>
-          <button
-            type="button"
-            onClick={(event) => {
-              stop(event);
-              onQtyChange?.(1);
-            }}
-            className={pick(CLASSES.qtyButton, variant)}
-            style={{
-              borderColor: design.qtyButtonBorderColor,
-              background: design.qtyButtonBackground,
-              color: design.qtyButtonTextColor,
-            }}
-          >
-            <Plus size={16} className="mx-auto" />
-          </button>
-
           <button
             type="button"
             onClick={(event) => {
