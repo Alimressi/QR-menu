@@ -64,8 +64,8 @@ const CLASSES: Record<string, ClassSet> = {
     // so a round plate reads as round instead of a cropped vertical sliver.
     // sm+: the original edge-to-edge 21:11 banner.
     responsive:
-      "relative m-2.5 aspect-[3/2] w-[136px] shrink-0 self-center overflow-hidden rounded-xl sm:m-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative m-2.5 aspect-[3/2] w-[136px] shrink-0 self-center overflow-hidden rounded-xl",
+      "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl sm:m-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
+    phone: "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   body: {
