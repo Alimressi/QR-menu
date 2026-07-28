@@ -11,30 +11,9 @@ type Params = {
   params: Promise<{ slug: string }>;
 };
 
-type RestaurantApiData = {
-  id: number;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  settings: string | null;
-};
-
 // Base URL works in both Cloudflare Workers (NEXT_PUBLIC_BASE_URL set) and local dev.
 function getBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
-}
-
-async function fetchRestaurant(slug: string): Promise<RestaurantApiData | null> {
-  try {
-    const res = await fetch(
-      `${getBaseUrl()}/api/public/restaurant?slug=${encodeURIComponent(slug)}`,
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { restaurant?: RestaurantApiData };
-    return data.restaurant ?? null;
-  } catch {
-    return null;
-  }
 }
 
 async function fetchCategories(restaurantId: number): Promise<CategoryWithDishes[]> {
@@ -51,8 +30,56 @@ async function fetchCategories(restaurantId: number): Promise<CategoryWithDishes
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
-  const restaurant = await fetchRestaurant(slug);
-  return { title: restaurant?.name ?? slug };
+
+  // Read straight from Prisma — the API self-fetch is unreliable on the Worker and
+  // used to return null here, so the tab/preview title fell back to the raw slug
+  // ("lumiere" instead of "Lumière").
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, logoUrl: true, settings: true },
+  });
+
+  if (!restaurant) {
+    return { title: slug };
+  }
+
+  const settings = getPublicSettingsFromRaw(restaurant.settings);
+  const description =
+    (typeof settings?.brandSubtitle === "string" && settings.brandSubtitle.trim()) ||
+    "Elegant bar & lounge QR menu. Craft cocktails, fine dishes, timeless atmosphere.";
+
+  // Give social crawlers a real preview image: the restaurant logo if it has one,
+  // otherwise its first dish photo. Without og:image LinkedIn refuses to save the
+  // link to "Featured".
+  let image = restaurant.logoUrl ?? null;
+  if (!image) {
+    const dish = await prisma.dish.findFirst({
+      where: { restaurantId: restaurant.id },
+      select: { imageUrl: true },
+      orderBy: { id: "asc" },
+    });
+    image = dish?.imageUrl ?? null;
+  }
+  const images = image ? [{ url: image, alt: restaurant.name }] : undefined;
+
+  return {
+    title: restaurant.name,
+    description,
+    openGraph: {
+      title: restaurant.name,
+      description,
+      url: `/${slug}`,
+      siteName: restaurant.name,
+      type: "website",
+      images,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: restaurant.name,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
 }
 
 export default async function RestaurantPage({ params }: Params) {

@@ -14,6 +14,9 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  // Lets relative og:image paths resolve to absolute URLs so social crawlers
+  // (LinkedIn, WhatsApp, Telegram) can actually fetch the preview image.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"),
   title: {
     default: "QR Menu",
     template: "%s | QR Menu",
