@@ -84,25 +84,9 @@ button:active:not(:disabled) {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
   overscroll-behavior-x: contain;
-  /* Snap chips and keep the active one clear of the left fade. */
   scroll-snap-type: x proximity;
   scroll-padding-left: 10px;
-  /* Fade both edges so it reads as "scroll for more" without a scrollbar. */
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 20px,
-    #000 calc(100% - 32px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 20px,
-    #000 calc(100% - 32px),
-    transparent 100%
-  );
 }
 
 .menu-chip-scroll::-webkit-scrollbar {
