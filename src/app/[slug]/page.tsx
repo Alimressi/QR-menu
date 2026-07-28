@@ -12,6 +12,10 @@ type Params = {
   params: Promise<{ slug: string }>;
 };
 
+// Restaurants with a hand-made social banner at /images/og/<slug>.jpg. Add a slug
+// here after committing its banner (generated via scripts/make-og-banner.mjs).
+const OG_BANNER_SLUGS = new Set(["lumiere"]);
+
 // Base URL works in both Cloudflare Workers (NEXT_PUBLIC_BASE_URL set) and local dev.
 function getBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
@@ -49,10 +53,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     (typeof settings?.brandSubtitle === "string" && settings.brandSubtitle.trim()) ||
     "Elegant bar & lounge QR menu. Craft cocktails, fine dishes, timeless atmosphere.";
 
-  // Give social crawlers a real preview image: the restaurant logo if it has one,
-  // otherwise its first dish photo. Without og:image LinkedIn refuses to save the
-  // link to "Featured".
-  let imagePath = restaurant.logoUrl ?? null;
+  // Give social crawlers a real preview image. Preference order:
+  //   1. a hand-made 1200x630 banner committed at /images/og/<slug>.jpg
+  //   2. the restaurant logo
+  //   3. the first dish photo
+  // Without an og:image LinkedIn refuses to save the link to "Featured".
+  let imagePath: string | null = OG_BANNER_SLUGS.has(slug) ? `/images/og/${slug}.jpg` : null;
+  imagePath ??= restaurant.logoUrl ?? null;
   if (!imagePath) {
     const dish = await prisma.dish.findFirst({
       where: { restaurantId: restaurant.id },
