@@ -20,7 +20,7 @@ const sans = "'Helvetica Neue', Arial, sans-serif";
 const chips = ["Lumière", "Bahçe", "Vətən"];
 let chipsSvg = "";
 let x = 96;
-const chipY = 470, padX = 26, gap = 18, chipH = 52, charW = 15;
+const chipY = 424, padX = 26, gap = 18, chipH = 52, charW = 15;
 for (const label of chips) {
   const w = padX * 2 + label.length * charW;
   chipsSvg += `
@@ -43,21 +43,18 @@ const svg = `
   <rect x="24" y="24" width="${W - 48}" height="${H - 48}" fill="none"
         stroke="${c.accent}" stroke-opacity="0.45" stroke-width="1.5"/>
 
-  <text x="98" y="150" font-family="${sans}" font-size="24" letter-spacing="6"
-        fill="${c.muted}" font-weight="600">RESTAURANT WEB</text>
+  <text x="92" y="238" font-family="${serif}" font-size="80"
+        font-weight="700" fill="${c.text}">QR menus and websites</text>
 
-  <text x="92" y="290" font-family="${serif}" font-size="104" font-style="italic"
-        font-weight="600" fill="${c.text}">Menus &amp; websites</text>
+  <rect x="96" y="278" width="88" height="3" fill="${c.accent}"/>
 
-  <rect x="96" y="326" width="88" height="3" fill="${c.accent}"/>
-
-  <text x="96" y="392" font-family="${serif}" font-size="30" fill="${c.muted}">
-    Multilingual QR-menu platform · restaurant websites</text>
+  <text x="96" y="342" font-family="${serif}" font-size="30" fill="${c.muted}">
+    QR-menu platform · restaurant websites</text>
 
   ${chipsSvg}
 
-  <text x="98" y="576" font-family="${sans}" font-size="20" letter-spacing="1.5"
-        fill="${c.muted}">alimressi.github.io/QR-menu · Next.js · Cloudflare</text>
+  <text x="98" y="566" font-family="${sans}" font-size="20" letter-spacing="1.5"
+        fill="${c.muted}">alimressi.github.io/QR-menu · TypeScript · React · Cloudflare</text>
 </svg>`;
 
 const outDir = join(root, "docs/og");
