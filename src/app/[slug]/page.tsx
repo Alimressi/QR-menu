@@ -1,5 +1,6 @@
 import { MenuClient } from "@/components/menu-client";
 import prisma from "@/lib/prisma";
+import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
 
@@ -66,9 +67,9 @@ export default async function RestaurantPage({ params }: Params) {
     select: { id: true, name: true, logoUrl: true, settings: true },
   });
   const categories = restaurant ? await fetchCategories(restaurant.id) : [];
-  const settings = restaurant?.settings
-    ? (JSON.parse(restaurant.settings) as Record<string, unknown>)
-    : undefined;
+  // Credentials live in the same settings blob and would otherwise be serialized
+  // into the client props (visible in the page's RSC payload) — strip them here.
+  const settings = getPublicSettingsFromRaw(restaurant?.settings);
 
   // Paint the page background from the restaurant theme server-side, so the very
   // first frame is the right colour instead of flashing the global dark default.

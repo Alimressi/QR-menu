@@ -54,6 +54,37 @@ export type RestaurantSettings = {
   currencyMode: "manat" | "azn" | "symbol";
 };
 
+// Keys inside the settings JSON that must NEVER reach the browser or any public
+// API response. Admin credentials are stored alongside theme values in the same
+// blob, so anything served publicly has to be stripped of these first.
+const SENSITIVE_SETTINGS_KEYS = ["adminLogin", "adminPassword", "adminPasswordHash"] as const;
+
+// Parse the raw settings JSON and return a plain object with credential fields
+// removed — safe to serialize into HTML/props or a public API response.
+export function getPublicSettingsFromRaw(
+  rawSettings: string | null | undefined,
+): Record<string, unknown> | undefined {
+  if (!rawSettings) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(rawSettings) as Record<string, unknown>;
+    for (const key of SENSITIVE_SETTINGS_KEYS) {
+      delete parsed[key];
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+// Same as above but returns a JSON string (or null), matching the shape callers
+// that pass `settings` straight through to a JSON response expect.
+export function stripSensitiveSettings(rawSettings: string | null | undefined): string | null {
+  const cleaned = getPublicSettingsFromRaw(rawSettings);
+  return cleaned ? JSON.stringify(cleaned) : null;
+}
+
 export function getRestaurantServiceModeFromSettings(rawSettings: string | null | undefined) {
   try {
     const parsed = rawSettings ? (JSON.parse(rawSettings) as { serviceMode?: unknown }) : {};
