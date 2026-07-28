@@ -39,6 +39,8 @@ type Props = {
     qtyButtonTextColor?: string;
     qtyButtonBorderColor?: string;
     currencyMode?: "manat" | "azn" | "symbol";
+    /** When set, the table number is fixed to this value and cannot be edited. */
+    lockedTableNumber?: string;
   };
   logoUrl?: string | null;
   restaurantName?: string;
@@ -392,6 +394,22 @@ function normalizeRadius(value: string | undefined, fallbackPx: string) {
   return `${parsed}px`;
 }
 
+// Nearest vertically-scrollable element between the touch target and the sheet,
+// so a sheet's drag-to-close only fires when the real scroller is at the top.
+function findScrollableUnder(target: EventTarget | null, boundary: HTMLElement | null) {
+  let node = target instanceof HTMLElement ? target : null;
+  while (node && node !== boundary) {
+    if (node.scrollHeight > node.clientHeight) {
+      const overflowY = window.getComputedStyle(node).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") {
+        return node;
+      }
+    }
+    node = node.parentElement;
+  }
+  return boundary;
+}
+
 function withAlpha(color: string, alpha: number) {
   const normalized = color.trim().replace("#", "");
   const expanded = normalized.length === 3
@@ -465,6 +483,16 @@ export function MenuClient({
   const [language, setLanguage] = useState<Language>("en");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
+
+  // A restaurant can pin the table number (e.g. a portfolio demo): prefilled and locked.
+  const fixedTableNumber = (liveSettings?.lockedTableNumber ?? "").trim();
+  const tableLocked = Boolean(qrTableNumber) || Boolean(fixedTableNumber);
+
+  useEffect(() => {
+    if (fixedTableNumber && !qrTableNumber) {
+      setTableNumber(fixedTableNumber);
+    }
+  }, [fixedTableNumber, qrTableNumber]);
   const [qrSessionToken, setQrSessionToken] = useState("");
   const [cart, setCart] = useState<Record<number, number>>({});
   const [selectedOptionByDish, setSelectedOptionByDish] = useState<Record<number, number | undefined>>({});
@@ -497,8 +525,10 @@ export function MenuClient({
   const categoryRailAnchorRef = useRef<HTMLDivElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchStartScrollTopRef = useRef(0);
+  const touchScrollElRef = useRef<HTMLElement | null>(null);
   const dishTouchStartYRef = useRef<number | null>(null);
   const dishTouchStartScrollTopRef = useRef(0);
+  const dishTouchScrollElRef = useRef<HTMLElement | null>(null);
   const basketSheetRef = useRef<HTMLElement | null>(null);
   const dishSheetRef = useRef<HTMLElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -966,15 +996,20 @@ export function MenuClient({
 
     const railRect = rail.getBoundingClientRect();
     const buttonRect = activeButton.getBoundingClientRect();
-    const targetLeft =
-      rail.scrollLeft +
-      (buttonRect.left - railRect.left) -
-      (railRect.width / 2 - buttonRect.width / 2);
+    const margin = 28;
 
-    rail.scrollTo({
-      left: Math.max(0, targetLeft),
-      behavior: "smooth",
-    });
+    // Only nudge the rail when the active chip has reached an edge. Re-centring it
+    // on every scroll step made the top bar jump around distractingly.
+    let delta = 0;
+    if (buttonRect.left < railRect.left + margin) {
+      delta = buttonRect.left - railRect.left - margin;
+    } else if (buttonRect.right > railRect.right - margin) {
+      delta = buttonRect.right - railRect.right + margin;
+    }
+
+    if (delta !== 0) {
+      rail.scrollBy({ left: delta, behavior: "smooth" });
+    }
   }, [activeCategoryId]);
 
   useEffect(() => {
@@ -1256,7 +1291,11 @@ export function MenuClient({
 
   function onSheetTouchStart(event: React.TouchEvent<HTMLElement>) {
     touchStartYRef.current = event.touches[0]?.clientY ?? null;
-    touchStartScrollTopRef.current = basketSheetRef.current?.scrollTop ?? 0;
+    // The basket has an inner scrollable list; only drag-to-close when the actual
+    // scroller under the finger is at the top, otherwise swiping the items closed it.
+    const scroller = findScrollableUnder(event.target, basketSheetRef.current);
+    touchScrollElRef.current = scroller;
+    touchStartScrollTopRef.current = scroller?.scrollTop ?? 0;
     setIsDragging(false);
     setDragY(0);
   }
@@ -1273,8 +1312,8 @@ export function MenuClient({
       return;
     }
 
-    const sheet = basketSheetRef.current;
-    const atTop = (sheet?.scrollTop ?? 0) <= 0 && touchStartScrollTopRef.current <= 0;
+    const scroller = touchScrollElRef.current;
+    const atTop = (scroller?.scrollTop ?? 0) <= 0 && touchStartScrollTopRef.current <= 0;
 
     if (!atTop) {
       return;
@@ -1302,7 +1341,9 @@ export function MenuClient({
 
   function onDishSheetTouchStart(event: React.TouchEvent<HTMLElement>) {
     dishTouchStartYRef.current = event.touches[0]?.clientY ?? null;
-    dishTouchStartScrollTopRef.current = dishSheetRef.current?.scrollTop ?? 0;
+    const scroller = findScrollableUnder(event.target, dishSheetRef.current);
+    dishTouchScrollElRef.current = scroller;
+    dishTouchStartScrollTopRef.current = scroller?.scrollTop ?? 0;
     setIsDishDragging(false);
     setDishDragY(0);
   }
@@ -1319,8 +1360,8 @@ export function MenuClient({
       return;
     }
 
-    const sheet = dishSheetRef.current;
-    const atTop = (sheet?.scrollTop ?? 0) <= 0 && dishTouchStartScrollTopRef.current <= 0;
+    const scroller = dishTouchScrollElRef.current;
+    const atTop = (scroller?.scrollTop ?? 0) <= 0 && dishTouchStartScrollTopRef.current <= 0;
 
     if (!atTop) {
       return;
@@ -1490,15 +1531,15 @@ export function MenuClient({
           <input
             value={tableNumber}
             onChange={(event) => {
-              if (qrTableNumber) {
+              if (tableLocked) {
                 return;
               }
 
               setTableNumber(event.target.value);
             }}
             placeholder="12"
-            readOnly={Boolean(qrTableNumber)}
-            disabled={Boolean(qrTableNumber)}
+            readOnly={tableLocked}
+            disabled={tableLocked}
             className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none ring-0 transition"
             style={{
               borderColor: design.borderColor,
