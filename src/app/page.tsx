@@ -42,8 +42,14 @@ export default async function Home() {
 
   const settings = await getRestaurantSettings(defaultRestaurant.slug);
 
+  // First-frame background from the restaurant theme (avoids the dark default flash).
+  const bgFrom = settings?.backgroundFrom || "#0a0a0a";
+  const bgTo = settings?.backgroundTo || "#0d0d0d";
+  const pageBackground = `linear-gradient(180deg, ${bgFrom} 0%, ${bgTo} 100%)`;
+
   return (
-    <div className="min-h-screen pb-10">
+    <div className="min-h-screen pb-10" style={{ background: pageBackground }}>
+      <style dangerouslySetInnerHTML={{ __html: `body{background:${pageBackground}}` }} />
       <MenuClient
         categories={categories}
         restaurantId={defaultRestaurant.id}

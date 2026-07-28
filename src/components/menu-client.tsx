@@ -534,7 +534,9 @@ export function MenuClient({
   const closeTimerRef = useRef<number | null>(null);
   const dishModalCloseTimerRef = useRef<number | null>(null);
   const lastClickedCategoryIdRef = useRef<number | null>(null);
+  const clickScrollTimeoutRef = useRef<number | null>(null);
   const pendingCategoryScrollIdRef = useRef<number | null>(null);
+  const overlayOpenRef = useRef(false);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -924,6 +926,12 @@ export function MenuClient({
     const categoryIds = liveCategories.map((category) => category.id);
 
     const updateActiveCategory = () => {
+      // Freeze the highlight while an overlay is open (the body gets position:fixed,
+      // which would otherwise recompute the active category to the wrong section).
+      if (overlayOpenRef.current) {
+        return;
+      }
+
       const stickyRail = document.getElementById("sticky-category-rail");
       const stickyHeight = stickyRail?.getBoundingClientRect().height ?? 0;
       const stickyOffset = Math.max(stickyHeight + 16, 0);
@@ -943,13 +951,15 @@ export function MenuClient({
       }
 
       setActiveCategoryId((prev) => {
-        if (lastClickedCategoryIdRef.current !== null && prev === lastClickedCategoryIdRef.current) {
-          if (currentId !== lastClickedCategoryIdRef.current) {
+        const clicked = lastClickedCategoryIdRef.current;
+        if (clicked !== null) {
+          // Keep the tapped category highlighted through the whole smooth scroll;
+          // only hand control back once the page has actually reached it.
+          if (currentId === clicked) {
             lastClickedCategoryIdRef.current = null;
-            return currentId;
+            return clicked;
           }
-
-          return prev;
+          return clicked;
         }
 
         return prev === currentId ? prev : currentId;
@@ -1032,6 +1042,7 @@ export function MenuClient({
 
   useEffect(() => {
     const isAnyOverlayOpen = isBasketOpen || isDishModalOpen || isCategoryMenuOpen;
+    overlayOpenRef.current = isAnyOverlayOpen;
 
     if (!isAnyOverlayOpen) {
       return;
@@ -1141,6 +1152,16 @@ export function MenuClient({
     const targetTop = element.getBoundingClientRect().top + window.scrollY - stickyOffset;
     lastClickedCategoryIdRef.current = categoryId;
     setActiveCategoryId(categoryId);
+
+    // Safety net: release the highlight lock even if a short final section never
+    // scrolls all the way under the sticky rail.
+    if (clickScrollTimeoutRef.current) {
+      window.clearTimeout(clickScrollTimeoutRef.current);
+    }
+    clickScrollTimeoutRef.current = window.setTimeout(() => {
+      lastClickedCategoryIdRef.current = null;
+    }, 1200);
+
     window.scrollTo({ top: Math.max(targetTop, 0), behavior: "smooth" });
   }
 
@@ -1957,27 +1978,36 @@ export function MenuClient({
           />
 
           <section
-            className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl border-t p-4 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            className={`absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl border-t p-4 shadow-2xl${
+              isDragging ? "" : " transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            }`}
             style={{ borderColor: design.borderColor, background: design.panelColor,
-              transform: `translateY(${isDragging ? dragY : isBasketVisible ? 0 : 480}px)`,
+              transform: `translate3d(0, ${isDragging ? dragY : isBasketVisible ? 0 : 480}px, 0)`,
+              willChange: "transform",
             }}
             ref={(node) => {
               basketSheetRef.current = node;
             }}
-            onTouchStart={onSheetTouchStart}
-            onTouchMove={onSheetTouchMove}
-            onTouchEnd={onSheetTouchEnd}
           >
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full" style={{ background: design.primaryColor }} />
-            <div className="mb-3 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={closeBasket}
-                className="min-h-10 rounded-lg border px-3 text-sm"
-                style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
-              >
-                {t.close}
-              </button>
+            {/* Drag-to-close zone: grip + header only, so scrolling the items or
+                touching the table field never dismisses the sheet. */}
+            <div
+              className="-mx-4 -mt-4 touch-none px-4 pt-4"
+              onTouchStart={onSheetTouchStart}
+              onTouchMove={onSheetTouchMove}
+              onTouchEnd={onSheetTouchEnd}
+            >
+              <div className="mx-auto mb-4 h-1.5 w-14 rounded-full" style={{ background: design.primaryColor }} />
+              <div className="mb-3 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={closeBasket}
+                  className="min-h-10 rounded-lg border px-3 text-sm"
+                  style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+                >
+                  {t.close}
+                </button>
+              </div>
             </div>
             {renderBasketContent()}
           </section>
@@ -2058,20 +2088,27 @@ export function MenuClient({
 
             return (
               <section
-                className="absolute inset-x-0 bottom-0 max-h-[95vh] overflow-y-auto rounded-t-3xl border-t pb-6 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                className={`absolute inset-x-0 bottom-0 max-h-[95vh] overflow-y-auto rounded-t-3xl border-t pb-6 shadow-2xl${
+                  isDishDragging ? "" : " transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                }`}
                 style={{
                   borderColor: design.borderColor,
                   background: design.panelColor,
-                  transform: `translateY(${isDishDragging ? dishDragY : isDishModalVisible ? 0 : 560}px)`,
+                  transform: `translate3d(0, ${isDishDragging ? dishDragY : isDishModalVisible ? 0 : 560}px, 0)`,
+                  willChange: "transform",
                 }}
                 ref={(node) => {
                   dishSheetRef.current = node;
                 }}
-                onTouchStart={onDishSheetTouchStart}
-                onTouchMove={onDishSheetTouchMove}
-                onTouchEnd={onDishSheetTouchEnd}
               >
-                <div className="mx-auto mb-3 mt-2 h-1.5 w-14 rounded-full" style={{ background: design.mutedTextColor }} />
+                <div
+                  className="touch-none pb-1 pt-2"
+                  onTouchStart={onDishSheetTouchStart}
+                  onTouchMove={onDishSheetTouchMove}
+                  onTouchEnd={onDishSheetTouchEnd}
+                >
+                  <div className="mx-auto mb-2 h-1.5 w-14 rounded-full" style={{ background: design.mutedTextColor }} />
+                </div>
                 <button
                   type="button"
                   onClick={closeDishModal}

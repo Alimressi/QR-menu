@@ -66,8 +66,15 @@ export default async function RestaurantPage({ params }: Params) {
     ? (JSON.parse(restaurant.settings) as Record<string, unknown>)
     : undefined;
 
+  // Paint the page background from the restaurant theme server-side, so the very
+  // first frame is the right colour instead of flashing the global dark default.
+  const bgFrom = (settings?.backgroundFrom as string) || "#0a0a0a";
+  const bgTo = (settings?.backgroundTo as string) || "#0d0d0d";
+  const pageBackground = `linear-gradient(180deg, ${bgFrom} 0%, ${bgTo} 100%)`;
+
   return (
-    <div className="min-h-screen pb-10">
+    <div className="min-h-screen pb-10" style={{ background: pageBackground }}>
+      <style dangerouslySetInnerHTML={{ __html: `body{background:${pageBackground}}` }} />
       <MenuClient
         categories={categories}
         restaurantSlug={slug}
