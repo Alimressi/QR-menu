@@ -1,4 +1,5 @@
 import { MenuClient } from "@/components/menu-client";
+import prisma from "@/lib/prisma";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
 
@@ -56,11 +57,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function RestaurantPage({ params }: Params) {
   const { slug } = await params;
 
-  // SSR via cached edge API — avoids direct Prisma WASM in SSR while still
-  // delivering fully-rendered HTML to every device (including mobile Safari).
-  // Cloudflare caches /api/public/restaurant and /api/categories for 5 min,
-  // so only the first request per edge PoP hits the DB.
-  const restaurant = await fetchRestaurant(slug);
+  // The restaurant (name + theme) comes straight from Prisma: a Worker fetching
+  // its own URL is unreliable, so the self-fetch used to return null and the page
+  // fell back to the dark default theme, flashing before the client corrected it.
+  // Categories (the bulk) still use the cached edge API.
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, logoUrl: true, settings: true },
+  });
   const categories = restaurant ? await fetchCategories(restaurant.id) : [];
   const settings = restaurant?.settings
     ? (JSON.parse(restaurant.settings) as Record<string, unknown>)
