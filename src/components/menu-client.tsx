@@ -1982,7 +1982,9 @@ export function MenuClient({
               isDragging ? "" : " transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
             }`}
             style={{ borderColor: design.borderColor, background: design.panelColor,
-              transform: `translate3d(0, ${isDragging ? dragY : isBasketVisible ? 0 : 480}px, 0)`,
+              // Closed = fully off-screen (100% of the sheet height). A fixed 480px
+              // left a tall sheet's header ("Your basket") visible during the close.
+              transform: `translate3d(0, ${isDragging ? `${dragY}px` : isBasketVisible ? "0px" : "100%"}, 0)`,
               willChange: "transform",
             }}
             ref={(node) => {
@@ -2094,7 +2096,7 @@ export function MenuClient({
                 style={{
                   borderColor: design.borderColor,
                   background: design.panelColor,
-                  transform: `translate3d(0, ${isDishDragging ? dishDragY : isDishModalVisible ? 0 : 560}px, 0)`,
+                  transform: `translate3d(0, ${isDishDragging ? `${dishDragY}px` : isDishModalVisible ? "0px" : "100%"}, 0)`,
                   willChange: "transform",
                 }}
                 ref={(node) => {
