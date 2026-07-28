@@ -3,25 +3,88 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QR Menu — live restaurant menus</title>
-  <meta name="description" content="Multi-restaurant QR menu platform: Next.js + Prisma on Cloudflare Workers.">
+  <title>Restaurant Web — QR menu & restaurant websites</title>
+  <meta name="description" content="Live restaurant web projects: a multilingual QR-menu platform and two restaurant websites, built with Next.js and Cloudflare.">
+
+  <!-- Social preview (LinkedIn / WhatsApp / Telegram) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Restaurant Web">
+  <meta property="og:title" content="Restaurant Web — QR menu & restaurant websites">
+  <meta property="og:description" content="Live projects: a multilingual QR-menu platform and two restaurant websites. Next.js · Cloudflare.">
+  <meta property="og:image" content="https://alimressi.github.io/QR-menu/og/landing.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://alimressi.github.io/QR-menu/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Restaurant Web — QR menu & restaurant websites">
+  <meta name="twitter:description" content="Live projects: a multilingual QR-menu platform and two restaurant websites.">
+  <meta name="twitter:image" content="https://alimressi.github.io/QR-menu/og/landing.jpg">
+
   <style>
-    html,body{margin:0;height:100%}
-    body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:#f3efe7;color:#26231d;display:flex;align-items:center;justify-content:center}
-    .card{max-width:520px;padding:40px;text-align:center}
-    h1{font-family:Georgia,serif;font-size:40px;margin:0 0 8px}
-    p{color:#8a8579;margin:0 0 28px}
-    a.menu{display:block;margin:10px 0;padding:14px 18px;border:1px solid #d8d0c2;
-      border-radius:12px;text-decoration:none;color:#26231d;background:#fff;font-weight:600}
-    a.menu:hover{border-color:#b3a173}
+    :root{ --bg1:#ffffff; --bg2:#f3efe7; --text:#26231d; --muted:#8a8579;
+           --line:#d8d0c2; --gold:#b3a173; --card:#ffffff; }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:linear-gradient(160deg,var(--bg1),var(--bg2));
+      display:flex;align-items:center;justify-content:center;padding:32px 18px}
+    .wrap{width:100%;max-width:640px}
+    .kicker{font-size:13px;letter-spacing:4px;font-weight:700;color:var(--muted);margin:0 0 10px}
+    h1{font-family:Georgia,serif;font-style:italic;font-size:clamp(36px,8vw,56px);margin:0 0 10px;line-height:1.05}
+    .lead{color:var(--muted);margin:0 0 30px;font-size:17px}
+    .group-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+      font-weight:700;margin:26px 0 12px}
+    a.card{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);
+      background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:16px 18px;margin:10px 0;transition:border-color .15s,transform .15s,box-shadow .15s}
+    a.card:hover{border-color:var(--gold);transform:translateY(-1px);
+      box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    .card .body{min-width:0;flex:1}
+    .card .name{font-family:Georgia,serif;font-size:20px;font-weight:600}
+    .card .sub{color:var(--muted);font-size:14px}
+    .card .tag{flex-shrink:0;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+      font-weight:700;color:var(--gold);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
+    .arrow{color:var(--muted);flex-shrink:0}
+    footer{margin-top:34px;color:var(--muted);font-size:13px;text-align:center}
+    footer a{color:var(--gold);text-decoration:none}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>QR&nbsp;Menu</h1>
-    <p>Live multilingual restaurant menu · Next.js + Prisma on Cloudflare Workers</p>
-    <a class="menu" href="https://qr-menu.imran-ask-2006.workers.dev/lumiere">Lumière — European kitchen</a>
-  </div>
+  <main class="wrap">
+    <p class="kicker">RESTAURANT WEB</p>
+    <h1>Menus &amp; websites</h1>
+    <p class="lead">A small collection of live restaurant projects I built —
+      a multilingual QR-menu platform and two restaurant websites. Tap any to open.</p>
+
+    <p class="group-label">QR-menu platform</p>
+    <a class="card" href="https://qr-menu.imran-ask-2006.workers.dev/lumiere">
+      <div class="body">
+        <div class="name">Lumière</div>
+        <div class="sub">Live QR menu · EN / RU / AZ · order &amp; call waiter</div>
+      </div>
+      <span class="tag">QR menu</span>
+      <span class="arrow">→</span>
+    </a>
+
+    <p class="group-label">Restaurant websites</p>
+    <a class="card" href="https://bahce-restoran.pages.dev">
+      <div class="body">
+        <div class="name">Bahçe Restoran</div>
+        <div class="sub">Turkish cuisine · Baku</div>
+      </div>
+      <span class="tag">Website</span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card" href="https://veten-restoran.pages.dev">
+      <div class="body">
+        <div class="name">Vətən Restoran</div>
+        <div class="sub">Azerbaijani national cuisine</div>
+      </div>
+      <span class="tag">Website</span>
+      <span class="arrow">→</span>
+    </a>
+
+    <footer>Built with Next.js &amp; Cloudflare · <a href="https://qr-menu.imran-ask-2006.workers.dev/lumiere">live demo</a></footer>
+  </main>
 </body>
 </html>
