@@ -97,10 +97,13 @@ button:active:not(:disabled) {
   scroll-snap-align: start;
 }
 
+/* Skeleton tint is theme-driven: the menu sets --skeleton-base / --skeleton-shine
+   from the active restaurant's colors, so the loading screen matches the theme
+   instead of the old hardcoded Nine Lives gold. Neutral fallback if unset. */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(201, 169, 98, 0.08);
+  background: var(--skeleton-base, rgba(128, 128, 128, 0.12));
 }
 
 .skeleton::after {
@@ -111,7 +114,7 @@ button:active:not(:disabled) {
   background: linear-gradient(
     90deg,
     transparent 0,
-    rgba(201, 169, 98, 0.12) 50%,
+    var(--skeleton-shine, rgba(128, 128, 128, 0.2)) 50%,
     transparent 100%
   );
   animation: skeleton-shimmer 1.4s ease-in-out infinite;

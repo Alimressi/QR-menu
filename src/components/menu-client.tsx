@@ -1708,7 +1708,10 @@ export function MenuClient({
         color: design.textColor,
         backgroundImage: `linear-gradient(180deg, ${design.backgroundFrom} 0%, ${design.backgroundTo} 100%)`,
         borderRadius: "26px",
-      }}
+        // Theme the loading skeleton with the restaurant's own accent colour.
+        ["--skeleton-base" as string]: withAlpha(design.primaryColor, 0.1),
+        ["--skeleton-shine" as string]: withAlpha(design.primaryColor, 0.18),
+      } as React.CSSProperties}
     >
       {isDataLoading ? (
         <div aria-hidden="true">
