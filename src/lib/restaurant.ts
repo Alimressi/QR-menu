@@ -24,6 +24,9 @@ export async function getRestaurantSettings(slug: string) {
 
 export type RestaurantSettings = {
   serviceMode: "lite" | "pro";
+  // When false, the guest menu drops all dish photos and renders a compact
+  // text-only list (name · description · price). Defaults to true (photos on).
+  photosEnabled: boolean;
   brandName: string;
   brandSubtitle: string;
   primaryColor: string;
@@ -112,6 +115,7 @@ export function getRestaurantTableCountFromSettings(rawSettings: string | null |
 function getDefaultRestaurantSettings(): RestaurantSettings {
   return {
     serviceMode: "pro",
+    photosEnabled: true,
     brandName: "Nine Lives",
     brandSubtitle: "Craft cocktails. Fine dishes. Timeless atmosphere.",
     primaryColor: "#b8944f",

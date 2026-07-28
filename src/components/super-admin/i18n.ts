@@ -298,6 +298,9 @@ export const dictionary: Record<
     serviceMode: string;
     serviceModeLite: string;
     serviceModePro: string;
+    photosMode: string;
+    photosOn: string;
+    photosOff: string;
     allDishes: string;
     searchDishByName: string;
     noDishResults: string;
@@ -364,6 +367,9 @@ export const dictionary: Record<
     serviceMode: "Mode",
     serviceModeLite: "Lite (menu + basket only)",
     serviceModePro: "Pro (menu + waiter + online orders)",
+    photosMode: "Photos",
+    photosOn: "Show dish photos",
+    photosOff: "Hide photos (text menu)",
     qr: "QR Codes",
     refresh: "Refresh",
     allDishes: "All Dishes",
@@ -431,6 +437,9 @@ export const dictionary: Record<
     serviceMode: "Режим",
     serviceModeLite: "Лайт (меню + корзина)",
     serviceModePro: "Про (меню + вызов официанта + онлайн заказ)",
+    photosMode: "Фотографии",
+    photosOn: "Показывать фото блюд",
+    photosOff: "Без фото (текстовое меню)",
     qr: "QR коды",
     refresh: "Обновить",
     allDishes: "Все блюда",
@@ -498,6 +507,9 @@ export const dictionary: Record<
     serviceMode: "Rejim",
     serviceModeLite: "Lite (menyu + səbət)",
     serviceModePro: "Pro (menyu + ofisiant çağırışı + onlayn sifariş)",
+    photosMode: "Şəkillər",
+    photosOn: "Yemək şəkillərini göstər",
+    photosOff: "Şəkilsiz (mətn menyu)",
     qr: "QR kodlar",
     refresh: "Yenile",
     allDishes: "Butun yemekler",

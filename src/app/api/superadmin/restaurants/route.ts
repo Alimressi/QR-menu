@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 function getDefaultRestaurantSettings() {
   return {
     serviceMode: "pro",
+    photosEnabled: true,
     brandName: "Nine Lives",
     brandSubtitle: "Craft cocktails. Fine dishes. Timeless atmosphere.",
     primaryColor: "#b8944f",

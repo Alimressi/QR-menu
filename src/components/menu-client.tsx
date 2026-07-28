@@ -12,6 +12,8 @@ type Props = {
   restaurantSlug?: string;
   settings?: {
     serviceMode?: "lite" | "pro";
+    /** When false, the menu renders without dish photos (text-only). */
+    photosEnabled?: boolean;
     brandName?: string;
     brandSubtitle?: string;
     primaryColor?: string;
@@ -684,6 +686,9 @@ export function MenuClient({
     qtyButtonBorderColor: liveSettings?.qtyButtonBorderColor || liveSettings?.borderColor || "rgba(201,169,98,0.35)",
     currencyMode: liveSettings?.currencyMode || "manat",
   };
+
+  // Photos on unless the restaurant explicitly turned them off (text-only menu).
+  const showPhotos = liveSettings?.photosEnabled !== false;
 
   // The page <body> has a fixed dark gradient in globals.css (fine for dark
   // restaurants). Paint it with the active theme so a light restaurant doesn't
@@ -1911,6 +1916,7 @@ export function MenuClient({
                     }}
                     design={design}
                     addLabel={t.add}
+                    showPhoto={showPhotos}
                     onOpen={() => openDishModal(dish.id)}
                     onAdd={() => addToCart(dish.id)}
                     optionsSlot={
@@ -2121,21 +2127,23 @@ export function MenuClient({
                   <X size={16} className="mx-auto" />
                 </button>
 
-                <div className="px-4 pt-2">
-                  <div className="relative mx-auto aspect-[16/10] w-full max-w-[760px] overflow-hidden rounded-2xl border"
-                    style={{ borderColor: design.borderColor, background: withAlpha(design.controlSurfaceColor, 0.55) }}
-                  >
-                    <Image
-                      src={dish.imageUrl}
-                      alt={getDishName(language, dish)}
-                      fill
-                      sizes="(min-width: 1024px) 760px, 100vw"
-                      quality={95}
-                      className="h-full w-full object-contain"
-                      style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
-                    />
+                {showPhotos ? (
+                  <div className="px-4 pt-2">
+                    <div className="relative mx-auto aspect-[16/10] w-full max-w-[760px] overflow-hidden rounded-2xl border"
+                      style={{ borderColor: design.borderColor, background: withAlpha(design.controlSurfaceColor, 0.55) }}
+                    >
+                      <Image
+                        src={dish.imageUrl}
+                        alt={getDishName(language, dish)}
+                        fill
+                        sizes="(min-width: 1024px) 760px, 100vw"
+                        quality={95}
+                        className="h-full w-full object-contain"
+                        style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 <div className="px-4 pt-4">
                   <h3 className="font-serif text-3xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>

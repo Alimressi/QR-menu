@@ -224,6 +224,19 @@ function parseRestaurantServiceMode(settings: string | null): RestaurantServiceM
   }
 }
 
+function parseRestaurantPhotosEnabled(settings: string | null): boolean {
+  if (!settings) {
+    return true;
+  }
+
+  try {
+    const parsed = JSON.parse(settings) as { photosEnabled?: unknown };
+    return parsed.photosEnabled !== false; // default: photos on
+  } catch {
+    return true;
+  }
+}
+
 function parseRestaurantSettingsObject(settings: string | null) {
   if (!settings) {
     return {} as Record<string, unknown>;
@@ -945,6 +958,29 @@ export function SuperAdminDashboard() {
     await loadRestaurants();
   }
 
+  async function updateRestaurantPhotosEnabled(restaurant: Restaurant, nextEnabled: boolean) {
+    const currentSettings = parseRestaurantSettingsObject(restaurant.settings);
+
+    const response = await fetch(`/api/superadmin/restaurants/${restaurant.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        settings: {
+          ...currentSettings,
+          photosEnabled: nextEnabled,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      alert(data.error || "Failed to update photos option");
+      return;
+    }
+
+    await loadRestaurants();
+  }
+
   if (loadingAuth) {
     return (
       <main className="superadmin-dracula min-h-screen p-6" style={{ background: dracula.page, color: dracula.text }}>
@@ -1439,6 +1475,19 @@ export function SuperAdminDashboard() {
                         >
                           <option value="pro">{t.serviceModePro}</option>
                           <option value="lite">{t.serviceModeLite}</option>
+                        </select>
+                      </div>
+                      <div className="mt-2">
+                        <label className="mb-1 block text-xs text-gold-300">{t.photosMode}</label>
+                        <select
+                          className="w-full rounded-lg border border-dark-600 bg-dark-800 px-2 py-1 text-xs text-gold-100"
+                          value={parseRestaurantPhotosEnabled(restaurant.settings) ? "on" : "off"}
+                          onChange={(event) =>
+                            void updateRestaurantPhotosEnabled(restaurant, event.target.value === "on")
+                          }
+                        >
+                          <option value="on">{t.photosOn}</option>
+                          <option value="off">{t.photosOff}</option>
                         </select>
                       </div>
                       <p className="mt-2 break-all text-xs text-gold-300">

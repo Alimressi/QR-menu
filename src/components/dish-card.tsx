@@ -124,6 +124,8 @@ type Props = {
   imageOverlay?: ReactNode;
   /** Disables the hover zoom so a preview stays still. */
   staticImage?: boolean;
+  /** When false, the photo is dropped entirely and the card becomes text-only. */
+  showPhoto?: boolean;
 };
 
 export function DishCard({
@@ -136,12 +138,30 @@ export function DishCard({
   optionsSlot,
   imageOverlay,
   staticImage = false,
+  showPhoto = true,
 }: Props) {
   const stop = (event: React.MouseEvent) => event.stopPropagation();
 
+  // The photo-grid classes reserve fixed heights (2-line title, 33px description,
+  // mt-auto button) so cards with photos line up. A text-only menu has nothing to
+  // line up against, so it hugs its content instead — no empty gaps.
+  const textOnly = !showPhoto;
+  const bodyCls = textOnly ? "flex flex-col gap-1.5 p-4" : pick(CLASSES.body, variant);
+  const titleRowCls = textOnly ? "flex items-start justify-between gap-3" : pick(CLASSES.titleRow, variant);
+  const titleCls = textOnly ? "min-w-0 break-words font-serif text-lg leading-tight" : pick(CLASSES.title, variant);
+  const priceCls = textOnly
+    ? "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold leading-none"
+    : pick(CLASSES.price, variant);
+  const descCls = textOnly ? "text-sm leading-snug" : pick(CLASSES.description, variant);
+  const controlsCls = textOnly ? "mt-1" : pick(CLASSES.controls, variant);
+  const optionsCls = textOnly ? "block" : pick(CLASSES.options, variant);
+
   return (
     <article
-      className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${pick(CLASSES.layout, variant)}`}
+      // Photo-less cards are always block-flow (no side-by-side image column).
+      className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${
+        showPhoto ? pick(CLASSES.layout, variant) : "block"
+      }`}
       onClick={onOpen}
       style={{
         borderRadius: design.cardRadius,
@@ -149,38 +169,43 @@ export function DishCard({
         background: design.surfaceColor,
       }}
     >
-      <div className={pick(CLASSES.image, variant)}>
-        <Image
-          src={dish.imageUrl}
-          alt={dish.name}
-          fill
-          sizes="(max-width: 640px) 140px, 420px"
-          quality={95}
-          className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
-          style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
-        />
-        {imageOverlay}
-      </div>
+      {showPhoto ? (
+        <div className={pick(CLASSES.image, variant)}>
+          <Image
+            src={dish.imageUrl}
+            alt={dish.name}
+            fill
+            sizes="(max-width: 640px) 140px, 420px"
+            quality={95}
+            className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
+            style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
+          />
+          {imageOverlay}
+        </div>
+      ) : null}
 
-      <div className={pick(CLASSES.body, variant)}>
-        <div className={pick(CLASSES.titleRow, variant)}>
-          <h3 className={pick(CLASSES.title, variant)} style={{ color: design.textColor }}>
+      <div className={bodyCls}>
+        <div className={titleRowCls}>
+          <h3 className={titleCls} style={{ color: design.textColor }}>
             {dish.name}
           </h3>
           <p
-            className={pick(CLASSES.price, variant)}
+            className={priceCls}
             style={{ backgroundColor: design.primaryColor, color: design.accentTextColor }}
           >
             {formatMenuPrice(dish.price, design.currencyMode)}
           </p>
         </div>
 
-        <p className={pick(CLASSES.description, variant)} style={{ color: design.mutedTextColor }}>
-          {dish.description}
-        </p>
+        {/* In text-only mode an empty description would just add a blank gap. */}
+        {textOnly && !dish.description ? null : (
+          <p className={descCls} style={{ color: design.mutedTextColor }}>
+            {dish.description}
+          </p>
+        )}
 
         {/* One clear "Add" (adds 1) — quantity is chosen in the dish modal. */}
-        <div className={pick(CLASSES.controls, variant)}>
+        <div className={controlsCls}>
           <button
             type="button"
             onClick={(event) => {
@@ -198,7 +223,7 @@ export function DishCard({
           </button>
         </div>
 
-        {optionsSlot ? <div className={pick(CLASSES.options, variant)}>{optionsSlot}</div> : null}
+        {optionsSlot ? <div className={optionsCls}>{optionsSlot}</div> : null}
       </div>
     </article>
   );
