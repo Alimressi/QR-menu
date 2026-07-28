@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,33 +52,48 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // Give social crawlers a real preview image: the restaurant logo if it has one,
   // otherwise its first dish photo. Without og:image LinkedIn refuses to save the
   // link to "Featured".
-  let image = restaurant.logoUrl ?? null;
-  if (!image) {
+  let imagePath = restaurant.logoUrl ?? null;
+  if (!imagePath) {
     const dish = await prisma.dish.findFirst({
       where: { restaurantId: restaurant.id },
       select: { imageUrl: true },
       orderBy: { id: "asc" },
     });
-    image = dish?.imageUrl ?? null;
+    imagePath = dish?.imageUrl ?? null;
   }
-  const images = image ? [{ url: image, alt: restaurant.name }] : undefined;
+
+  // Build the public origin from the incoming request. NEXT_PUBLIC_BASE_URL is
+  // inlined at build time (undefined then, since it's only a runtime Worker var),
+  // so relying on it here yields http://localhost:3000 in production. These pages
+  // are force-dynamic, so the request headers are the reliable source of truth.
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = host
+    ? `${proto}://${host}`
+    : process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const toAbsolute = (path: string) => (path.startsWith("http") ? path : `${origin}${path}`);
+
+  const imageUrl = imagePath ? toAbsolute(imagePath) : null;
+  const images = imageUrl ? [{ url: imageUrl, alt: restaurant.name }] : undefined;
 
   return {
+    metadataBase: new URL(origin),
     title: restaurant.name,
     description,
     openGraph: {
       title: restaurant.name,
       description,
-      url: `/${slug}`,
+      url: `${origin}/${slug}`,
       siteName: restaurant.name,
       type: "website",
       images,
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: imageUrl ? "summary_large_image" : "summary",
       title: restaurant.name,
       description,
-      images: image ? [image] : undefined,
+      images: imageUrl ? [imageUrl] : undefined,
     },
   };
 }
