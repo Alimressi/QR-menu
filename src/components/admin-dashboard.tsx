@@ -817,7 +817,8 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                 borderColor: design.borderColor,
                 background: design.panelColor,
                 borderLeft: `5px solid ${getStatusColor(order.status)}`,
-              }}
+                ["--order-glow" as string]: design.successColor,
+              } as React.CSSProperties}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -826,7 +827,11 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                     {newOrderIds.has(order.id) ? (
                       <span
                         className="rounded-full px-2.5 py-1 text-xs font-bold leading-none"
-                        style={{ color: "#052e16", background: "#34d399" }}
+                        style={{
+                          color: design.successColor,
+                          background: `color-mix(in srgb, ${design.successColor} 18%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${design.successColor} 45%, transparent)`,
+                        }}
                       >
                         {language === "az" ? "YENİ" : language === "ru" ? "НОВЫЙ" : "NEW"}
                       </span>

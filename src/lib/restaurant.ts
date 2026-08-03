@@ -112,7 +112,7 @@ export function getRestaurantTableCountFromSettings(rawSettings: string | null |
   }
 }
 
-function getDefaultRestaurantSettings(): RestaurantSettings {
+export function getDefaultRestaurantSettings(): RestaurantSettings {
   return {
     serviceMode: "pro",
     photosEnabled: true,

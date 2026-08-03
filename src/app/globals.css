@@ -126,10 +126,11 @@ button:active:not(:disabled) {
   }
 }
 
-/* Pulsing green ring on a freshly arrived order in the admin panel. */
+/* Pulsing ring on a freshly arrived order in the admin panel. The colour comes
+   from the restaurant theme (--order-glow, set to design.successColor). */
 @keyframes order-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.55); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--order-glow, #34d399) 55%, transparent); }
 }
 
 .order-new {
