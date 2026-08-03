@@ -126,6 +126,16 @@ button:active:not(:disabled) {
   }
 }
 
+/* Pulsing green ring on a freshly arrived order in the admin panel. */
+@keyframes order-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.55); }
+}
+
+.order-new {
+  animation: order-glow 1.15s ease-in-out infinite;
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

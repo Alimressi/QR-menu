@@ -7,7 +7,7 @@ import {
   formatCurrency,
   parseRestaurantDesign,
 } from "@/lib/design";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type AdminLanguage = "en" | "ru" | "az";
 
@@ -263,6 +263,11 @@ export function AdminDashboard({ restaurantSlug }: Props) {
   const [authError, setAuthError] = useState("");
 
   const [orders, setOrders] = useState<Order[]>([]);
+  // Orders that just arrived — used to chime + highlight them briefly.
+  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set());
+  const seenOrderIdsRef = useRef<Set<number>>(new Set());
+  const firstOrdersLoadRef = useRef(true);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>("");
   const [restaurantDesign, setRestaurantDesign] = useState<RestaurantDesign>(defaultDesign);
@@ -412,15 +417,71 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     }
   }, [applyLoggedOutTheme, restaurantSlug]);
 
+  // Short two-note chime via Web Audio — no audio file to host, works offline.
+  const playNewOrderChime = useCallback(() => {
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = audioCtxRef.current ?? new Ctx();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") void ctx.resume();
+
+      const now = ctx.currentTime;
+      [
+        { at: 0, freq: 880 },
+        { at: 0.18, freq: 1174.66 },
+      ].forEach(({ at, freq }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now + at);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.16);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + at);
+        osc.stop(now + at + 0.18);
+      });
+    } catch {
+      // Audio unavailable (permissions / unsupported) — highlight still works.
+    }
+  }, []);
+
   const loadOrders = useCallback(async () => {
     if (!restaurantId) return;
     const response = await fetch(`/api/orders?restaurantId=${restaurantId}`);
     if (!response.ok) {
       return;
     }
-    const data = await response.json();
+    const data = (await response.json()) as Order[];
+
+    // Figure out which orders we've never seen before so we can alert on them.
+    const seen = seenOrderIdsRef.current;
+    if (firstOrdersLoadRef.current) {
+      // First load right after login: remember what already exists, stay silent.
+      data.forEach((order) => seen.add(order.id));
+      firstOrdersLoadRef.current = false;
+    } else {
+      const freshIds = data.filter((order) => !seen.has(order.id)).map((order) => order.id);
+      if (freshIds.length > 0) {
+        freshIds.forEach((id) => seen.add(id));
+        playNewOrderChime();
+        setNewOrderIds((prev) => new Set([...prev, ...freshIds]));
+        // Remove the highlight after 15s.
+        window.setTimeout(() => {
+          setNewOrderIds((prev) => {
+            const next = new Set(prev);
+            freshIds.forEach((id) => next.delete(id));
+            return next;
+          });
+        }, 15000);
+      }
+    }
+
     setOrders(data);
-  }, [restaurantId]);
+  }, [restaurantId, playNewOrderChime]);
 
   const loadWaiterCalls = useCallback(async () => {
     if (!restaurantId) return;
@@ -458,6 +519,31 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  // Browsers block audio until the user interacts. Unlock the AudioContext on the
+  // first click/keypress (e.g. the login button) so later chimes can play.
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        const Ctx =
+          window.AudioContext ||
+          (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctx) return;
+        if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+        if (audioCtxRef.current.state === "suspended") void audioCtxRef.current.resume();
+      } catch {
+        // ignore
+      }
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
     };
   }, []);
 
@@ -726,7 +812,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
           {activeOrders.map((order) => (
             <article
               key={order.id}
-              className="rounded-2xl border p-4 shadow-sm"
+              className={`rounded-2xl border p-4 shadow-sm${newOrderIds.has(order.id) ? " order-new" : ""}`}
               style={{
                 borderColor: design.borderColor,
                 background: design.panelColor,
@@ -737,6 +823,14 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
+                    {newOrderIds.has(order.id) ? (
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-bold leading-none"
+                        style={{ color: "#052e16", background: "#34d399" }}
+                      >
+                        {language === "az" ? "YENİ" : language === "ru" ? "НОВЫЙ" : "NEW"}
+                      </span>
+                    ) : null}
                     <span
                       className="rounded-full px-2.5 py-1 text-xs font-semibold leading-none"
                       style={{
