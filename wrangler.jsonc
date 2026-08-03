@@ -8,6 +8,9 @@
   "vars": {
     "NEXT_PUBLIC_BASE_URL": "https://qr-menu.imran-ask-2006.workers.dev"
   },
+  "ai": {
+    "binding": "AI"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
