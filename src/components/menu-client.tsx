@@ -1987,7 +1987,7 @@ export function MenuClient({
 
           {liveCategories.map((category) => (
             <div id={`category-${category.id}`} key={category.id} className="scroll-mt-28 sm:scroll-mt-32 lg:scroll-mt-24">
-              <h2 className="mb-4 border-b pb-3 font-serif text-2xl" style={{ borderColor: design.dividerColor, color: design.categoryTitleColor }}>
+              <h2 className="mb-4 border-b pb-3 font-serif text-[28px]" style={{ borderColor: design.dividerColor, color: design.categoryTitleColor }}>
                 {getCategoryName(language, category)}
               </h2>
 
