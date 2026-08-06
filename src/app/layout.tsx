@@ -4,12 +4,14 @@ import "./globals.css";
 
 const manrope = Manrope({
   variable: "--font-manrope",
-  subsets: ["latin"],
+  // latin-ext carries the Azerbaijani letters (Ə, ə, ğ, ş…); without it they fall
+  // back to a system font and look mismatched (e.g. the "Ə" in "Əlavə et").
+  subsets: ["latin", "latin-ext"],
 });
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
 });
 

@@ -274,6 +274,25 @@ function normalizeRadiusForSave(value: string, fallback: string) {
   return `${parsed}px`;
 }
 
+function emptyRestaurantForm() {
+  return {
+    name: "",
+    slug: "",
+    logoUrl: "",
+    serviceMode: "pro" as RestaurantServiceMode,
+    adminLogin: "",
+    adminPassword: "",
+    phone: "",
+    instagramUrl: "",
+    address: "",
+    showLogo: true,
+    showPhone: true,
+    showWhatsapp: true,
+    showInstagram: true,
+    showLocation: true,
+  };
+}
+
 
 export function SuperAdminDashboard() {
   const [language, setLanguage] = useState<SuperAdminLanguage>("en");
@@ -306,14 +325,7 @@ export function SuperAdminDashboard() {
   const [designNotice, setDesignNotice] = useState("");
   
   // Restaurant form
-  const [restaurantForm, setRestaurantForm] = useState({
-    name: "",
-    slug: "",
-    logoUrl: "",
-    serviceMode: "pro" as RestaurantServiceMode,
-    adminLogin: "",
-    adminPassword: "",
-  });
+  const [restaurantForm, setRestaurantForm] = useState(emptyRestaurantForm());
   const [editingRestaurantId, setEditingRestaurantId] = useState<number | null>(null);
 
   const t = dictionary[language];
@@ -871,11 +883,21 @@ export function SuperAdminDashboard() {
       : null;
     const existingSettings = parseRestaurantSettingsObject(existingRestaurant?.settings ?? null);
 
+    const contactSettings = {
+      phone: restaurantForm.phone.trim(),
+      instagramUrl: restaurantForm.instagramUrl.trim(),
+      address: restaurantForm.address.trim(),
+      showLogo: restaurantForm.showLogo,
+      showPhone: restaurantForm.showPhone,
+      showWhatsapp: restaurantForm.showWhatsapp,
+      showInstagram: restaurantForm.showInstagram,
+      showLocation: restaurantForm.showLocation,
+    };
     const normalizedSettings =
       editingRestaurantId !== null
-        ? { ...existingSettings, serviceMode: restaurantForm.serviceMode }
-        : { serviceMode: restaurantForm.serviceMode };
-    
+        ? { ...existingSettings, serviceMode: restaurantForm.serviceMode, ...contactSettings }
+        : { serviceMode: restaurantForm.serviceMode, ...contactSettings };
+
     const isEdit = editingRestaurantId !== null;
     const url = isEdit ? `/api/superadmin/restaurants/${editingRestaurantId}` : "/api/superadmin/restaurants";
     const method = isEdit ? "PATCH" : "POST";
@@ -899,19 +921,15 @@ export function SuperAdminDashboard() {
       return;
     }
 
-    setRestaurantForm({
-      name: "",
-      slug: "",
-      logoUrl: "",
-      serviceMode: "pro",
-      adminLogin: "",
-      adminPassword: "",
-    });
+    setRestaurantForm(emptyRestaurantForm());
     setEditingRestaurantId(null);
     await loadRestaurants();
   }
 
   function editRestaurant(restaurant: Restaurant) {
+    const s = parseRestaurantSettingsObject(restaurant.settings);
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    const flag = (v: unknown) => v !== false; // default on
     setRestaurantForm({
       name: restaurant.name,
       slug: restaurant.slug,
@@ -919,6 +937,14 @@ export function SuperAdminDashboard() {
       serviceMode: parseRestaurantServiceMode(restaurant.settings),
       adminLogin: parseRestaurantAdminLogin(restaurant.settings),
       adminPassword: "",
+      phone: str(s.phone),
+      instagramUrl: str(s.instagramUrl),
+      address: str(s.address),
+      showLogo: flag(s.showLogo),
+      showPhone: flag(s.showPhone),
+      showWhatsapp: flag(s.showWhatsapp),
+      showInstagram: flag(s.showInstagram),
+      showLocation: flag(s.showLocation),
     });
     setEditingRestaurantId(restaurant.id);
   }
@@ -1413,8 +1439,50 @@ export function SuperAdminDashboard() {
                   placeholder={editingRestaurantId ? "New admin password (leave blank to keep)" : "Restaurant admin password"}
                   required={!editingRestaurantId}
                 />
+                <input
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.phone}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Phone e.g. +994 70 000 00 00"
+                />
+                <input
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.instagramUrl}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, instagramUrl: e.target.value }))}
+                  placeholder="Instagram URL"
+                />
+                <input
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.address}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, address: e.target.value }))}
+                  placeholder="Address (opens in Google Maps)"
+                />
               </div>
-              <div className="mt-3 flex gap-2">
+
+              <div className="mt-4">
+                <p className="mb-2 text-xs uppercase tracking-wider text-gold-300">Show in header</p>
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-gold-100">
+                  {([
+                    ["showLogo", "Logo"],
+                    ["showPhone", "Phone"],
+                    ["showWhatsapp", "WhatsApp"],
+                    ["showInstagram", "Instagram"],
+                    ["showLocation", "Location"],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-gold-500"
+                        checked={restaurantForm[key]}
+                        onChange={(e) => setRestaurantForm((prev) => ({ ...prev, [key]: e.target.checked }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-2">
                 <button
                   type="submit"
                   className="min-h-10 rounded-xl bg-gold-600 px-4 py-2 text-dark-950 hover:bg-gold-500"
@@ -1425,14 +1493,7 @@ export function SuperAdminDashboard() {
                   <button
                     type="button"
                     onClick={() => {
-                      setRestaurantForm({
-                        name: "",
-                        slug: "",
-                        logoUrl: "",
-                        serviceMode: "pro",
-                        adminLogin: "",
-                        adminPassword: "",
-                      });
+                      setRestaurantForm(emptyRestaurantForm());
                       setEditingRestaurantId(null);
                     }}
                     className="min-h-10 rounded-xl border border-dark-600 bg-dark-800 px-4 py-2 text-gold-200 hover:bg-dark-700"

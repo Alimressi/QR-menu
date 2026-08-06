@@ -68,8 +68,8 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   body: {
-    responsive: "flex min-w-0 flex-1 flex-col gap-2 p-3 sm:block sm:space-y-3 sm:p-4",
-    phone: "flex min-w-0 flex-1 flex-col gap-2 p-3",
+    responsive: "flex min-w-0 flex-1 flex-col justify-center gap-2 p-3 sm:block sm:space-y-3 sm:p-4",
+    phone: "flex min-w-0 flex-1 flex-col justify-center gap-2 p-3",
     desktop: "space-y-3 p-4",
   },
   titleRow: {
@@ -93,14 +93,14 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "text-sm leading-6",
   },
   controls: {
-    responsive: "mt-auto sm:mt-0",
-    phone: "mt-auto",
+    responsive: "mt-1 sm:mt-0",
+    phone: "mt-1",
     desktop: "",
   },
   addButton: {
-    responsive: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90 sm:min-h-12 sm:py-3 sm:text-base",
-    phone: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
-    desktop: "w-full min-h-12 py-3 text-center text-base font-semibold transition hover:opacity-90",
+    responsive: "w-full min-h-10 py-2 text-center text-sm font-semibold transition hover:opacity-90 sm:min-h-11 sm:py-2.5",
+    phone: "w-full min-h-10 py-2 text-center text-sm font-semibold transition hover:opacity-90",
+    desktop: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
   },
   // The option picker is hidden on phones so every card keeps the same height.
   options: {
@@ -154,6 +154,10 @@ export function DishCard({
     : pick(CLASSES.price, variant);
   const descCls = textOnly ? "text-sm leading-snug" : pick(CLASSES.description, variant);
   const controlsCls = textOnly ? "mt-1" : pick(CLASSES.controls, variant);
+  // Text-only menu has room for a roomier button; photo cards keep it compact.
+  const buttonCls = textOnly
+    ? "w-full min-h-11 py-2.5 text-center text-base font-semibold transition hover:opacity-90"
+    : pick(CLASSES.addButton, variant);
   const optionsCls = textOnly ? "block" : pick(CLASSES.options, variant);
 
   return (
@@ -212,7 +216,7 @@ export function DishCard({
               stop(event);
               onAdd?.();
             }}
-            className={pick(CLASSES.addButton, variant)}
+            className={buttonCls}
             style={{
               borderRadius: design.buttonRadius,
               backgroundColor: design.primaryColor,
