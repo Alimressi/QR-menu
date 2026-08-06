@@ -1555,30 +1555,34 @@ export function MenuClient({
           <h2 className="font-serif text-2xl">{t.basket}</h2>
         </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium" style={{ color: design.mutedTextColor }}>{t.tableNumber}</label>
-          <input
-            value={tableNumber}
-            onChange={(event) => {
-              if (tableLocked) {
-                return;
-              }
+        {/* Table number is only needed to place an online order. Lite mode has no
+            ordering (and often one shared QR for all tables), so hide it there. */}
+        {!isLiteMode ? (
+          <div className="mb-4">
+            <label className="mb-2 block text-sm font-medium" style={{ color: design.mutedTextColor }}>{t.tableNumber}</label>
+            <input
+              value={tableNumber}
+              onChange={(event) => {
+                if (tableLocked) {
+                  return;
+                }
 
-              setTableNumber(event.target.value);
-            }}
-            placeholder="12"
-            readOnly={tableLocked}
-            disabled={tableLocked}
-            className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none ring-0 transition"
-            style={{
-              borderColor: design.borderColor,
-              background: design.controlSurfaceColor,
-              color: design.textColor,
-            }}
-          />
-          {qrTableNumber ? <p className="mt-2 text-xs" style={{ color: design.mutedTextColor }}>{t.qrTableDetected}: {qrTableNumber}</p> : null}
-          {isTableSessionExpired ? <p className="mt-2 text-xs" style={{ color: design.errorColor }}>{t.tableSessionExpired}</p> : null}
-        </div>
+                setTableNumber(event.target.value);
+              }}
+              placeholder="12"
+              readOnly={tableLocked}
+              disabled={tableLocked}
+              className="min-h-11 w-full rounded-xl border px-3 py-2 outline-none ring-0 transition"
+              style={{
+                borderColor: design.borderColor,
+                background: design.controlSurfaceColor,
+                color: design.textColor,
+              }}
+            />
+            {qrTableNumber ? <p className="mt-2 text-xs" style={{ color: design.mutedTextColor }}>{t.qrTableDetected}: {qrTableNumber}</p> : null}
+            {isTableSessionExpired ? <p className="mt-2 text-xs" style={{ color: design.errorColor }}>{t.tableSessionExpired}</p> : null}
+          </div>
+        ) : null}
 
         {activeOrder ? (
           <div className="mb-4 rounded-xl border p-3" style={{ borderColor: design.borderColor, background: design.panelColor }}>
