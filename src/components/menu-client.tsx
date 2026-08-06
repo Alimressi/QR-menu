@@ -488,7 +488,7 @@ export function MenuClient({
   // True when categories haven't arrived yet (either no SSR data, or SSR fetched restaurant
   // but /api/categories cold-started and returned []).  Client useEffect refetches as fallback.
   const [isDataLoading, setIsDataLoading] = useState(categories.length === 0 && !!restaurantSlug);
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState<Language>("az");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
 
@@ -1877,7 +1877,7 @@ export function MenuClient({
               ) : null}
 
               <div className="flex rounded-full border p-1" style={{ borderColor: design.borderColor, background: design.controlSurfaceColor }}>
-                {(["en", "ru", "az"] as Language[]).map((lang) => (
+                {(["az", "ru", "en"] as Language[]).map((lang) => (
                   <button
                     key={lang}
                     type="button"
