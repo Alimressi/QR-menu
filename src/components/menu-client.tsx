@@ -16,6 +16,8 @@ type Props = {
     photosEnabled?: boolean;
     brandName?: string;
     brandSubtitle?: string;
+    /** Optional small line under the subtitle: address, phone, service fee, etc. */
+    infoNote?: string;
     primaryColor?: string;
     accentTextColor?: string;
     backgroundFrom?: string;
@@ -660,6 +662,7 @@ export function MenuClient({
   const design = {
     brandName: liveSettings?.brandName || liveRestaurantName || t.title,
     brandSubtitle: liveSettings?.brandSubtitle || t.subtitle,
+    infoNote: liveSettings?.infoNote || "",
     primaryColor: liveSettings?.primaryColor || "#b8944f",
     accentTextColor: liveSettings?.accentTextColor || "#120e08",
     backgroundFrom: liveSettings?.backgroundFrom || "#0a0a0a",
@@ -1776,6 +1779,9 @@ export function MenuClient({
             <div>
               <h1 className="font-serif text-3xl sm:text-5xl" style={{ color: design.textColor }}>{design.brandName}</h1>
               <p className="mt-3 max-w-2xl" style={{ color: design.mutedTextColor }}>{design.brandSubtitle}</p>
+              {design.infoNote ? (
+                <p className="mt-2 max-w-2xl text-sm" style={{ color: design.mutedTextColor, opacity: 0.85 }}>{design.infoNote}</p>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-3">
