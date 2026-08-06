@@ -98,9 +98,9 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "",
   },
   addButton: {
-    responsive: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90 sm:min-h-11 sm:py-2.5 sm:text-sm",
-    phone: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90",
-    desktop: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
+    responsive: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90 sm:min-h-12 sm:py-3 sm:text-base",
+    phone: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
+    desktop: "w-full min-h-12 py-3 text-center text-base font-semibold transition hover:opacity-90",
   },
   // The option picker is hidden on phones so every card keeps the same height.
   options: {
