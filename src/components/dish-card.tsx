@@ -78,9 +78,9 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "flex items-start justify-between gap-3",
   },
   title: {
-    responsive: "line-clamp-2 h-12 min-w-0 break-words font-serif text-base sm:line-clamp-none sm:h-auto sm:text-xl",
-    phone: "line-clamp-2 h-12 min-w-0 break-words font-serif text-base",
-    desktop: "min-w-0 break-words font-serif text-xl",
+    responsive: "line-clamp-2 h-14 min-w-0 break-words font-serif text-lg sm:line-clamp-none sm:h-auto sm:text-2xl",
+    phone: "line-clamp-2 h-14 min-w-0 break-words font-serif text-lg",
+    desktop: "min-w-0 break-words font-serif text-2xl",
   },
   price: {
     responsive: "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]",
