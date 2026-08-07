@@ -59,17 +59,16 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "block",
   },
   image: {
-    // Phone: a landscape thumbnail (matches the wide photos) centred in the row,
-    // so a round plate reads as round instead of a cropped vertical sliver.
-    // sm+: the original edge-to-edge 21:11 banner.
+    // Phone: photo fills the whole card height (no white gaps above/below) as a
+    // slim left panel. sm+: the original edge-to-edge 21:11 banner on top.
     responsive:
-      "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl sm:m-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl",
+      "relative m-2 min-h-[116px] w-[132px] shrink-0 self-stretch overflow-hidden rounded-xl sm:m-0 sm:min-h-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
+    phone: "relative m-2 min-h-[116px] w-[132px] shrink-0 self-stretch overflow-hidden rounded-xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   body: {
-    responsive: "flex min-w-0 flex-1 flex-col justify-center gap-2 p-3 sm:block sm:space-y-3 sm:p-4",
-    phone: "flex min-w-0 flex-1 flex-col justify-center gap-2 p-3",
+    responsive: "flex min-w-0 flex-1 flex-col gap-2 p-3 sm:block sm:space-y-3 sm:p-4",
+    phone: "flex min-w-0 flex-1 flex-col gap-2 p-3",
     desktop: "space-y-3 p-4",
   },
   titleRow: {
