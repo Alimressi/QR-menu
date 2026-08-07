@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Manrope, Cormorant_Garamond } from "next/font/google";
+import { Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
+// Inter (with latin-ext) has a clean, evenly-weighted Azerbaijani schwa (Ə/ə) —
+// Manrope's read as too heavy. Keeps the --font-manrope var name so the rest of
+// the CSS is unchanged.
+const manrope = Inter({
   variable: "--font-manrope",
-  // latin-ext carries the Azerbaijani letters (Ə, ə, ğ, ş…); without it they fall
-  // back to a system font and look mismatched (e.g. the "Ə" in "Əlavə et").
   subsets: ["latin", "latin-ext"],
 });
 
