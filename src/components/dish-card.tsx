@@ -62,8 +62,8 @@ const CLASSES: Record<string, ClassSet> = {
     // Phone: photo fills the whole card height (no white gaps above/below) as a
     // slim left panel. sm+: the original edge-to-edge 21:11 banner on top.
     responsive:
-      "relative m-2 min-h-[116px] w-[132px] shrink-0 self-stretch overflow-hidden rounded-xl sm:m-0 sm:min-h-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative m-2 min-h-[116px] w-[132px] shrink-0 self-stretch overflow-hidden rounded-xl",
+      "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl sm:m-0 sm:aspect-[21/11] sm:w-full sm:self-auto sm:rounded-none",
+    phone: "relative m-2 aspect-[4/3] w-[150px] shrink-0 self-center overflow-hidden rounded-xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   body: {
@@ -77,9 +77,9 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "flex items-start justify-between gap-3",
   },
   title: {
-    responsive: "line-clamp-2 h-14 min-w-0 break-words font-serif text-[21px] sm:line-clamp-none sm:h-auto",
-    phone: "line-clamp-2 h-14 min-w-0 break-words font-serif text-[21px]",
-    desktop: "min-w-0 break-words font-serif text-[21px]",
+    responsive: "line-clamp-2 h-12 min-w-0 break-words font-serif text-base sm:line-clamp-none sm:h-auto sm:text-xl",
+    phone: "line-clamp-2 h-12 min-w-0 break-words font-serif text-base",
+    desktop: "min-w-0 break-words font-serif text-xl",
   },
   price: {
     responsive: "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]",
@@ -92,13 +92,13 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "text-sm leading-6",
   },
   controls: {
-    responsive: "mt-1 sm:mt-0",
-    phone: "mt-1",
+    responsive: "mt-auto sm:mt-0",
+    phone: "mt-auto",
     desktop: "",
   },
   addButton: {
-    responsive: "w-full min-h-10 py-2 text-center text-sm font-semibold transition hover:opacity-90 sm:min-h-11 sm:py-2.5",
-    phone: "w-full min-h-10 py-2 text-center text-sm font-semibold transition hover:opacity-90",
+    responsive: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90 sm:min-h-11 sm:py-2.5 sm:text-sm",
+    phone: "w-full min-h-10 py-2 text-center text-xs font-semibold transition hover:opacity-90",
     desktop: "w-full min-h-11 py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
   },
   // The option picker is hidden on phones so every card keeps the same height.
