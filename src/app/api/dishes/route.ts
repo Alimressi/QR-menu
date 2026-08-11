@@ -1,4 +1,4 @@
-import { isAdminRequest } from "@/lib/auth";
+import { requireTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -66,17 +66,26 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  // The tenant comes from the signed session, never from the body. A restaurant
+  // admin passing someone else's restaurantId is rejected outright.
+  const scope = requireTenantScope(request, body?.restaurantId);
+  if (!scope.ok) {
+    return NextResponse.json({ error: scope.error }, { status: scope.status });
   }
 
   try {
-    const body = await request.json();
     const imagePositionX = parseNumber(body?.imagePositionX);
     const imagePositionY = parseNumber(body?.imagePositionY);
     const clampPosition = (value: number) => Math.min(150, Math.max(-50, value));
 
-    const restaurantId = Number.parseInt(String(body?.restaurantId ?? ""), 10);
+    const restaurantId = scope.restaurantId;
     const price = parseNumber(body?.price);
     const categoryId = Number.parseInt(String(body?.categoryId ?? ""), 10);
 
@@ -110,8 +119,19 @@ export async function POST(request: NextRequest) {
     if (!data.imageUrl) return NextResponse.json({ error: "imageUrl is required." }, { status: 400 });
     if (!Number.isFinite(data.price)) return NextResponse.json({ error: "price must be a valid number." }, { status: 400 });
     if (!Number.isInteger(data.categoryId)) return NextResponse.json({ error: "categoryId is required." }, { status: 400 });
-    if (!Number.isInteger(data.restaurantId) || data.restaurantId <= 0) {
-      return NextResponse.json({ error: "restaurantId is required." }, { status: 400 });
+
+    // The category is a second way into another tenant's data — a dish filed
+    // under a foreign category would surface on that restaurant's menu.
+    const category = await prisma.category.findFirst({
+      where: { id: data.categoryId, restaurantId },
+      select: { id: true },
+    });
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category does not belong to this restaurant." },
+        { status: 403 },
+      );
     }
 
     const dish = await prisma.dish.create({
