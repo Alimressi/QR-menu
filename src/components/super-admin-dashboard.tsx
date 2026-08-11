@@ -3,6 +3,7 @@
 import { CategoryWithDishes, Dish } from "@/types";
 import { formatCurrency } from "@/lib/design";
 import { compressImage } from "@/lib/image-compress";
+import { RESTAURANT_STATUSES, getEffectiveStatus, getTrialDaysLeft } from "@/lib/subscription";
 import {
   ColorField,
   DishForm,
@@ -283,6 +284,9 @@ function emptyRestaurantForm() {
     serviceMode: "pro" as RestaurantServiceMode,
     adminLogin: "",
     adminPassword: "",
+    // New restaurants are sold on a trial; the API fills the end date.
+    status: "trial",
+    trialEndsAt: "",
     phone: "",
     instagramUrl: "",
     address: "",
@@ -924,6 +928,8 @@ export function SuperAdminDashboard() {
         settings: normalizedSettings,
         adminLogin: restaurantForm.adminLogin,
         adminPassword: restaurantForm.adminPassword,
+        status: restaurantForm.status,
+        trialEndsAt: restaurantForm.trialEndsAt || null,
       }),
     });
 
@@ -949,6 +955,9 @@ export function SuperAdminDashboard() {
       serviceMode: parseRestaurantServiceMode(restaurant.settings),
       adminLogin: parseRestaurantAdminLogin(restaurant.settings),
       adminPassword: "",
+      status: restaurant.status || "active",
+      // <input type="date"> wants YYYY-MM-DD, not an ISO timestamp.
+      trialEndsAt: restaurant.trialEndsAt ? restaurant.trialEndsAt.slice(0, 10) : "",
       phone: str(s.phone),
       instagramUrl: str(s.instagramUrl),
       address: str(s.address),
@@ -1436,6 +1445,26 @@ export function SuperAdminDashboard() {
                   onChange={(e) => setRestaurantForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
                   placeholder="Logo URL (optional)"
                 />
+                <select
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100"
+                  value={restaurantForm.status}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, status: e.target.value }))}
+                  title={t.subscriptionStatus}
+                >
+                  {RESTAURANT_STATUSES.map((value) => (
+                    <option key={value} value={value}>
+                      {t.status[value]}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
+                  value={restaurantForm.trialEndsAt}
+                  onChange={(e) => setRestaurantForm((prev) => ({ ...prev, trialEndsAt: e.target.value }))}
+                  title={t.trialEndsAt}
+                  disabled={restaurantForm.status !== "trial"}
+                />
                 <input
                   className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100 placeholder:text-dark-400"
                   value={restaurantForm.adminLogin}
@@ -1569,6 +1598,28 @@ export function SuperAdminDashboard() {
                       <p className="mt-1 break-all text-xs text-gold-300">
                         Admin: <a href={`/${restaurant.slug}/admin`} target="_blank" rel="noreferrer" className="underline">/{restaurant.slug}/admin</a>
                       </p>
+                      <div className="mt-2 text-xs">
+                        {(() => {
+                          const effective = getEffectiveStatus(restaurant);
+                          const daysLeft = getTrialDaysLeft(restaurant);
+                          const tone: Record<string, string> = {
+                            active: "rgba(80,250,123,0.18)|#50fa7b",
+                            trial: "rgba(139,233,253,0.18)|#8be9fd",
+                            past_due: "rgba(255,184,108,0.18)|#ffb86c",
+                            disabled: "rgba(255,107,107,0.18)|#ff6b6b",
+                          };
+                          const [background, color] = (tone[effective] || tone.active).split("|");
+                          return (
+                            <span
+                              className="rounded-full px-2 py-1 font-semibold"
+                              style={{ background, color }}
+                            >
+                              {t.status[effective]}
+                              {effective === "trial" && daysLeft !== null ? ` · ${daysLeft}d` : ""}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <div className="mt-2 text-xs text-gold-500">
                         <span className="mr-3">{restaurant._count?.categories || 0} categories</span>
                         <span className="mr-3">{restaurant._count?.dishes || 0} dishes</span>

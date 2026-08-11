@@ -1,6 +1,7 @@
 import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getDefaultRestaurantSettings } from "@/lib/restaurant";
+import { TRIAL_DAYS, parseSubscriptionInput } from "@/lib/subscription";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -43,6 +44,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, slug, logoUrl, settings, adminLogin, adminPassword } = body;
+
+    // A new restaurant starts on a 14-day trial unless the caller says otherwise,
+    // matching how these are sold. Existing restaurants are untouched.
+    const subscription = parseSubscriptionInput(body);
+    const status = subscription.status ?? "trial";
+    const trialEndsAt =
+      subscription.trialEndsAt !== undefined
+        ? subscription.trialEndsAt
+        : status === "trial"
+          ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
+          : null;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -96,6 +108,8 @@ export async function POST(request: NextRequest) {
         slug,
         logoUrl: logoUrl || null,
         settings: JSON.stringify(normalizedSettings),
+        status,
+        trialEndsAt,
       },
     });
 

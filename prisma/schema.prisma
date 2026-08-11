@@ -10,13 +10,22 @@ datasource db {
 }
 
 model Restaurant {
-  id          Int          @id @default(autoincrement())
-  name        String
-  slug        String       @unique
-  logoUrl     String?
-  settings    String? // JSON string for theme settings
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id       Int     @id @default(autoincrement())
+  name     String
+  slug     String  @unique
+  logoUrl  String?
+  settings String? // JSON string for theme settings
+
+  /// Subscription state: "trial" | "active" | "past_due" | "disabled".
+  /// Only trial and active are served to guests; the other two show a notice
+  /// instead of the menu while every dish, photo and setting stays intact.
+  /// Existing restaurants default to active so nothing changes for them.
+  status      String    @default("active")
+  /// When a trial stops counting as served. Ignored unless status is "trial".
+  trialEndsAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   categories  Category[]
   dishes      Dish[]
   orders      Order[]

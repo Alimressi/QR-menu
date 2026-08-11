@@ -1,5 +1,6 @@
 import { requireTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isRestaurantServableById } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
 
 function parseNumber(value: unknown) {
@@ -50,6 +51,11 @@ function normalizeDishOptions(input: unknown) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const restaurantId = searchParams.get("restaurantId");
+
+  // Same public-data gate as /api/categories.
+  if (restaurantId && !(await isRestaurantServableById(Number(restaurantId)))) {
+    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+  }
 
   const dishes = await prisma.dish.findMany({
     where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,

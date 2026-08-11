@@ -1,10 +1,18 @@
 import { requireTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isRestaurantServableById } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const restaurantId = searchParams.get("restaurantId");
+
+  // Public endpoint: a suspended tenant must not have its menu readable here,
+  // or the notice on the menu page would be cosmetic. no-store so a suspension
+  // (or a reactivation) is never held in the edge cache.
+  if (restaurantId && !(await isRestaurantServableById(Number(restaurantId)))) {
+    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+  }
 
   try {
     const categories = await prisma.category.findMany({
