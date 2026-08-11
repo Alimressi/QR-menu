@@ -1,6 +1,7 @@
+import { resolveTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getRestaurantServiceModeFromSettings } from "@/lib/restaurant";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
@@ -45,15 +46,21 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const restaurantId = searchParams.get("restaurantId");
+
+    // Staff-only view: was previously unauthenticated and would happily list any
+    // restaurant's open calls to anyone who guessed the id.
+    const scope = resolveTenantScope(request, searchParams.get("restaurantId"));
+    if (!scope.ok) {
+      return NextResponse.json({ error: scope.error }, { status: scope.status });
+    }
 
     const calls = await prisma.waiterCall.findMany({
-      where: { 
+      where: {
         status: "active",
-        ...(restaurantId ? { restaurantId: Number(restaurantId) } : {}),
+        ...(scope.restaurantId ? { restaurantId: scope.restaurantId } : {}),
       },
       orderBy: { createdAt: "asc" },
     });

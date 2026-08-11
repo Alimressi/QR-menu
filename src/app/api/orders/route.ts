@@ -1,4 +1,4 @@
-import { isAdminRequest } from "@/lib/auth";
+import { resolveTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getRestaurantServiceModeFromSettings } from "@/lib/restaurant";
 import { verifyQrSessionToken } from "@/lib/qr-token";
@@ -7,15 +7,17 @@ import { NextRequest, NextResponse } from "next/server";
 const ACTIVE_ORDER_STATUSES = ["new", "preparing"];
 
 export async function GET(request: NextRequest) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { searchParams } = new URL(request.url);
+
+  // A restaurant admin is pinned to their own orders regardless of the query
+  // string; only a super admin may widen the scope or omit it entirely.
+  const scope = resolveTenantScope(request, searchParams.get("restaurantId"));
+  if (!scope.ok) {
+    return NextResponse.json({ error: scope.error }, { status: scope.status });
   }
 
-  const { searchParams } = new URL(request.url);
-  const restaurantId = searchParams.get("restaurantId");
-
   const orders = await prisma.order.findMany({
-    where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
+    where: scope.restaurantId ? { restaurantId: scope.restaurantId } : undefined,
     include: {
       items: {
         orderBy: { id: "asc" },

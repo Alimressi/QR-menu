@@ -11,6 +11,8 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
+    "check:auth": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-auth.ts",
+    "check:media": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-media.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "prisma db seed",

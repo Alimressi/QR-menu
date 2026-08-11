@@ -17,9 +17,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid super admin credentials." }, { status: 401 });
     }
 
-    await setAdminSessionCookie(userInfo.role);
+    const issued = await setAdminSessionCookie(userInfo.role);
 
-    return NextResponse.json({ 
+    if (!issued) {
+      return NextResponse.json({ error: "Server is not configured for sign-in." }, { status: 500 });
+    }
+
+    return NextResponse.json({
       ok: true, 
       role: userInfo.role,
     });

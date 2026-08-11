@@ -1,4 +1,11 @@
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
+
+// Makes Worker bindings (R2 media bucket, AI) reachable from `next dev`. If the
+// proxy can't start, dev keeps working — uploads just fall back to public/uploads.
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev().catch(() => {});
+}
 
 const nextConfig: NextConfig = {
   devIndicators: false,

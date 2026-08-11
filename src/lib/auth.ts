@@ -1,24 +1,213 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
-export const ADMIN_COOKIE_NAME = "admin_session";
-export const ADMIN_ROLE_COOKIE_NAME = "admin_role";
-export const ADMIN_RESTAURANT_COOKIE_NAME = "admin_restaurant_id";
+// Single signed session cookie. Everything the server trusts about the caller
+// (role + which restaurant they own) lives inside the signed payload, so it
+// cannot be forged or edited from the browser.
+export const SESSION_COOKIE_NAME = "qrm_admin_session";
 
-export const SUPER_ADMIN_COOKIE_NAME = "super_admin_session";
-export const RESTAURANT_ADMIN_COOKIE_NAME = "restaurant_admin_session";
-export const RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME = "restaurant_admin_restaurant_id";
+// Pre-rewrite cookies. They carried a constant, publicly known value and are
+// no longer accepted — only deleted, so stale browsers get logged out cleanly.
+const LEGACY_COOKIE_NAMES = [
+  "admin_session",
+  "admin_role",
+  "admin_restaurant_id",
+  "super_admin_session",
+  "restaurant_admin_session",
+  "restaurant_admin_restaurant_id",
+] as const;
 
-const LEGACY_ADMIN_COOKIE_VALUE = process.env.ADMIN_SESSION_TOKEN || "restaurant-admin-session";
-const SUPER_ADMIN_COOKIE_VALUE = process.env.SUPER_ADMIN_SESSION_TOKEN || "super-admin-session";
-const RESTAURANT_ADMIN_COOKIE_VALUE =
-  process.env.RESTAURANT_ADMIN_SESSION_TOKEN || "restaurant-admin-session";
+const SESSION_VERSION = "v1";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24;
 
 const SUPER_ADMIN_LOGIN = process.env.SUPER_ADMIN_LOGIN || "superadmin";
-const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || "superadmin123";
 
 export type UserRole = "SUPER_ADMIN" | "RESTAURANT_ADMIN";
+
+export type AdminSession = {
+  role: UserRole;
+  restaurantId: number | null;
+};
+
+type SessionPayload = {
+  role: UserRole;
+  rid?: number;
+  iat: number;
+  exp: number;
+};
+
+// Signing key. ADMIN_SESSION_SECRET is preferred; QR_TOKEN_SECRET is accepted so
+// an existing deployment keeps working. In production we refuse to fall back to
+// a hardcoded value: without a secret, sessions simply cannot be issued or
+// verified (fail closed) rather than being signed with a key anyone can read.
+function getSessionSecret(): string | null {
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.QR_TOKEN_SECRET;
+  if (secret) {
+    return secret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  return "dev-admin-session-secret-change-me";
+}
+
+function sign(encodedPayload: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
+}
+
+function safeEqual(a: string, b: string) {
+  const bufferA = Buffer.from(a, "utf8");
+  const bufferB = Buffer.from(b, "utf8");
+
+  if (bufferA.length !== bufferB.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(bufferA, bufferB);
+}
+
+export function createSessionToken(role: UserRole, restaurantId?: number | null) {
+  const secret = getSessionSecret();
+  if (!secret) {
+    return null;
+  }
+
+  const now = Date.now();
+  const payload: SessionPayload = {
+    role,
+    ...(role === "RESTAURANT_ADMIN" && restaurantId ? { rid: restaurantId } : {}),
+    iat: now,
+    exp: now + SESSION_TTL_MS,
+  };
+
+  const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+
+  return `${SESSION_VERSION}.${encodedPayload}.${sign(encodedPayload, secret)}`;
+}
+
+export function verifySessionToken(token: string | undefined | null): AdminSession | null {
+  if (!token) {
+    return null;
+  }
+
+  const secret = getSessionSecret();
+  if (!secret) {
+    return null;
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [version, encodedPayload, signature] = parts;
+  if (version !== SESSION_VERSION) {
+    return null;
+  }
+
+  if (!safeEqual(signature, sign(encodedPayload, secret))) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8"),
+    ) as SessionPayload;
+
+    if (parsed?.role !== "SUPER_ADMIN" && parsed?.role !== "RESTAURANT_ADMIN") {
+      return null;
+    }
+
+    if (typeof parsed.exp !== "number" || parsed.exp <= Date.now()) {
+      return null;
+    }
+
+    // A restaurant admin session is meaningless without its tenant id — reject
+    // it rather than letting the caller fall through to an unscoped query.
+    const restaurantId = typeof parsed.rid === "number" && parsed.rid > 0 ? parsed.rid : null;
+    if (parsed.role === "RESTAURANT_ADMIN" && !restaurantId) {
+      return null;
+    }
+
+    return {
+      role: parsed.role,
+      restaurantId: parsed.role === "SUPER_ADMIN" ? null : restaurantId,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function getSession(request: NextRequest): AdminSession | null {
+  return verifySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+}
+
+export async function getSessionFromCookies(): Promise<AdminSession | null> {
+  const cookieStore = await cookies();
+  return verifySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+}
+
+/**
+ * The single tenant-isolation gate every write route goes through.
+ *
+ * A RESTAURANT_ADMIN is always pinned to the restaurant baked into their signed
+ * session — a `restaurantId` sent in the request body or query string is only
+ * ever allowed to *match* it, never to replace it. A SUPER_ADMIN may act on any
+ * restaurant, but must name it explicitly when the route needs one.
+ */
+export function resolveTenantScope(
+  request: NextRequest,
+  requestedRestaurantId?: unknown,
+):
+  | { ok: true; role: UserRole; restaurantId: number | null }
+  | { ok: false; status: 400 | 401 | 403; error: string } {
+  const session = getSession(request);
+
+  if (!session) {
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+
+  const requested = Number.parseInt(String(requestedRestaurantId ?? ""), 10);
+  const hasRequested = Number.isInteger(requested) && requested > 0;
+
+  if (session.role === "RESTAURANT_ADMIN") {
+    if (hasRequested && requested !== session.restaurantId) {
+      return { ok: false, status: 403, error: "Forbidden: restaurant mismatch." };
+    }
+
+    return { ok: true, role: session.role, restaurantId: session.restaurantId };
+  }
+
+  return {
+    ok: true,
+    role: session.role,
+    restaurantId: hasRequested ? requested : null,
+  };
+}
+
+/** Same as `resolveTenantScope`, but the route cannot proceed without a tenant. */
+export function requireTenantScope(
+  request: NextRequest,
+  requestedRestaurantId?: unknown,
+):
+  | { ok: true; role: UserRole; restaurantId: number }
+  | { ok: false; status: 400 | 401 | 403; error: string } {
+  const scope = resolveTenantScope(request, requestedRestaurantId);
+
+  if (!scope.ok) {
+    return scope;
+  }
+
+  if (!scope.restaurantId) {
+    return { ok: false, status: 400, error: "restaurantId is required." };
+  }
+
+  return { ok: true, role: scope.role, restaurantId: scope.restaurantId };
+}
 
 function isBcryptHash(value: string) {
   return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
@@ -29,7 +218,10 @@ async function verifyPassword(candidate: string, passwordOrHash: string) {
     return bcrypt.compare(candidate, passwordOrHash);
   }
 
-  return candidate === passwordOrHash;
+  // Legacy restaurants seeded with a plaintext `adminPassword` in their settings
+  // JSON. Kept so existing tenants can still log in; re-saving the password from
+  // the super-admin panel replaces it with a bcrypt hash.
+  return safeEqual(candidate, passwordOrHash);
 }
 
 function getRestaurantAdminCredentialsFromSettings(settingsRaw?: string | null) {
@@ -45,7 +237,8 @@ function getRestaurantAdminCredentialsFromSettings(settingsRaw?: string | null) 
     };
 
     const adminLogin = typeof parsed.adminLogin === "string" ? parsed.adminLogin.trim() : "";
-    const adminPasswordHash = typeof parsed.adminPasswordHash === "string" ? parsed.adminPasswordHash.trim() : "";
+    const adminPasswordHash =
+      typeof parsed.adminPasswordHash === "string" ? parsed.adminPasswordHash.trim() : "";
     const adminPassword = typeof parsed.adminPassword === "string" ? parsed.adminPassword.trim() : "";
     const passwordOrHash = adminPasswordHash || adminPassword;
 
@@ -53,194 +246,111 @@ function getRestaurantAdminCredentialsFromSettings(settingsRaw?: string | null) 
       return null;
     }
 
-    return {
-      login: adminLogin,
-      passwordOrHash,
-    };
+    return { login: adminLogin, passwordOrHash };
   } catch {
     return null;
   }
 }
 
-function hasValidSuperAdminSession(request: NextRequest) {
-  const superAdminSession = request.cookies.get(SUPER_ADMIN_COOKIE_NAME)?.value;
-  if (superAdminSession === SUPER_ADMIN_COOKIE_VALUE) {
-    return true;
-  }
-
-  const legacySession = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-  const legacyRole = request.cookies.get(ADMIN_ROLE_COOKIE_NAME)?.value;
-  return legacySession === LEGACY_ADMIN_COOKIE_VALUE && legacyRole === "SUPER_ADMIN";
-}
-
-function hasValidRestaurantAdminSession(request: NextRequest) {
-  const restaurantAdminSession = request.cookies.get(RESTAURANT_ADMIN_COOKIE_NAME)?.value;
-  if (restaurantAdminSession === RESTAURANT_ADMIN_COOKIE_VALUE) {
-    return true;
-  }
-
-  const legacySession = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
-  const legacyRole = request.cookies.get(ADMIN_ROLE_COOKIE_NAME)?.value;
-  return legacySession === LEGACY_ADMIN_COOKIE_VALUE && legacyRole === "RESTAURANT_ADMIN";
-}
-
-function getRoleFromCookieStore(cookieStore: Awaited<ReturnType<typeof cookies>>): UserRole | null {
-  const superAdminSession = cookieStore.get(SUPER_ADMIN_COOKIE_NAME)?.value;
-  if (superAdminSession === SUPER_ADMIN_COOKIE_VALUE) {
-    return "SUPER_ADMIN";
-  }
-
-  const restaurantAdminSession = cookieStore.get(RESTAURANT_ADMIN_COOKIE_NAME)?.value;
-  if (restaurantAdminSession === RESTAURANT_ADMIN_COOKIE_VALUE) {
-    return "RESTAURANT_ADMIN";
-  }
-
-  const legacySession = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const legacyRole = cookieStore.get(ADMIN_ROLE_COOKIE_NAME)?.value;
-
-  if (legacySession === LEGACY_ADMIN_COOKIE_VALUE && (legacyRole === "SUPER_ADMIN" || legacyRole === "RESTAURANT_ADMIN")) {
-    return legacyRole;
-  }
-
-  return null;
-}
-
-function getRestaurantIdFromCookieStore(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  const restaurantId = cookieStore.get(RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME)?.value;
-  if (restaurantId) {
-    return Number(restaurantId);
-  }
-
-  const legacyRestaurantId = cookieStore.get(ADMIN_RESTAURANT_COOKIE_NAME)?.value;
-  return legacyRestaurantId ? Number(legacyRestaurantId) : null;
-}
-
-export async function validateAdminCredentials(login: string, password: string, restaurantSettings?: string | null) {
-  const restaurantCredentials = getRestaurantAdminCredentialsFromSettings(restaurantSettings);
-  if (!restaurantCredentials) {
+export async function validateAdminCredentials(
+  login: string,
+  password: string,
+  restaurantSettings?: string | null,
+) {
+  const credentials = getRestaurantAdminCredentialsFromSettings(restaurantSettings);
+  if (!credentials) {
     return null;
   }
 
-  const effectiveLogin = restaurantCredentials.login;
-  const effectivePasswordOrHash = restaurantCredentials.passwordOrHash;
-
-  if (login !== effectiveLogin) {
+  if (!safeEqual(login, credentials.login)) {
     return null;
   }
 
-  const isValid = await verifyPassword(password, effectivePasswordOrHash);
-  if (isValid) {
-    return { role: "RESTAURANT_ADMIN" as UserRole };
-  }
-
-  return null;
+  const isValid = await verifyPassword(password, credentials.passwordOrHash);
+  return isValid ? { role: "RESTAURANT_ADMIN" as UserRole } : null;
 }
 
 export async function validateSuperAdminCredentials(login: string, password: string) {
-  if (login !== SUPER_ADMIN_LOGIN) {
+  // No hardcoded default: an unset SUPER_ADMIN_PASSWORD means nobody can sign in
+  // as super admin, instead of everybody being able to.
+  const expectedPassword = process.env.SUPER_ADMIN_PASSWORD;
+  if (!expectedPassword) {
     return null;
   }
 
-  const isValid = await verifyPassword(password, SUPER_ADMIN_PASSWORD);
-  if (isValid) {
-    return { role: "SUPER_ADMIN" as UserRole };
+  if (!safeEqual(login, SUPER_ADMIN_LOGIN)) {
+    return null;
   }
 
-  return null;
+  const isValid = await verifyPassword(password, expectedPassword);
+  return isValid ? { role: "SUPER_ADMIN" as UserRole } : null;
 }
 
 export async function setAdminSessionCookie(role: UserRole, restaurantId?: number) {
+  const token = createSessionToken(role, restaurantId);
+  if (!token) {
+    return false;
+  }
+
   const cookieStore = await cookies();
-  const commonCookieOptions = {
+
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24,
-  };
+    maxAge: SESSION_TTL_MS / 1000,
+  });
 
-  if (role === "SUPER_ADMIN") {
-    cookieStore.delete(RESTAURANT_ADMIN_COOKIE_NAME);
-    cookieStore.delete(RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME);
-    cookieStore.set(SUPER_ADMIN_COOKIE_NAME, SUPER_ADMIN_COOKIE_VALUE, commonCookieOptions);
+  for (const name of LEGACY_COOKIE_NAMES) {
+    cookieStore.delete(name);
   }
 
-  if (role === "RESTAURANT_ADMIN") {
-    cookieStore.delete(SUPER_ADMIN_COOKIE_NAME);
-    cookieStore.set(RESTAURANT_ADMIN_COOKIE_NAME, RESTAURANT_ADMIN_COOKIE_VALUE, commonCookieOptions);
-    if (restaurantId) {
-      cookieStore.set(RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME, String(restaurantId), {
-        ...commonCookieOptions,
-      });
-    }
-  }
-
-  // Clear old shared cookies to prevent cross-role conflicts.
-  cookieStore.delete(ADMIN_COOKIE_NAME);
-  cookieStore.delete(ADMIN_ROLE_COOKIE_NAME);
-  cookieStore.delete(ADMIN_RESTAURANT_COOKIE_NAME);
+  return true;
 }
 
 export async function clearAdminSessionCookie() {
   const cookieStore = await cookies();
-  cookieStore.delete(ADMIN_COOKIE_NAME);
-  cookieStore.delete(ADMIN_ROLE_COOKIE_NAME);
-  cookieStore.delete(ADMIN_RESTAURANT_COOKIE_NAME);
-  cookieStore.delete(SUPER_ADMIN_COOKIE_NAME);
-  cookieStore.delete(RESTAURANT_ADMIN_COOKIE_NAME);
-  cookieStore.delete(RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME);
+  cookieStore.delete(SESSION_COOKIE_NAME);
+
+  for (const name of LEGACY_COOKIE_NAMES) {
+    cookieStore.delete(name);
+  }
 }
 
 export function isAdminRequest(request: NextRequest) {
-  return hasValidSuperAdminSession(request) || hasValidRestaurantAdminSession(request);
+  return getSession(request) !== null;
 }
 
 export function getUserRole(request: NextRequest): UserRole | null {
-  if (hasValidSuperAdminSession(request)) {
-    return "SUPER_ADMIN";
-  }
-
-  if (hasValidRestaurantAdminSession(request)) {
-    return "RESTAURANT_ADMIN";
-  }
-
-  return null;
+  return getSession(request)?.role ?? null;
 }
 
 export function getUserRestaurantId(request: NextRequest): number | null {
-  const restaurantId = request.cookies.get(RESTAURANT_ADMIN_RESTAURANT_COOKIE_NAME)?.value;
-  if (restaurantId) {
-    return Number(restaurantId);
-  }
-
-  const legacyRestaurantId = request.cookies.get(ADMIN_RESTAURANT_COOKIE_NAME)?.value;
-  return legacyRestaurantId ? Number(legacyRestaurantId) : null;
+  return getSession(request)?.restaurantId ?? null;
 }
 
 export function isSuperAdmin(request: NextRequest): boolean {
-  return hasValidSuperAdminSession(request);
+  return getSession(request)?.role === "SUPER_ADMIN";
 }
 
 export function isRestaurantAdmin(request: NextRequest): boolean {
-  return hasValidRestaurantAdminSession(request);
+  return getSession(request)?.role === "RESTAURANT_ADMIN";
 }
 
 export async function isAdminSessionActive() {
-  const cookieStore = await cookies();
-  return getRoleFromCookieStore(cookieStore) !== null;
+  return (await getSessionFromCookies()) !== null;
 }
 
 export async function getCurrentUserInfo() {
-  const cookieStore = await cookies();
-  const role = getRoleFromCookieStore(cookieStore);
+  const session = await getSessionFromCookies();
 
-  if (!role) {
+  if (!session) {
     return null;
   }
 
-  const restaurantId = getRestaurantIdFromCookieStore(cookieStore);
   return {
-    role,
-    restaurantId: restaurantId ?? undefined,
+    role: session.role,
+    restaurantId: session.restaurantId ?? undefined,
   };
 }

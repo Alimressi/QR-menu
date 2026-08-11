@@ -1,14 +1,15 @@
-import { isAdminSessionActive } from "@/lib/auth";
+import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { createTableAccessKey } from "@/lib/qr-token";
 import { getRestaurantTableCountFromSettings } from "@/lib/restaurant";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Check if admin is logged in
-    const isAuthenticated = await isAdminSessionActive();
-    if (!isAuthenticated) {
+    // Super admin only: this mints table access keys for an arbitrary
+    // restaurant. A restaurant admin has /api/admin/qr-links, which is scoped to
+    // their own venue.
+    if (!isSuperAdmin(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

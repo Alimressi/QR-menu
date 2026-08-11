@@ -34,6 +34,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# local secrets for `wrangler dev` / `npm run preview` — same values as .env
+.dev.vars*
 
 # local databases
 /prisma/*.db

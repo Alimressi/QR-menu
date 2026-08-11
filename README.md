@@ -74,16 +74,70 @@ nvm install
 nvm use
 ```
 
-## Default Admin Credentials
+## Admin Accounts
 
-- Login: `admin`
-- Password: `admin123`
+There are no built-in default credentials.
 
-You can override these values in `.env`.
+- **Super admin** — set `SUPER_ADMIN_LOGIN` and `SUPER_ADMIN_PASSWORD` in `.env`.
+  If `SUPER_ADMIN_PASSWORD` is unset, super-admin sign-in is disabled entirely.
+- **Restaurant admin** — created per restaurant from the super-admin panel. The
+  password is stored as a bcrypt hash inside that restaurant's `settings` JSON.
 
 ## Security Keys
 
-Set `QR_TOKEN_SECRET` and `QR_TABLE_KEY_SECRET` in `.env` to long random values.
+Set these in `.env` (and as Worker secrets in production) to long random values:
+
+- `ADMIN_SESSION_SECRET` — signs the admin session cookie. Falls back to
+  `QR_TOKEN_SECRET` if unset. In production, if neither is set, sessions cannot
+  be issued or verified and sign-in fails closed.
+- `QR_TOKEN_SECRET` — signs table QR session tokens.
+- `QR_TABLE_KEY_SECRET` — signs the per-table access keys embedded in QR links.
+
+```bash
+npx wrangler secret put ADMIN_SESSION_SECRET
+```
+
+Rotating `ADMIN_SESSION_SECRET` invalidates every active admin session.
+
+## Image Uploads (R2)
+
+Workers have no writable filesystem, so dish photos go to an R2 bucket bound as
+`MEDIA_BUCKET` and are served back through `/api/media/<key>`. Keys are prefixed
+per restaurant (`r<id>/<uuid>.<ext>`).
+
+One-time setup — **`wrangler deploy` fails until this is done**, because
+`wrangler.jsonc` references the bucket:
+
+1. Enable R2 in the Cloudflare dashboard (one-time, requires accepting R2 terms).
+2. Create the bucket:
+
+```bash
+npx wrangler r2 bucket create qr-menu-media
+```
+
+Notes:
+
+- Images uploaded before R2 still live in `public/uploads` and keep their
+  `/uploads/...` URLs. They ship as static assets and are not migrated.
+- Under plain `next dev` there is no binding, so uploads fall back to writing
+  into `public/uploads`, exactly as the app behaved before R2.
+- Uploads are limited to 8 MB and to JPEG/PNG/WebP/AVIF, verified by inspecting
+  the file's magic bytes. SVG is rejected — it is executable markup and would be
+  a stored-XSS vector on the guest menu.
+- Deleting a dish does not delete its image from R2 yet; orphans accumulate.
+
+Do not run `npm run cf-typegen`. The generated `cloudflare-env.d.ts` also brings
+in the Workers runtime `Request` type, whose `json()` returns `unknown` instead
+of `any`, which breaks every route that reads a request body. Bindings are typed
+by hand in `src/types/cloudflare.d.ts` instead.
+
+## Tenant Isolation
+
+The session cookie is an HMAC-signed token carrying the caller's role and, for a
+restaurant admin, their `restaurantId`. Every write route derives its tenant from
+that signed session — a `restaurantId` in a request body or query string is only
+ever allowed to match it, never to replace it. See `resolveTenantScope` /
+`requireTenantScope` in `src/lib/auth.ts`.
 
 ## Useful Scripts
 

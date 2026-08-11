@@ -2,6 +2,7 @@
 
 import { CategoryWithDishes, Dish } from "@/types";
 import { formatCurrency } from "@/lib/design";
+import { compressImage } from "@/lib/image-compress";
 import {
   ColorField,
   DishForm,
@@ -754,9 +755,20 @@ export function SuperAdminDashboard() {
     setAuthenticated(false);
   }
 
-  async function onImageUpload(file: File) {
+  async function onImageUpload(original: File) {
+    if (!selectedRestaurantId) return;
+
+    setBusyMessage(t.preparingImage);
+
+    // Shrink on the device first: a phone photo is 10-20 MB, a dish card is
+    // 420px wide. This keeps the guest menu fast and means whoever adds the
+    // dish never hits the upload size limit.
+    const { file } = await compressImage(original);
+
     const formData = new FormData();
     formData.append("file", file);
+    // Uploads are stored under the restaurant they belong to.
+    formData.append("restaurantId", String(selectedRestaurantId));
     setBusyMessage(t.uploadingImage);
 
     try {

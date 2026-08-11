@@ -1,4 +1,4 @@
-import { isAdminRequest } from "@/lib/auth";
+import { resolveTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -51,19 +51,47 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
-export async function PATCH(request: NextRequest, { params }: Params) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// Resolve the dish and confirm the caller is allowed to touch it. The tenant is
+// derived from the dish row itself and checked against the signed session, so a
+// restaurant admin can only ever reach their own dishes.
+async function authorizeDish(request: NextRequest, rawId: string) {
+  const scope = resolveTenantScope(request);
+  if (!scope.ok) {
+    return { ok: false as const, status: scope.status, error: scope.error };
   }
 
+  const dishId = Number(rawId);
+  if (!Number.isInteger(dishId)) {
+    return { ok: false as const, status: 400 as const, error: "Invalid dish id." };
+  }
+
+  const dish = await prisma.dish.findUnique({
+    where: { id: dishId },
+    select: { id: true, restaurantId: true },
+  });
+
+  if (!dish) {
+    return { ok: false as const, status: 404 as const, error: "Dish not found." };
+  }
+
+  if (scope.role === "RESTAURANT_ADMIN" && dish.restaurantId !== scope.restaurantId) {
+    return { ok: false as const, status: 403 as const, error: "Forbidden: restaurant mismatch." };
+  }
+
+  return { ok: true as const, dishId, restaurantId: dish.restaurantId };
+}
+
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const auth = await authorizeDish(request, id);
+
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const { dishId } = auth;
+
   try {
-    const { id } = await params;
-    const dishId = Number(id);
-
-    if (!Number.isInteger(dishId)) {
-      return NextResponse.json({ error: "Invalid dish id." }, { status: 400 });
-    }
-
     const body = await request.json();
     const imagePositionX = parseNumber(body?.imagePositionX);
     const imagePositionY = parseNumber(body?.imagePositionY);
@@ -100,6 +128,20 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (!data.imageUrl) return NextResponse.json({ error: "imageUrl is required." }, { status: 400 });
     if (!Number.isFinite(data.price)) return NextResponse.json({ error: "price must be a valid number." }, { status: 400 });
     if (!Number.isInteger(data.categoryId)) return NextResponse.json({ error: "categoryId is required." }, { status: 400 });
+
+    // Moving a dish into a category owned by another restaurant would leak it
+    // onto that restaurant's menu — pin the category to the dish's own tenant.
+    const category = await prisma.category.findFirst({
+      where: { id: data.categoryId, restaurantId: auth.restaurantId },
+      select: { id: true },
+    });
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category does not belong to this restaurant." },
+        { status: 403 },
+      );
+    }
 
     const dish = await prisma.$transaction(async (tx) => {
       await tx.dish.update({
@@ -138,19 +180,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const auth = await authorizeDish(request, id);
+
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   try {
-    const { id } = await params;
-    const dishId = Number(id);
-
-    if (!Number.isInteger(dishId)) {
-      return NextResponse.json({ error: "Invalid dish id." }, { status: 400 });
-    }
-
-    await prisma.dish.delete({ where: { id: dishId } });
+    await prisma.dish.delete({ where: { id: auth.dishId } });
 
     return NextResponse.json({ ok: true });
   } catch {

@@ -1,4 +1,4 @@
-import { isAdminRequest } from "@/lib/auth";
+import { requireTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,13 +42,19 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const scope = requireTenantScope(request, body?.restaurantId);
+  if (!scope.ok) {
+    return NextResponse.json({ error: scope.error }, { status: scope.status });
   }
 
   try {
-    const body = await request.json();
-
     const rawNameEn = String(body?.nameEn || "").trim();
     const rawNameRu = String(body?.nameRu || "").trim();
     const rawNameAz = String(body?.nameAz || "").trim();
@@ -57,18 +63,13 @@ export async function POST(request: NextRequest) {
     const nameEn = rawNameEn || fallbackName;
     const nameRu = rawNameRu || fallbackName;
     const nameAz = rawNameAz || fallbackName;
-    const restaurantId = Number(body?.restaurantId);
 
     if (!fallbackName) {
       return NextResponse.json({ error: "At least one language name is required." }, { status: 400 });
     }
 
-    if (!restaurantId) {
-      return NextResponse.json({ error: "Restaurant ID is required." }, { status: 400 });
-    }
-
     const category = await prisma.category.create({
-      data: { nameEn, nameRu, nameAz, restaurantId },
+      data: { nameEn, nameRu, nameAz, restaurantId: scope.restaurantId },
     });
 
     return NextResponse.json(category, { status: 201 });

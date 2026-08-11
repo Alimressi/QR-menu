@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { isWorkerServedMedia } from "@/lib/media-url";
 import type { CurrencyMode } from "@/lib/design";
 
 // Single source of truth for how a dish looks in the guest menu.
@@ -180,6 +181,7 @@ export function DishCard({
             fill
             sizes="(max-width: 640px) 140px, 420px"
             quality={95}
+            unoptimized={isWorkerServedMedia(dish.imageUrl)}
             className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
             style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
           />

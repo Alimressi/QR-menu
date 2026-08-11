@@ -3,6 +3,7 @@
 import { CategoryWithDishes, Language, Order } from "@/types";
 import { Minus, Plus, ShoppingBag, Trash2, Bell, Menu, X, Phone, MapPin } from "lucide-react";
 import Image from "next/image";
+import { isWorkerServedMedia } from "@/lib/media-url";
 import { DishCard } from "@/components/dish-card";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -517,6 +518,10 @@ export function MenuClient({
   const [error, setError] = useState("");
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [isBasketOpen, setIsBasketOpen] = useState(false);
+  // A logo URL is free text in the admin panel and can point at a file that
+  // no longer exists. Hide the image instead of leaving an empty bordered
+  // circle in the header.
+  const [logoFailed, setLogoFailed] = useState(false);
   const [isBasketVisible, setIsBasketVisible] = useState(false);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [dishModalDishId, setDishModalDishId] = useState<number | null>(null);
@@ -1801,12 +1806,14 @@ export function MenuClient({
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="flex items-center gap-4">
-                {design.logoUrl ? (
+                {design.logoUrl && !logoFailed ? (
                   <Image
                     src={design.logoUrl}
                     alt={design.brandName}
                     width={72}
                     height={72}
+                    unoptimized={isWorkerServedMedia(design.logoUrl)}
+                    onError={() => setLogoFailed(true)}
                     className="shrink-0 rounded-full object-cover"
                     style={{ width: 64, height: 64, border: `1px solid ${design.borderColor}` }}
                   />
@@ -2233,6 +2240,7 @@ export function MenuClient({
                         fill
                         sizes="(min-width: 1024px) 760px, 100vw"
                         quality={95}
+                        unoptimized={isWorkerServedMedia(dish.imageUrl)}
                         className="h-full w-full object-contain"
                         style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
                       />

@@ -58,9 +58,15 @@ export async function POST(request: Request) {
 
     const restaurantId = userInfo.role === "RESTAURANT_ADMIN" ? targetRestaurant.id : undefined;
 
-    await setAdminSessionCookie(userInfo.role, restaurantId);
+    const issued = await setAdminSessionCookie(userInfo.role, restaurantId);
 
-    return NextResponse.json({ 
+    if (!issued) {
+      // No signing secret configured in production — refuse rather than hand out
+      // a session that cannot be verified.
+      return NextResponse.json({ error: "Server is not configured for sign-in." }, { status: 500 });
+    }
+
+    return NextResponse.json({
       ok: true, 
       role: userInfo.role,
       restaurantId,

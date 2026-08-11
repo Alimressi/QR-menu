@@ -335,6 +335,7 @@ export const dictionary: Record<
     tableLabel: string;
     edit: string;
     delete: string;
+    preparingImage: string;
     uploadingImage: string;
     uploadFailed: string;
     saveDishFailed: string;
@@ -406,6 +407,7 @@ export const dictionary: Record<
     tableLabel: "Table",
     edit: "Edit",
     delete: "Delete",
+    preparingImage: "Preparing image...",
     uploadingImage: "Uploading image...",
     uploadFailed: "Upload failed.",
     saveDishFailed: "Failed to save dish.",
@@ -476,6 +478,7 @@ export const dictionary: Record<
     tableLabel: "Стол",
     edit: "Изменить",
     delete: "Удалить",
+    preparingImage: "Подготовка изображения...",
     uploadingImage: "Загрузка изображения...",
     uploadFailed: "Ошибка загрузки.",
     saveDishFailed: "Не удалось сохранить блюдо.",
@@ -546,6 +549,7 @@ export const dictionary: Record<
     tableLabel: "Masa",
     edit: "Redakte et",
     delete: "Sil",
+    preparingImage: "Sekil hazirlanir...",
     uploadingImage: "Sekil yuklenir...",
     uploadFailed: "Yukleme ugursuz oldu.",
     saveDishFailed: "Yemek saxlanmadi.",

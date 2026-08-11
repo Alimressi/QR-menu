@@ -1,4 +1,4 @@
-import { isAdminRequest } from "@/lib/auth";
+import { resolveTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -9,8 +9,9 @@ type Params = {
 const ALLOWED_STATUSES = new Set(["new", "preparing", "ready", "paid"]);
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  if (!isAdminRequest(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const scope = resolveTenantScope(request);
+  if (!scope.ok) {
+    return NextResponse.json({ error: scope.error }, { status: scope.status });
   }
 
   try {
@@ -19,6 +20,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     if (!Number.isInteger(orderId)) {
       return NextResponse.json({ error: "Invalid order id." }, { status: 400 });
+    }
+
+    const existing = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { restaurantId: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    }
+
+    if (scope.role === "RESTAURANT_ADMIN" && existing.restaurantId !== scope.restaurantId) {
+      return NextResponse.json({ error: "Forbidden: restaurant mismatch." }, { status: 403 });
     }
 
     const body = await request.json();
