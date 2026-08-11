@@ -1378,7 +1378,9 @@ async function ensureRestaurant() {
     where: { slug: "ninelives" },
     update: {
       name: "Nine Lives Bar",
-      logoUrl: "/images/logo.svg",
+      // No Nine Lives logo asset exists in the repo; pointing at one left a
+      // broken image in the menu header. Set a real URL from the admin panel.
+      logoUrl: null,
       settings: JSON.stringify({
         theme: "dark",
         primaryColor: "#b8944f",
@@ -1388,7 +1390,9 @@ async function ensureRestaurant() {
     create: {
       name: "Nine Lives Bar",
       slug: "ninelives",
-      logoUrl: "/images/logo.svg",
+      // No Nine Lives logo asset exists in the repo; pointing at one left a
+      // broken image in the menu header. Set a real URL from the admin panel.
+      logoUrl: null,
       settings: JSON.stringify({
         theme: "dark",
         primaryColor: "#b8944f",
