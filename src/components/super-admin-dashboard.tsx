@@ -384,7 +384,7 @@ export function SuperAdminDashboard() {
     : [];
 
   const loadRestaurants = useCallback(async () => {
-    const response = await fetch("/api/superadmin/restaurants");
+    const response = await fetch("/api/superadmin/restaurants", { cache: "no-store" });
     if (response.ok) {
       const data = await response.json();
       setRestaurants(data.restaurants || []);
@@ -399,8 +399,9 @@ export function SuperAdminDashboard() {
     if (!selectedRestaurantId) return;
     
     const [categoriesResponse, dishesResponse] = await Promise.all([
-      fetch(`/api/categories?restaurantId=${selectedRestaurantId}`),
-      fetch(`/api/dishes?restaurantId=${selectedRestaurantId}`),
+      // fresh=1 keeps the editor off the guest cache — see the two GET handlers.
+      fetch(`/api/categories?restaurantId=${selectedRestaurantId}&fresh=1`, { cache: "no-store" }),
+      fetch(`/api/dishes?restaurantId=${selectedRestaurantId}&fresh=1`, { cache: "no-store" }),
     ]);
 
     if (categoriesResponse.ok) {
@@ -415,7 +416,7 @@ export function SuperAdminDashboard() {
   const checkSession = useCallback(async () => {
     try {
       // Check session and get user info
-      const response = await fetch("/api/admin/me");
+      const response = await fetch("/api/admin/me", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         // Verify user is SUPER_ADMIN

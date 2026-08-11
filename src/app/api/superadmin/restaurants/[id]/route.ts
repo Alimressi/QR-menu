@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       );
     }
 
-    return NextResponse.json({ restaurant });
+    return NextResponse.json({ restaurant }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch restaurant" },

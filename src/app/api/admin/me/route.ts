@@ -31,11 +31,10 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({
-      role: userInfo.role,
-      restaurantId: userInfo.restaurantId,
-      restaurant,
-    });
+    return NextResponse.json(
+      { role: userInfo.role, restaurantId: userInfo.restaurantId, restaurant },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to get user info" },

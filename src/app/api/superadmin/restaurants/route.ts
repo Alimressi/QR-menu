@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ restaurants });
+    // Never cached: this is what the edit form reads back after a save. Without
+    // an explicit header the browser applies heuristic caching and the form
+    // repopulates from a stale copy, silently showing pre-edit values.
+    return NextResponse.json({ restaurants }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return NextResponse.json(
