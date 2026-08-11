@@ -1,6 +1,7 @@
 import { MenuClient } from "@/components/menu-client";
 import prisma from "@/lib/prisma";
 import { getPublicSettingsFromRaw } from "@/lib/restaurant";
+import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -114,9 +115,13 @@ export default async function RestaurantPage({ params }: Params) {
   // Categories (the bulk) still use the cached edge API.
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
-    select: { id: true, name: true, logoUrl: true, settings: true },
+    select: { id: true, name: true, logoUrl: true, settings: true, status: true, trialEndsAt: true },
   });
-  const categories = restaurant ? await fetchCategories(restaurant.id) : [];
+
+  // A lapsed or switched-off tenant serves a notice instead of the menu. The
+  // dishes are never fetched, so nothing leaks into the page payload either.
+  const suspended = restaurant !== null && !isRestaurantServable(restaurant);
+  const categories = restaurant && !suspended ? await fetchCategories(restaurant.id) : [];
   // Credentials live in the same settings blob and would otherwise be serialized
   // into the client props (visible in the page's RSC payload) — strip them here.
   const settings = getPublicSettingsFromRaw(restaurant?.settings);
@@ -126,6 +131,40 @@ export default async function RestaurantPage({ params }: Params) {
   const bgFrom = (settings?.backgroundFrom as string) || "#0a0a0a";
   const bgTo = (settings?.backgroundTo as string) || "#0d0d0d";
   const pageBackground = `linear-gradient(180deg, ${bgFrom} 0%, ${bgTo} 100%)`;
+
+  if (suspended) {
+    const surface = (settings?.surfaceColor as string) || "#ffffff";
+    const border = (settings?.borderColor as string) || "#e5e7eb";
+    const text = (settings?.textColor as string) || "#1f2937";
+    const muted = (settings?.mutedTextColor as string) || "#6b7280";
+
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center px-6"
+        style={{ background: pageBackground }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `body{background:${pageBackground}}` }} />
+        <div
+          className="w-full max-w-md rounded-2xl border p-8 text-center"
+          style={{ background: surface, borderColor: border }}
+        >
+          <p className="font-serif text-2xl" style={{ color: text }}>
+            {restaurant?.name}
+          </p>
+          {(["az", "ru", "en"] as const).map((language) => (
+            <div key={language} className="mt-6 first:mt-8">
+              <p className="text-base font-semibold" style={{ color: text }}>
+                {SUSPENDED_NOTICE[language].title}
+              </p>
+              <p className="mt-1 text-sm" style={{ color: muted }}>
+                {SUSPENDED_NOTICE[language].body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-10" style={{ background: pageBackground }}>

@@ -1,6 +1,7 @@
 import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getDefaultRestaurantSettings } from "@/lib/restaurant";
+import { TRIAL_DAYS, parseSubscriptionInput } from "@/lib/subscription";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -24,7 +25,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ restaurants });
+    // Never cached: this is what the edit form reads back after a save. Without
+    // an explicit header the browser applies heuristic caching and the form
+    // repopulates from a stale copy, silently showing pre-edit values.
+    return NextResponse.json({ restaurants }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return NextResponse.json(
@@ -43,6 +47,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, slug, logoUrl, settings, adminLogin, adminPassword } = body;
+
+    // A new restaurant starts on a 14-day trial unless the caller says otherwise,
+    // matching how these are sold. Existing restaurants are untouched.
+    const subscription = parseSubscriptionInput(body);
+    const status = subscription.status ?? "trial";
+    const trialEndsAt =
+      subscription.trialEndsAt !== undefined
+        ? subscription.trialEndsAt
+        : status === "trial"
+          ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
+          : null;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -96,6 +111,8 @@ export async function POST(request: NextRequest) {
         slug,
         logoUrl: logoUrl || null,
         settings: JSON.stringify(normalizedSettings),
+        status,
+        trialEndsAt,
       },
     });
 

@@ -1,5 +1,6 @@
 import { requireTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { isRestaurantServableById } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
 
 function parseNumber(value: unknown) {
@@ -49,10 +50,26 @@ function normalizeDishOptions(input: unknown) {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const restaurantId = searchParams.get("restaurantId");
+  const restaurantId = Number.parseInt(String(searchParams.get("restaurantId") ?? ""), 10);
+
+  // Mandatory. This route is public, and it used to fall back to an unfiltered
+  // findMany when the parameter was missing — a bare GET /api/dishes returned
+  // every dish of every restaurant to anyone. It also made the admin menu editor
+  // show all tenants' dishes whenever no restaurant was selected.
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+    return NextResponse.json(
+      { error: "restaurantId is required." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  // Same public-data gate as /api/categories.
+  if (!(await isRestaurantServableById(restaurantId))) {
+    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+  }
 
   const dishes = await prisma.dish.findMany({
-    where: restaurantId ? { restaurantId: Number(restaurantId) } : undefined,
+    where: { restaurantId },
     include: {
       category: true,
       options: {
@@ -62,7 +79,12 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(dishes);
+  // Matches /api/categories: ?fresh=1 is the admin-side, never-cached variant.
+  return NextResponse.json(dishes, {
+    headers: {
+      "Cache-Control": searchParams.get("fresh") === "1" ? "no-store" : "public, s-maxage=60",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {

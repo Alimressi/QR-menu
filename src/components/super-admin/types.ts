@@ -9,6 +9,8 @@ export type Restaurant = {
   slug: string;
   logoUrl: string | null;
   settings: string | null;
+  status: string;
+  trialEndsAt: string | null;
   createdAt: string;
   _count?: {
     categories: number;

@@ -1,5 +1,6 @@
 import { isSuperAdmin } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { parseSubscriptionInput } from "@/lib/subscription";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       );
     }
 
-    return NextResponse.json({ restaurant });
+    return NextResponse.json({ restaurant }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch restaurant" },
@@ -66,6 +67,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const body = await request.json();
 
     const { name, slug, logoUrl, settings, adminLogin, adminPassword } = body;
+    const subscription = parseSubscriptionInput(body);
 
     const existingRestaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId },
@@ -137,6 +139,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ...(name && { name }),
         ...(slug && { slug }),
         ...(logoUrl !== undefined && { logoUrl }),
+        ...(subscription.status !== undefined && { status: subscription.status }),
+        ...(subscription.trialEndsAt !== undefined && { trialEndsAt: subscription.trialEndsAt }),
         settings: JSON.stringify(mergedSettings),
       },
     });

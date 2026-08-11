@@ -1,6 +1,7 @@
 import { resolveTenantScope } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getRestaurantServiceModeFromSettings } from "@/lib/restaurant";
+import { isRestaurantServable } from "@/lib/subscription";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -18,11 +19,15 @@ export async function POST(request: Request) {
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId },
-      select: { settings: true },
+      select: { settings: true, status: true, trialEndsAt: true },
     });
 
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+    }
+
+    if (!isRestaurantServable(restaurant)) {
+      return NextResponse.json({ error: "This menu is temporarily unavailable" }, { status: 403 });
     }
 
     if (getRestaurantServiceModeFromSettings(restaurant.settings) === "lite") {

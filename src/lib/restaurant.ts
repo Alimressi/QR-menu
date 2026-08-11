@@ -1,4 +1,25 @@
 import prisma from "./prisma";
+import { isRestaurantServable } from "./subscription";
+
+/**
+ * Guard for the public, unauthenticated endpoints that feed the guest menu.
+ *
+ * A suspended tenant must not have its dishes readable or orderable, otherwise
+ * the notice on the menu page is cosmetic — the data is still one API call away.
+ * An unknown restaurant is not servable either.
+ */
+export async function isRestaurantServableById(restaurantId: number): Promise<boolean> {
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+    return false;
+  }
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { status: true, trialEndsAt: true },
+  });
+
+  return restaurant !== null && isRestaurantServable(restaurant);
+}
 
 export async function getRestaurantBySlug(slug: string) {
   const restaurant = await prisma.restaurant.findUnique({

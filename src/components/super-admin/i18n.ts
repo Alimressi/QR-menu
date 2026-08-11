@@ -336,6 +336,9 @@ export const dictionary: Record<
     edit: string;
     delete: string;
     preparingImage: string;
+    subscriptionStatus: string;
+    trialEndsAt: string;
+    status: { trial: string; active: string; past_due: string; disabled: string };
     uploadingImage: string;
     uploadFailed: string;
     saveDishFailed: string;
@@ -408,6 +411,9 @@ export const dictionary: Record<
     edit: "Edit",
     delete: "Delete",
     preparingImage: "Preparing image...",
+    subscriptionStatus: "Subscription status",
+    trialEndsAt: "Trial ends on",
+    status: { trial: "Trial", active: "Active", past_due: "Past due", disabled: "Disabled" },
     uploadingImage: "Uploading image...",
     uploadFailed: "Upload failed.",
     saveDishFailed: "Failed to save dish.",
@@ -479,6 +485,9 @@ export const dictionary: Record<
     edit: "Изменить",
     delete: "Удалить",
     preparingImage: "Подготовка изображения...",
+    subscriptionStatus: "Статус подписки",
+    trialEndsAt: "Триал до",
+    status: { trial: "Триал", active: "Активен", past_due: "Не оплачен", disabled: "Отключён" },
     uploadingImage: "Загрузка изображения...",
     uploadFailed: "Ошибка загрузки.",
     saveDishFailed: "Не удалось сохранить блюдо.",
@@ -550,6 +559,9 @@ export const dictionary: Record<
     edit: "Redakte et",
     delete: "Sil",
     preparingImage: "Sekil hazirlanir...",
+    subscriptionStatus: "Abuneliyin statusu",
+    trialEndsAt: "Sinaq muddeti bitir",
+    status: { trial: "Sinaq", active: "Aktiv", past_due: "Odenilmeyib", disabled: "Sondurulub" },
     uploadingImage: "Sekil yuklenir...",
     uploadFailed: "Yukleme ugursuz oldu.",
     saveDishFailed: "Yemek saxlanmadi.",
