@@ -15,6 +15,17 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  // Dish photos uploaded from the admin panel. Workers have no writable disk, so
+  // uploads go here instead of public/uploads and are served via /api/media/*.
+  //
+  // NOTE: `wrangler deploy` fails while this bucket does not exist. Enable R2 in
+  // the Cloudflare dashboard once, then: npx wrangler r2 bucket create qr-menu-media
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "qr-menu-media"
+    }
+  ],
   "observability": {
     "enabled": true
   }
