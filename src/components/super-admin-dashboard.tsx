@@ -19,6 +19,7 @@ import {
   getFieldLabel,
 } from "./super-admin/i18n";
 import { generatePaletteFromThreeColors } from "./super-admin/palette";
+import { MenuImportPanel } from "./super-admin/menu-import-panel";
 import { DishCard } from "@/components/dish-card";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1175,6 +1176,12 @@ export function SuperAdminDashboard() {
             </button>
           ))}
         </div>
+
+        {tab === "menu" && selectedRestaurantId ? (
+          <div className="mb-6">
+            <MenuImportPanel restaurantId={selectedRestaurantId} onImported={loadMenu} />
+          </div>
+        ) : null}
 
         {tab === "menu" ? (
           <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">

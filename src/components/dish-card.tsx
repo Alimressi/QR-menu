@@ -145,7 +145,9 @@ export function DishCard({
   // The photo-grid classes reserve fixed heights (2-line title, 33px description,
   // mt-auto button) so cards with photos line up. A text-only menu has nothing to
   // line up against, so it hugs its content instead — no empty gaps.
-  const textOnly = !showPhoto;
+  // Bulk-imported dishes start without a photo. An empty src would make
+  // next/image throw, so such a dish renders as text-only until a photo is added.
+  const textOnly = !showPhoto || !dish.imageUrl;
   const bodyCls = textOnly ? "flex flex-col gap-1.5 p-4" : pick(CLASSES.body, variant);
   const titleRowCls = textOnly ? "flex items-start justify-between gap-3" : pick(CLASSES.titleRow, variant);
   const titleCls = textOnly ? "min-w-0 break-words font-serif text-[21px] leading-tight" : pick(CLASSES.title, variant);
@@ -164,7 +166,7 @@ export function DishCard({
     <article
       // Photo-less cards are always block-flow (no side-by-side image column).
       className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${
-        showPhoto ? pick(CLASSES.layout, variant) : "block"
+        !textOnly ? pick(CLASSES.layout, variant) : "block"
       }`}
       onClick={onOpen}
       style={{
@@ -173,7 +175,7 @@ export function DishCard({
         background: design.surfaceColor,
       }}
     >
-      {showPhoto ? (
+      {!textOnly ? (
         <div className={pick(CLASSES.image, variant)}>
           <Image
             src={dish.imageUrl}
