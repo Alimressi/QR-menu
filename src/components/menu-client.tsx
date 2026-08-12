@@ -496,6 +496,20 @@ export function MenuClient({
   // True when categories haven't arrived yet (either no SSR data, or SSR fetched restaurant
   // but /api/categories cold-started and returned []).  Client useEffect refetches as fallback.
   const [isDataLoading, setIsDataLoading] = useState(categories.length === 0 && !!restaurantSlug);
+  // The dish cards are rendered by the browser, never by the server.
+  //
+  // Server-rendering them was costing 366ms of Worker CPU on a 209-dish menu
+  // (measured; 27ms of that was the database, the rest was building the cards)
+  // and pushed Nine Lives past the free plan's limit — guests got Cloudflare's
+  // error page instead of the menu. React hydrated and rebuilt every card on the
+  // device anyway, so the server half was pure duplicate work.
+  //
+  // The menu data still arrives with the page, so there is no extra round trip:
+  // the guest sees the existing skeleton for one frame, then the full menu.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
   const [language, setLanguage] = useState<Language>("az");
   const [tableNumber, setTableNumber] = useState("");
   const [qrTableNumber, setQrTableNumber] = useState("");
@@ -1744,7 +1758,7 @@ export function MenuClient({
         ["--skeleton-shine" as string]: withAlpha(design.primaryColor, 0.18),
       } as React.CSSProperties}
     >
-      {isDataLoading ? (
+      {!hasMounted || isDataLoading ? (
         <div aria-hidden="true">
           {/* Header placeholder */}
           <div
@@ -1793,7 +1807,7 @@ export function MenuClient({
           </div>
         </div>
       ) : null}
-      {!isDataLoading ? (<>
+      {hasMounted && !isDataLoading ? (<>
       <header
         className="fade-up mb-6 rounded-2xl border p-4 shadow-2xl sm:mb-10 sm:rounded-3xl sm:p-10 relative overflow-hidden"
         style={{
