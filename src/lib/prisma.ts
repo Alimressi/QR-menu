@@ -1,4 +1,5 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { PrismaClient } from "@prisma/client";
 
 type PrismaClientLike = PrismaClient;
@@ -7,41 +8,106 @@ function isCloudflareWorkerRuntime() {
   return typeof (globalThis as { WebSocketPair?: unknown }).WebSocketPair !== "undefined";
 }
 
-// Module-level singleton — persists across requests within the same Worker isolate.
-// This avoids re-initialising the Prisma WASM module on every request, which was the
-// primary cause of Cloudflare Error 1102 (CPU time exceeded on the free tier).
-let _sharedClientPromise: Promise<PrismaClientLike> | null = null;
+// Prisma is now ADMIN-ONLY. The guest menu reads through src/lib/menu-query.ts.
+//
+// The client owns I/O handles, and Cloudflare refuses to let one request touch an
+// I/O object created by another:
+//
+//   "Cannot perform I/O on behalf of a different request. (I/O type: Native)"
+//
+// Caching the client at module scope therefore failed ~40% of requests: whichever
+// ones landed on a warm isolate hung until the runtime killed them. Measured on
+// /api/admin/login, which reaches the database before rejecting: 8 failures in 20.
+//
+// So the client is scoped to a single request, keyed on the per-request
+// ExecutionContext. Queries within one request share a client; nothing crosses
+// between requests. The WeakMap lets each client die with its request.
+//
+// Booting a client costs real CPU, which is why this used to be a singleton — a
+// per-request client on the guest menu blew the free plan's budget (Error 1102).
+// That is no longer a concern here: these routes are used by one person clicking
+// in an admin panel, not by every guest scanning a QR code.
+//
+// The module import stays cached globally. It is the expensive half and holds no
+// I/O, so it is safe to keep.
+let _modulePromise: Promise<{
+  PrismaClient: new (options: { adapter: PrismaNeon }) => unknown;
+}> | null = null;
 
-async function initPrismaClient(): Promise<PrismaClientLike> {
-  const connectionString =
-    process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
+const _clientsByRequest = new WeakMap<object, Promise<PrismaClientLike>>();
+
+// Node and `next dev` have no per-request isolation and no such restriction, so a
+// plain singleton is both correct and cheaper there.
+let _nodeClientPromise: Promise<PrismaClientLike> | null = null;
+
+function loadPrismaModule() {
+  if (!_modulePromise) {
+    _modulePromise = (
+      isCloudflareWorkerRuntime() ? import("@prisma/client/wasm") : import("@prisma/client")
+    ).then((mod) => mod as unknown as { PrismaClient: new (o: { adapter: PrismaNeon }) => unknown });
+  }
+
+  return _modulePromise;
+}
+
+async function createPrismaClient(): Promise<PrismaClientLike> {
+  const connectionString = process.env.DATABASE_URL || process.env.DIRECT_DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error(
-      "DATABASE_URL or DIRECT_DATABASE_URL must be set in the runtime environment."
-    );
+    throw new Error("DATABASE_URL or DIRECT_DATABASE_URL must be set in the runtime environment.");
   }
 
+  const { PrismaClient } = await loadPrismaModule();
   const adapter = new PrismaNeon({ connectionString });
 
-  if (isCloudflareWorkerRuntime()) {
-    const { PrismaClient } = await import("@prisma/client/wasm");
-    return new PrismaClient({ adapter }) as PrismaClientLike;
-  }
-
-  const { PrismaClient } = await import("@prisma/client");
   return new PrismaClient({ adapter }) as PrismaClientLike;
 }
 
-function getSharedClient(): Promise<PrismaClientLike> {
-  if (!_sharedClientPromise) {
-    _sharedClientPromise = initPrismaClient().catch((err: unknown) => {
-      // Reset on failure so the next call retries initialisation.
-      _sharedClientPromise = null;
-      throw err;
-    });
+/** The object identifying the current request, or null when there isn't one. */
+async function getRequestKey(): Promise<object | null> {
+  if (!isCloudflareWorkerRuntime()) {
+    return null;
   }
-  return _sharedClientPromise;
+
+  try {
+    const { ctx } = await getCloudflareContext({ async: true });
+    return (ctx as unknown as object) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getClient(): Promise<PrismaClientLike> {
+  const key = await getRequestKey();
+
+  if (!key) {
+    if (isCloudflareWorkerRuntime()) {
+      // On a Worker with no identifiable request, a fresh client is the only safe
+      // choice — sharing one is exactly the bug this file exists to avoid.
+      return createPrismaClient();
+    }
+
+    _nodeClientPromise ??= createPrismaClient().catch((error: unknown) => {
+      _nodeClientPromise = null;
+      throw error;
+    });
+
+    return _nodeClientPromise;
+  }
+
+  const existing = _clientsByRequest.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const created = createPrismaClient().catch((error: unknown) => {
+    // Let the next query in this same request retry initialisation.
+    _clientsByRequest.delete(key);
+    throw error;
+  });
+
+  _clientsByRequest.set(key, created);
+  return created;
 }
 
 function createModelProxy(modelName: string) {
@@ -54,7 +120,7 @@ function createModelProxy(modelName: string) {
         }
 
         return (...args: unknown[]) =>
-          getSharedClient().then((client) => {
+          getClient().then((client) => {
             const model = (client as unknown as Record<string, unknown>)[modelName] as
               | Record<string, (...innerArgs: unknown[]) => Promise<unknown>>
               | undefined;
@@ -66,7 +132,7 @@ function createModelProxy(modelName: string) {
             return model[methodName](...args);
           });
       },
-    }
+    },
   );
 }
 
@@ -80,7 +146,7 @@ const prisma = new Proxy(
 
       if (propertyName.startsWith("$")) {
         return (...args: unknown[]) =>
-          getSharedClient().then((client) => {
+          getClient().then((client) => {
             const method = (client as unknown as Record<string, unknown>)[propertyName] as
               | ((...innerArgs: unknown[]) => Promise<unknown>)
               | undefined;
@@ -95,7 +161,7 @@ const prisma = new Proxy(
 
       return createModelProxy(propertyName);
     },
-  }
+  },
 ) as unknown as PrismaClient;
 
 export default prisma;
