@@ -2243,7 +2243,7 @@ export function MenuClient({
                   <X size={16} className="mx-auto" />
                 </button>
 
-                {showPhotos ? (
+                {showPhotos && dish.imageUrl ? (
                   <div className="px-4 pt-2">
                     <div className="relative mx-auto aspect-[16/10] w-full max-w-[760px] overflow-hidden rounded-2xl border"
                       style={{ borderColor: design.borderColor, background: withAlpha(design.controlSurfaceColor, 0.55) }}
