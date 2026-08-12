@@ -123,7 +123,13 @@ async function measure(env: Env, url: string): Promise<{ failures: number; lastS
   return { failures, lastStatus };
 }
 
-async function runCheck(env: Env): Promise<string> {
+/**
+ * @param simulateDownSlug Treat this restaurant as failing, whatever it really
+ *   does. A fire drill: it exercises the whole chain — state change, message
+ *   wording, delivery — without waiting for a real outage. The next normal run
+ *   then reports the recovery, so the drill cleans up after itself.
+ */
+async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
   let slugs: string[];
 
   try {
@@ -144,7 +150,9 @@ async function runCheck(env: Env): Promise<string> {
 
   for (const slug of slugs) {
     const url = `${env.SITE_URL}/${slug}`;
-    const { failures, lastStatus } = await measure(env, url);
+    const measured = await measure(env, url);
+    const simulated = simulateDownSlug === slug;
+    const { failures, lastStatus } = simulated ? { failures: SAMPLES, lastStatus: 500 } : measured;
     const rate = failures / SAMPLES;
     const down = rate > FAILURE_THRESHOLD;
     const wasDown = previous[slug]?.down ?? false;
@@ -248,7 +256,7 @@ export default {
       );
     }
 
-    const summary = await runCheck(env);
+    const summary = await runCheck(env, url.searchParams.get("simulate") ?? undefined);
 
     return new Response(`${summary}\n`, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
