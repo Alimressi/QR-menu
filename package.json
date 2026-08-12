@@ -15,6 +15,7 @@
     "check:media": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-media.ts",
     "check:subscription": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-subscription.ts",
     "check:menu-import": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-menu-import.ts",
+    "backup": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/backup.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:seed": "prisma db seed",
