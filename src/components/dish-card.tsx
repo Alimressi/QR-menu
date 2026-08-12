@@ -49,6 +49,28 @@ export function formatMenuPrice(value: number, mode: CurrencyMode) {
   return `${value.toFixed(2)} ₼`;
 }
 
+/** Neutral photo placeholder — a framed picture with a mountain and a sun. */
+function ImagePlaceholderIcon() {
+  return (
+    <svg
+      width="26"
+      height="26"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ opacity: 0.55 }}
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.5" />
+      <path d="m21 16-4.5-4.5L9 19" />
+    </svg>
+  );
+}
+
 type ClassSet = Record<DishCardVariant, string>;
 
 const pick = (set: ClassSet, variant: DishCardVariant) => set[variant];
@@ -145,9 +167,12 @@ export function DishCard({
   // The photo-grid classes reserve fixed heights (2-line title, 33px description,
   // mt-auto button) so cards with photos line up. A text-only menu has nothing to
   // line up against, so it hugs its content instead — no empty gaps.
-  // Bulk-imported dishes start without a photo. An empty src would make
-  // next/image throw, so such a dish renders as text-only until a photo is added.
-  const textOnly = !showPhoto || !dish.imageUrl;
+  const textOnly = !showPhoto;
+  // A photo menu keeps its layout even before the photos arrive: a dish imported
+  // in bulk has no imageUrl yet, and dropping it to the text-only layout would
+  // make the grid jump around as photos are added one by one. It gets a
+  // placeholder in the same slot instead. An empty src would throw in next/image.
+  const hasPhoto = showPhoto && !!dish.imageUrl;
   const bodyCls = textOnly ? "flex flex-col gap-1.5 p-4" : pick(CLASSES.body, variant);
   const titleRowCls = textOnly ? "flex items-start justify-between gap-3" : pick(CLASSES.titleRow, variant);
   const titleCls = textOnly ? "min-w-0 break-words font-serif text-[21px] leading-tight" : pick(CLASSES.title, variant);
@@ -166,7 +191,7 @@ export function DishCard({
     <article
       // Photo-less cards are always block-flow (no side-by-side image column).
       className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${
-        !textOnly ? pick(CLASSES.layout, variant) : "block"
+        showPhoto ? pick(CLASSES.layout, variant) : "block"
       }`}
       onClick={onOpen}
       style={{
@@ -175,18 +200,31 @@ export function DishCard({
         background: design.surfaceColor,
       }}
     >
-      {!textOnly ? (
+      {showPhoto ? (
         <div className={pick(CLASSES.image, variant)}>
-          <Image
-            src={dish.imageUrl}
-            alt={dish.name}
-            fill
-            sizes="(max-width: 640px) 140px, 420px"
-            quality={95}
-            unoptimized={isWorkerServedMedia(dish.imageUrl)}
-            className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
-            style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
-          />
+          {hasPhoto ? (
+            <Image
+              src={dish.imageUrl}
+              alt={dish.name}
+              fill
+              sizes="(max-width: 640px) 140px, 420px"
+              quality={95}
+              unoptimized={isWorkerServedMedia(dish.imageUrl)}
+              className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
+              style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
+            />
+          ) : (
+            <div
+              className="flex h-full w-full flex-col items-center justify-center gap-1"
+              style={{
+                background: design.qtyButtonBackground,
+                color: design.mutedTextColor,
+              }}
+            >
+              <ImagePlaceholderIcon />
+              <span className="text-[10px] uppercase tracking-wider">No image</span>
+            </div>
+          )}
           {imageOverlay}
         </div>
       ) : null}

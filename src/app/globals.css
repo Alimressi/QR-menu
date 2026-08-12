@@ -163,43 +163,50 @@ button:active:not(:disabled) {
   }
 }
 
-/* Scoped Dracula theme for superadmin UI only. */
+/* Scoped Dracula "red neon" theme — superadmin only.
+   The guest menus keep their own per-restaurant palettes; nothing here leaks
+   outside .superadmin-dracula. */
 .superadmin-dracula {
   color-scheme: dark;
   color: #f8f8f2;
+  --neon: #ff5555;
+  --neon-bright: #ff7b7b;
+  --neon-dim: rgba(255, 85, 85, 0.28);
   background:
-    radial-gradient(ellipse at 15% 0%, rgba(189, 147, 249, 0.2) 0%, transparent 45%),
-    radial-gradient(ellipse at 85% 100%, rgba(139, 233, 253, 0.14) 0%, transparent 45%),
-    linear-gradient(180deg, #0d1020 0%, #111428 100%);
+    radial-gradient(ellipse at 12% -5%, rgba(255, 85, 85, 0.22) 0%, transparent 48%),
+    radial-gradient(ellipse at 88% 105%, rgba(255, 121, 198, 0.14) 0%, transparent 46%),
+    linear-gradient(180deg, #140d12 0%, #1b0f16 100%);
 }
 
+/* Surfaces: near-black with a warm red cast, so the neon reads as light. */
 .superadmin-dracula .bg-dark-950,
 .superadmin-dracula [class*="bg-dark-950"] {
-  background-color: #0b0e1a !important;
+  background-color: #100a0e !important;
 }
 
 .superadmin-dracula .bg-dark-900,
 .superadmin-dracula [class*="bg-dark-900"] {
-  background-color: #14192b !important;
+  background-color: #1a1016 !important;
 }
 
 .superadmin-dracula .bg-dark-800,
 .superadmin-dracula [class*="bg-dark-800"] {
-  background-color: #1d2340 !important;
+  background-color: #241620 !important;
 }
 
 .superadmin-dracula .bg-dark-700,
 .superadmin-dracula [class*="bg-dark-700"] {
-  background-color: #273153 !important;
+  background-color: #321d2a !important;
 }
 
 .superadmin-dracula .border-dark-700,
 .superadmin-dracula .border-dark-600,
 .superadmin-dracula [class*="border-dark-700"],
 .superadmin-dracula [class*="border-dark-600"] {
-  border-color: #3b4a76 !important;
+  border-color: #4a2634 !important;
 }
 
+/* Text scale: white body, red for emphasis, pink for quiet detail. */
 .superadmin-dracula .text-gold-100,
 .superadmin-dracula [class*="text-gold-100"] {
   color: #f8f8f2 !important;
@@ -207,83 +214,105 @@ button:active:not(:disabled) {
 
 .superadmin-dracula .text-gold-200,
 .superadmin-dracula [class*="text-gold-200"] {
-  color: #d6deff !important;
+  color: #ffd7d7 !important;
 }
 
 .superadmin-dracula .text-gold-300,
 .superadmin-dracula [class*="text-gold-300"] {
-  color: #aab8e6 !important;
+  color: #ffa8a8 !important;
 }
 
 .superadmin-dracula .text-gold-400,
 .superadmin-dracula [class*="text-gold-400"] {
-  color: #8be9fd !important;
+  color: #ff79c6 !important;
 }
 
 .superadmin-dracula .text-gold-500,
 .superadmin-dracula [class*="text-gold-500"] {
-  color: #bd93f9 !important;
+  color: #c98a9c !important;
 }
 
+/* Headings glow rather than shout — a tight halo, not a blur. */
+.superadmin-dracula h1,
+.superadmin-dracula h2,
+.superadmin-dracula h3 {
+  color: #ffe9e9 !important;
+  text-shadow: 0 0 12px rgba(255, 85, 85, 0.45), 0 0 2px rgba(255, 85, 85, 0.6);
+}
+
+/* Primary action: solid neon with a lamp-like spill beneath it. */
 .superadmin-dracula .bg-gold-600,
 .superadmin-dracula .bg-gold-500,
 .superadmin-dracula [class*="bg-gold-600"],
 .superadmin-dracula [class*="bg-gold-500"] {
-  background-color: #bd93f9 !important;
-  color: #0f1022 !important;
-  box-shadow: 0 8px 18px rgba(189, 147, 249, 0.3) !important;
+  background-color: var(--neon) !important;
+  color: #17090d !important;
+  box-shadow: 0 0 0 1px rgba(255, 85, 85, 0.55), 0 8px 26px rgba(255, 85, 85, 0.38) !important;
 }
 
 .superadmin-dracula .hover\:bg-gold-500:hover,
 .superadmin-dracula .hover\:bg-gold-600:hover,
-.superadmin-dracula [class*="hover:bg-gold-500"],
-.superadmin-dracula [class*="hover:bg-gold-600"] {
-  background-color: #caa9fa !important;
+.superadmin-dracula [class*="hover:bg-gold-500"]:hover,
+.superadmin-dracula [class*="hover:bg-gold-600"]:hover {
+  background-color: var(--neon-bright) !important;
+  box-shadow: 0 0 0 1px rgba(255, 123, 123, 0.7), 0 10px 32px rgba(255, 85, 85, 0.5) !important;
 }
 
 .superadmin-dracula [class*="bg-gold-600/20"],
-.superadmin-dracula [class*="bg-gold-500/10"] {
-  background-color: rgba(189, 147, 249, 0.2) !important;
-}
-
+.superadmin-dracula [class*="bg-gold-500/10"],
 .superadmin-dracula .bg-gold-600\/20,
 .superadmin-dracula .bg-gold-500\/10 {
-  background-color: rgba(189, 147, 249, 0.24) !important;
+  background-color: var(--neon-dim) !important;
 }
 
 .superadmin-dracula [class*="bg-rose-600/20"] {
   background-color: rgba(255, 85, 85, 0.22) !important;
 }
 
-.superadmin-dracula .text-dark-950,
 .superadmin-dracula [class*="text-rose-400"] {
-  color: #ff6e6e !important;
+  color: #ff8f8f !important;
 }
 
 .superadmin-dracula .text-dark-950 {
-  color: #101228 !important;
+  color: #17090d !important;
 }
 
 .superadmin-dracula .hover\:bg-dark-700:hover,
-.superadmin-dracula [class*="hover:bg-dark-700"] {
-  background-color: #2a2f47 !important;
+.superadmin-dracula [class*="hover:bg-dark-700"]:hover {
+  background-color: #3a2231 !important;
 }
 
+/* Inputs sit darker than their panel so the neon focus ring stands out. */
 .superadmin-dracula input,
 .superadmin-dracula select,
 .superadmin-dracula textarea {
-  border-color: #3b4a76 !important;
-  background-color: #1b2240 !important;
+  border-color: #4a2634 !important;
+  background-color: #1d1219 !important;
   color: #f8f8f2 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.superadmin-dracula input:focus,
+.superadmin-dracula select:focus,
+.superadmin-dracula textarea:focus {
+  outline: none !important;
+  border-color: var(--neon) !important;
+  box-shadow: 0 0 0 1px var(--neon), 0 0 14px rgba(255, 85, 85, 0.35) !important;
 }
 
 .superadmin-dracula input::placeholder,
 .superadmin-dracula textarea::placeholder {
-  color: #95a2d4 !important;
+  color: #a3798a !important;
 }
 
+/* Panels get a faint red rim so they separate from the background without
+   another border colour. */
 .superadmin-dracula .shadow-sm,
 .superadmin-dracula .shadow-xl,
 .superadmin-dracula .shadow-lg {
-  box-shadow: 0 14px 32px rgba(6, 9, 22, 0.52) !important;
+  box-shadow: 0 0 0 1px rgba(255, 85, 85, 0.08), 0 16px 36px rgba(8, 4, 6, 0.65) !important;
+}
+
+.superadmin-dracula a {
+  color: #ff8f8f;
 }
