@@ -13,12 +13,19 @@ export async function isRestaurantServableById(restaurantId: number): Promise<bo
     return false;
   }
 
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id: restaurantId },
-    select: { status: true, trialEndsAt: true },
-  });
+  try {
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { status: true, trialEndsAt: true },
+    });
 
-  return restaurant !== null && isRestaurantServable(restaurant);
+    return restaurant !== null && isRestaurantServable(restaurant);
+  } catch {
+    // Prisma cold-starts flakily on Workers. A failed lookup must not be read as
+    // "unpaid" — that would take a paying restaurant's menu down over a blip.
+    // Serve, and let the next request decide.
+    return true;
+  }
 }
 
 export async function getRestaurantBySlug(slug: string) {
