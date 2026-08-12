@@ -337,17 +337,19 @@ export function SuperAdminDashboard() {
   const t = dictionary[language];
   const designLabels = designLabelDictionary[language];
 
+  // Inline-style half of the red-neon theme. The class-based half lives in
+  // globals.css under .superadmin-dracula; keep the two in step.
   const dracula = {
-    page: "radial-gradient(ellipse at top left, rgba(189,147,249,0.22) 0%, transparent 42%), radial-gradient(ellipse at bottom right, rgba(139,233,253,0.16) 0%, transparent 38%), linear-gradient(180deg, #0c1021 0%, #12162b 100%)",
-    panel: "#171b33",
-    panelSoft: "#202645",
-    border: "#3f4a76",
+    page: "radial-gradient(ellipse at 12% -5%, rgba(255,85,85,0.22) 0%, transparent 48%), radial-gradient(ellipse at 88% 105%, rgba(255,121,198,0.14) 0%, transparent 46%), linear-gradient(180deg, #140d12 0%, #1b0f16 100%)",
+    panel: "#1a1016",
+    panelSoft: "#241620",
+    border: "#4a2634",
     text: "#f8f8f2",
-    muted: "#aab3d6",
-    accent: "#bd93f9",
-    accentText: "#101223",
-    cyan: "#8be9fd",
-    danger: "#ff6b6b",
+    muted: "#c98a9c",
+    accent: "#ff5555",
+    accentText: "#17090d",
+    cyan: "#ff79c6",
+    danger: "#ff8f8f",
   } as const;
 
   const selectedRestaurant = restaurants.find((restaurant) => restaurant.id === selectedRestaurantId) ?? null;
