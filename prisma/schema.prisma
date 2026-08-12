@@ -56,6 +56,11 @@ model Dish {
   imageUrl       String
   imagePositionX Float        @default(50)
   imagePositionY Float        @default(50)
+
+  /// Today's stop list: the kitchen has run out. The dish stays in the menu,
+  /// shown but not orderable, and comes back with one click. Defaults to false
+  /// so a bad write can never hide a dish that is actually available.
+  soldOut        Boolean      @default(false)
   categoryId     Int
   restaurantId   Int
   category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)

@@ -69,6 +69,7 @@ type Dictionary = {
   qrTableDetected: string;
   placeOrder: string;
   add: string;
+  soldOut: string;
   total: string;
   basket: string;
   empty: string;
@@ -115,6 +116,7 @@ const dictionary: Record<Language, Dictionary> = {
     qrTableDetected: "Detected from QR",
     placeOrder: "Place order",
     add: "Add",
+    soldOut: "Sold out",
     total: "Total",
     basket: "Your orders",
     empty: "You haven't added anything yet",
@@ -159,6 +161,7 @@ const dictionary: Record<Language, Dictionary> = {
     qrTableDetected: "Определен по QR",
     placeOrder: "Сделать заказ",
     add: "Добавить",
+    soldOut: "Закончилось",
     total: "Итого",
     basket: "Ваши заказы",
     empty: "Вы пока ничего не добавили",
@@ -203,6 +206,7 @@ const dictionary: Record<Language, Dictionary> = {
     qrTableDetected: "QR ilə təyin edildi",
     placeOrder: "Sifariş et",
     add: "Əlavə et",
+    soldOut: "Bitib",
     total: "Cəmi",
     basket: "Sifarişləriniz",
     empty: "Hələ heç nə əlavə etməmisiniz",
@@ -2029,9 +2033,11 @@ export function MenuClient({
                       imageUrl: dish.imageUrl,
                       imagePositionX: dish.imagePositionX,
                       imagePositionY: dish.imagePositionY,
+                      soldOut: dish.soldOut,
                     }}
                     design={design}
                     addLabel={t.add}
+                    soldOutLabel={t.soldOut}
                     showPhoto={showPhotos}
                     onOpen={() => openDishModal(dish.id)}
                     onAdd={() => addToCart(dish.id)}

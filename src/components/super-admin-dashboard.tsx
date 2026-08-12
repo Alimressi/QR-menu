@@ -86,6 +86,7 @@ const emptyDishForm: DishForm = {
   categoryId: "",
   imagePositionX: "50",
   imagePositionY: "50",
+  soldOut: false,
 };
 
 const defaultDesign: RestaurantDesignSettings = {
@@ -377,6 +378,7 @@ export function SuperAdminDashboard() {
       imageUrl: dishForm.imageUrl,
       imagePositionX: dishForm.imagePositionX,
       imagePositionY: dishForm.imagePositionY,
+      soldOut: dishForm.soldOut,
     };
   }, [dishForm, language]);
 
@@ -817,6 +819,7 @@ export function SuperAdminDashboard() {
         restaurantId: selectedRestaurantId,
         imagePositionX: Number(dishForm.imagePositionX),
         imagePositionY: Number(dishForm.imagePositionY),
+        soldOut: dishForm.soldOut,
       };
 
       const isEdit = editingDishId !== null;
@@ -856,6 +859,7 @@ export function SuperAdminDashboard() {
       categoryId: String(dish.categoryId),
       imagePositionX: String(dish.imagePositionX ?? 50),
       imagePositionY: String(dish.imagePositionY ?? 50),
+      soldOut: dish.soldOut === true,
     });
     setEditingDishId(dish.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1336,6 +1340,18 @@ export function SuperAdminDashboard() {
                 }}
                 className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100"
               />
+
+              {/* Today's stop list. The dish stays in the menu, greyed out and
+                  unorderable, and comes back by unticking this. */}
+              <label className="flex items-center gap-2 text-sm text-gold-200">
+                <input
+                  type="checkbox"
+                  checked={dishForm.soldOut}
+                  onChange={(e) => setDishForm((prev) => ({ ...prev, soldOut: e.target.checked }))}
+                />
+                {t.soldOut}
+                <span className="text-xs text-gold-500">{t.soldOutHint}</span>
+              </label>
 
               <div className="flex gap-2">
                 <button

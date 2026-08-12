@@ -336,6 +336,8 @@ export const dictionary: Record<
     edit: string;
     delete: string;
     preparingImage: string;
+    soldOut: string;
+    soldOutHint: string;
     subscriptionStatus: string;
     trialEndsAt: string;
     status: { trial: string; active: string; past_due: string; disabled: string };
@@ -411,6 +413,8 @@ export const dictionary: Record<
     edit: "Edit",
     delete: "Delete",
     preparingImage: "Preparing image...",
+    soldOut: "Sold out today",
+    soldOutHint: "stays in the menu, greyed out and not orderable",
     subscriptionStatus: "Subscription status",
     trialEndsAt: "Trial ends on",
     status: { trial: "Trial", active: "Active", past_due: "Past due", disabled: "Disabled" },
@@ -485,6 +489,8 @@ export const dictionary: Record<
     edit: "Изменить",
     delete: "Удалить",
     preparingImage: "Подготовка изображения...",
+    soldOut: "В стоп-листе",
+    soldOutHint: "остаётся в меню, но серым и без заказа",
     subscriptionStatus: "Статус подписки",
     trialEndsAt: "Триал до",
     status: { trial: "Триал", active: "Активен", past_due: "Не оплачен", disabled: "Отключён" },
@@ -559,6 +565,8 @@ export const dictionary: Record<
     edit: "Redakte et",
     delete: "Sil",
     preparingImage: "Sekil hazirlanir...",
+    soldOut: "Bu gun bitib",
+    soldOutHint: "menyuda qalir, amma sifaris edilmir",
     subscriptionStatus: "Abuneliyin statusu",
     trialEndsAt: "Sinaq muddeti bitir",
     status: { trial: "Sinaq", active: "Aktiv", past_due: "Odenilmeyib", disabled: "Sondurulub" },

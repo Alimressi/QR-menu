@@ -31,6 +31,8 @@ export type DishForm = {
   categoryId: string;
   imagePositionX: string;
   imagePositionY: string;
+  /** On today's stop list. */
+  soldOut: boolean;
 };
 
 // Super-admin edits the full settings: the shared render contract (RestaurantDesign)

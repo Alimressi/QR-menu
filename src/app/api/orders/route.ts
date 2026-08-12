@@ -143,6 +143,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Some dishes are unavailable." }, { status: 400 });
     }
 
+    // The menu greys out stop-listed dishes, but the guest's page may have been
+    // open since before the kitchen ran out — and the button is not the only way
+    // to reach this endpoint. Refuse here too, naming the dish so the guest knows
+    // what to drop rather than being told the whole order failed.
+    const soldOut = dishes.filter((dish) => dish.soldOut);
+
+    if (soldOut.length > 0) {
+      return NextResponse.json(
+        {
+          error: `No longer available today: ${soldOut.map((dish) => dish.nameAz).join(", ")}`,
+          soldOutDishIds: soldOut.map((dish) => dish.id),
+        },
+        { status: 409 },
+      );
+    }
+
     const dishMap = new Map(dishes.map((dish) => [dish.id, dish]));
     const optionIds = [...new Set(normalizedItems.map((item) => item.optionId).filter((id): id is number => id !== null))];
     const options = optionIds.length > 0

@@ -35,6 +35,8 @@ export type DishCardData = {
   imageUrl: string;
   imagePositionX: number | string;
   imagePositionY: number | string;
+  /** On the stop list: dimmed, labelled, and not orderable. */
+  soldOut?: boolean;
 };
 
 /**
@@ -148,6 +150,8 @@ type Props = {
   staticImage?: boolean;
   /** When false, the photo is dropped entirely and the card becomes text-only. */
   showPhoto?: boolean;
+  /** Wording for the stop-list badge, in the guest's language. */
+  soldOutLabel?: string;
 };
 
 export function DishCard({
@@ -161,7 +165,11 @@ export function DishCard({
   imageOverlay,
   staticImage = false,
   showPhoto = true,
+  soldOutLabel = "Sold out",
 }: Props) {
+  // A dish on the stop list stays visible — guests should still see what the
+  // kitchen normally offers — but it is dimmed, labelled, and cannot be ordered.
+  const soldOut = dish.soldOut === true;
   const stop = (event: React.MouseEvent) => event.stopPropagation();
 
   // The photo-grid classes reserve fixed heights (2-line title, 33px description,
@@ -193,11 +201,12 @@ export function DishCard({
       className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${
         showPhoto ? pick(CLASSES.layout, variant) : "block"
       }`}
-      onClick={onOpen}
+      onClick={soldOut ? undefined : onOpen}
       style={{
         borderRadius: design.cardRadius,
         borderColor: design.borderColor,
         background: design.surfaceColor,
+        opacity: soldOut ? 0.55 : 1,
       }}
     >
       {showPhoto ? (
@@ -225,6 +234,16 @@ export function DishCard({
               <span className="text-[10px] uppercase tracking-wider">No image</span>
             </div>
           )}
+          {soldOut ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+              <span
+                className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider"
+                style={{ background: design.surfaceColor, color: design.textColor }}
+              >
+                {soldOutLabel}
+              </span>
+            </div>
+          ) : null}
           {imageOverlay}
         </div>
       ) : null}
@@ -253,22 +272,29 @@ export function DishCard({
         <div className={controlsCls}>
           <button
             type="button"
+            disabled={soldOut}
             onClick={(event) => {
               stop(event);
-              onAdd?.();
+              if (!soldOut) {
+                onAdd?.();
+              }
             }}
             className={buttonCls}
             style={{
               borderRadius: design.buttonRadius,
-              backgroundColor: design.primaryColor,
-              color: design.accentTextColor,
+              // A stop-listed dish keeps the button in place so the grid does not
+              // reflow, but it reads as unavailable rather than clickable.
+              backgroundColor: soldOut ? design.qtyButtonBackground : design.primaryColor,
+              color: soldOut ? design.mutedTextColor : design.accentTextColor,
+              cursor: soldOut ? "not-allowed" : undefined,
             }}
           >
-            {addLabel}
+            {soldOut ? soldOutLabel : addLabel}
           </button>
         </div>
 
-        {optionsSlot ? <div className={optionsCls}>{optionsSlot}</div> : null}
+        {/* Picking an option is pointless when the dish cannot be ordered. */}
+        {optionsSlot && !soldOut ? <div className={optionsCls}>{optionsSlot}</div> : null}
       </div>
     </article>
   );

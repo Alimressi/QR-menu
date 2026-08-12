@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
       restaurantId,
       imagePositionX: Number.isFinite(imagePositionX) ? clampPosition(imagePositionX) : 50,
       imagePositionY: Number.isFinite(imagePositionY) ? clampPosition(imagePositionY) : 50,
+      soldOut: body?.soldOut === true,
     };
 
     if (!fallbackName) return NextResponse.json({ error: "At least one dish name language is required." }, { status: 400 });

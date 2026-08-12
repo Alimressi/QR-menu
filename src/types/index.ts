@@ -22,6 +22,8 @@ export type Dish = {
   imagePositionX: number;
   imagePositionY: number;
   categoryId: number;
+  /** On today's stop list — shown in the menu but not orderable. */
+  soldOut?: boolean;
   options?: DishOption[];
 };
 

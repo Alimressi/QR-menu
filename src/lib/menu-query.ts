@@ -91,7 +91,7 @@ export async function findMenuByRestaurantId(restaurantId: number): Promise<Cate
     sql`
       SELECT "id", "nameEn", "nameRu", "nameAz",
              "descriptionEn", "descriptionRu", "descriptionAz",
-             "price", "imageUrl", "imagePositionX", "imagePositionY", "categoryId"
+             "price", "imageUrl", "imagePositionX", "imagePositionY", "categoryId", "soldOut"
       FROM "Dish"
       WHERE "restaurantId" = ${restaurantId}
       ORDER BY "createdAt" DESC
@@ -142,6 +142,7 @@ export async function findMenuByRestaurantId(restaurantId: number): Promise<Cate
       imagePositionX: Number(row.imagePositionX),
       imagePositionY: Number(row.imagePositionY),
       categoryId,
+      soldOut: row.soldOut === true,
       options: optionsByDish.get(id) ?? [],
     };
 
