@@ -123,8 +123,9 @@ export default function TermsPage() {
           by failures at the infrastructure providers we rely on.
         </p>
         <p>
-          If a fault makes your menu unavailable for a prolonged period, tell us and we will credit
-          the affected part of your subscription.
+          You do not pay for days on which your menu was unavailable. Where a fault puts it out of
+          service for a day or more, we credit those days against your next invoice. You do not
+          need to ask: we monitor availability ourselves and apply the credit.
         </p>
       </LegalSection>
 
