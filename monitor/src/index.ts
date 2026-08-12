@@ -174,6 +174,42 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
+    // Finding your own chat id otherwise means reading raw JSON from the
+    // Telegram API. This does that part and prints just the number.
+    if (url.searchParams.get("chatid") === "1") {
+      if (!env.TELEGRAM_BOT_TOKEN) {
+        return new Response("Set TELEGRAM_BOT_TOKEN first.\n", { status: 400 });
+      }
+
+      const updates = await fetch(
+        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getUpdates`,
+      ).then((response) => response.json() as Promise<{ result?: unknown[] }>);
+
+      const chats = new Map<string, string>();
+
+      for (const update of updates.result ?? []) {
+        const chat = (update as { message?: { chat?: { id?: unknown; first_name?: unknown; title?: unknown } } })
+          .message?.chat;
+
+        if (chat && chat.id !== undefined) {
+          chats.set(String(chat.id), String(chat.title ?? chat.first_name ?? ""));
+        }
+      }
+
+      if (chats.size === 0) {
+        return new Response(
+          "No messages found.\n\nSend your bot any message in Telegram first, then reload this page.\n",
+          { headers: { "Content-Type": "text/plain; charset=utf-8" } },
+        );
+      }
+
+      const lines = [...chats].map(([id, name]) => `TELEGRAM_CHAT_ID = ${id}${name ? `   (${name})` : ""}`);
+
+      return new Response(`${lines.join("\n")}\n`, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     if (url.searchParams.get("test") === "1") {
       await sendTelegram(env, "🔔 <b>QR Menu monitor</b>\nTest message — notifications are working.");
       return new Response("Test message sent.\n", {
