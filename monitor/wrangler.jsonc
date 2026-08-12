@@ -1,0 +1,31 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "qr-menu-monitor",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-18",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Deliberately a SEPARATE worker from the app it watches. A monitor that runs
+  // inside the thing it monitors goes quiet exactly when it is needed most —
+  // when the app is the part that is broken.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+
+  "vars": {
+    "SITE_URL": "https://qr-menu.imran-ask-2006.workers.dev"
+  },
+
+  // Remembers whether each menu was up on the previous run, so a menu that stays
+  // down produces one message rather than one every ten minutes.
+  "kv_namespaces": [
+    {
+      "binding": "MONITOR_STATE",
+      "id": "69fc6da1ff0345438a4199fb5ef26263"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

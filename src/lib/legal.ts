@@ -16,14 +16,10 @@ export const LEGAL = {
   /** Public address of the service. Update when the custom domain is live. */
   siteUrl: "https://qr-menu.imran-ask-2006.workers.dev",
 
-  /**
-   * TODO: your legal name exactly as submitted to Lemon Squeezy. If you trade as
-   * an individual rather than a company, that is your full personal name.
-   */
-  operatorLegalName: "[YOUR FULL LEGAL NAME]",
+  /** Must match the identity verified with Lemon Squeezy, or the store review stalls. */
+  operatorLegalName: "Asgarov Alimran",
 
-  /** TODO: registered address. Required by consumer law in most markets. */
-  operatorAddress: "[YOUR ADDRESS]",
+  operatorAddress: "Badamdar, Baku, Azerbaijan",
 
   /** The country whose law governs the agreement and where you operate from. */
   operatorCountry: "Azerbaijan",
