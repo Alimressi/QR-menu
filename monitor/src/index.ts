@@ -22,7 +22,11 @@ type KvStore = {
 type ScheduledEvent = { scheduledTime: number };
 type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
 
+/** Direct Worker-to-Worker channel to the app. See wrangler.jsonc. */
+type ServiceBinding = { fetch(input: string, init?: RequestInit): Promise<Response> };
+
 type Env = {
+  APP: ServiceBinding;
   MONITOR_STATE: KvStore;
   SITE_URL: string;
   DATABASE_URL: string;
@@ -42,25 +46,41 @@ const STATE_KEY = "menu-status";
 
 type MenuState = Record<string, { down: boolean; since: string }>;
 
-async function sendTelegram(env: Env, text: string) {
+/**
+ * Returns what Telegram actually said, rather than assuming it worked.
+ *
+ * This used to swallow failures and report success anyway, which is the worst
+ * possible bug in a monitoring tool: it would have gone on claiming to watch the
+ * menus while sending nothing at all.
+ */
+async function sendTelegram(env: Env, text: string): Promise<{ ok: boolean; detail: string }> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
-    console.error("Telegram is not configured; skipping notification.");
-    return;
+    return { ok: false, detail: "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set." };
   }
 
-  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: env.TELEGRAM_CHAT_ID,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    }),
-  });
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: env.TELEGRAM_CHAT_ID,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    });
 
-  if (!response.ok) {
-    console.error("Telegram rejected the message:", response.status, await response.text());
+    const body = (await response.json()) as { ok?: boolean; description?: string };
+
+    if (response.ok && body.ok) {
+      return { ok: true, detail: "delivered" };
+    }
+
+    const detail = body.description ?? `HTTP ${response.status}`;
+    console.error("Telegram rejected the message:", detail);
+    return { ok: false, detail };
+  } catch (error) {
+    return { ok: false, detail: String(error).slice(0, 200) };
   }
 }
 
@@ -78,13 +98,13 @@ async function getServableSlugs(env: Env): Promise<string[]> {
   return rows.map((row) => String(row.slug));
 }
 
-async function measure(url: string): Promise<{ failures: number; lastStatus: number }> {
+async function measure(env: Env, url: string): Promise<{ failures: number; lastStatus: number }> {
   let failures = 0;
   let lastStatus = 0;
 
   for (let index = 0; index < SAMPLES; index += 1) {
     try {
-      const response = await fetch(url, {
+      const response = await env.APP.fetch(url, {
         headers: { "User-Agent": "qr-menu-monitor" },
         // Never let an edge cache answer for the origin we are testing.
         cache: "no-store",
@@ -124,7 +144,7 @@ async function runCheck(env: Env): Promise<string> {
 
   for (const slug of slugs) {
     const url = `${env.SITE_URL}/${slug}`;
-    const { failures, lastStatus } = await measure(url);
+    const { failures, lastStatus } = await measure(env, url);
     const rate = failures / SAMPLES;
     const down = rate > FAILURE_THRESHOLD;
     const wasDown = previous[slug]?.down ?? false;
@@ -211,10 +231,21 @@ export default {
     }
 
     if (url.searchParams.get("test") === "1") {
-      await sendTelegram(env, "🔔 <b>QR Menu monitor</b>\nTest message — notifications are working.");
-      return new Response("Test message sent.\n", {
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
+      const result = await sendTelegram(
+        env,
+        "🔔 <b>QR Menu monitor</b>\nTest message — notifications are working.",
+      );
+
+      // Telegram's own wording is far more useful than a generic failure:
+      // "chat not found" means you have not pressed Start in the bot yet,
+      // "Unauthorized" means the token is wrong or was revoked.
+      return new Response(
+        result.ok ? "Delivered to Telegram.\n" : `NOT delivered.\nTelegram said: ${result.detail}\n`,
+        {
+          status: result.ok ? 200 : 502,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        },
+      );
     }
 
     const summary = await runCheck(env);

@@ -16,6 +16,21 @@
     "SITE_URL": "https://qr-menu.imran-ask-2006.workers.dev"
   },
 
+  // Cloudflare refuses a plain fetch() from one Worker to another on the same
+  // workers.dev subdomain — it answers with error 1042 rather than reaching the
+  // app. A service binding is the supported path.
+  //
+  // Trade-off worth knowing: this calls the app Worker directly, so it verifies
+  // the app's code and its database, but not DNS, TLS or the public edge in
+  // front of them. It catches the class of failure actually seen in production
+  // (the app itself erroring); a total DNS outage would need an outside checker.
+  "services": [
+    {
+      "binding": "APP",
+      "service": "qr-menu"
+    }
+  ],
+
   // Remembers whether each menu was up on the previous run, so a menu that stays
   // down produces one message rather than one every ten minutes.
   "kv_namespaces": [
