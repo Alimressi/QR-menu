@@ -1,5 +1,5 @@
 import { MenuClient } from "@/components/menu-client";
-import prisma from "@/lib/prisma";
+import { findFirstDishImage, findMenuByRestaurantId, findRestaurantBySlug } from "@/lib/menu-query";
 import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
@@ -17,19 +17,14 @@ type Params = {
 // here after committing its banner (generated via scripts/make-og-banner.mjs).
 const OG_BANNER_SLUGS = new Set(["lumiere"]);
 
-// Base URL works in both Cloudflare Workers (NEXT_PUBLIC_BASE_URL set) and local dev.
-function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
-}
-
 async function fetchCategories(restaurantId: number): Promise<CategoryWithDishes[]> {
+  // Was an HTTP self-fetch to /api/categories — a Worker calling itself just to
+  // read its own database, which the docs warn is unreliable and which doubled
+  // the exposure to the Prisma client bug. Read directly instead.
   try {
-    const res = await fetch(
-      `${getBaseUrl()}/api/categories?restaurantId=${restaurantId}`,
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as CategoryWithDishes[];
+    return await findMenuByRestaurantId(restaurantId);
   } catch {
+    // MenuClient refetches on the client when this comes back empty.
     return [];
   }
 }
@@ -40,10 +35,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // Read straight from Prisma — the API self-fetch is unreliable on the Worker and
   // used to return null here, so the tab/preview title fell back to the raw slug
   // ("lumiere" instead of "Lumière").
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-    select: { id: true, name: true, logoUrl: true, settings: true },
-  });
+  const restaurant = await findRestaurantBySlug(slug).catch(() => null);
 
   if (!restaurant) {
     return { title: slug };
@@ -62,12 +54,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   let imagePath: string | null = OG_BANNER_SLUGS.has(slug) ? `/images/og/${slug}.jpg` : null;
   imagePath ??= restaurant.logoUrl ?? null;
   if (!imagePath) {
-    const dish = await prisma.dish.findFirst({
-      where: { restaurantId: restaurant.id },
-      select: { imageUrl: true },
-      orderBy: { id: "asc" },
-    });
-    imagePath = dish?.imageUrl ?? null;
+    imagePath = await findFirstDishImage(restaurant.id).catch(() => null);
   }
 
   // Build the public origin from the incoming request. NEXT_PUBLIC_BASE_URL is
@@ -113,10 +100,10 @@ export default async function RestaurantPage({ params }: Params) {
   // its own URL is unreliable, so the self-fetch used to return null and the page
   // fell back to the dark default theme, flashing before the client corrected it.
   // Categories (the bulk) still use the cached edge API.
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-    select: { id: true, name: true, logoUrl: true, settings: true, status: true, trialEndsAt: true },
-  });
+  // A cold-start failure here used to throw and render a 500 for the guest.
+  // MenuClient already refetches everything on the client when server data is
+  // missing, so degrade to that instead of failing the page.
+  const restaurant = await findRestaurantBySlug(slug).catch(() => null);
 
   // A lapsed or switched-off tenant serves a notice instead of the menu. The
   // dishes are never fetched, so nothing leaks into the page payload either.

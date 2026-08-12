@@ -1,6 +1,7 @@
 import { requireTenantScope } from "@/lib/auth";
+import { findMenuByRestaurantId, findRestaurantStatusById } from "@/lib/menu-query";
 import prisma from "@/lib/prisma";
-import { isRestaurantServableById } from "@/lib/restaurant";
+import { isRestaurantServable } from "@/lib/subscription";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -17,28 +18,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Public endpoint: a suspended tenant must not have its menu readable here,
-  // or the notice on the menu page would be cosmetic. no-store so a suspension
-  // (or a reactivation) is never held in the edge cache.
-  if (!(await isRestaurantServableById(restaurantId))) {
-    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
-  }
-
   try {
-    const categories = await prisma.category.findMany({
-      where: { restaurantId },
-      include: {
-        dishes: {
-          include: {
-            options: {
-              orderBy: { id: "asc" },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-      orderBy: { id: "asc" },
-    });
+    // Guest path: plain SQL over HTTP, no Prisma. See src/lib/menu-query.ts for
+    // why the WASM client cannot be used on a route guests hit.
+    const subscription = await findRestaurantStatusById(restaurantId);
+
+    // A suspended tenant must not have its menu readable here, or the notice on
+    // the menu page would be cosmetic. A missing row is not servable either.
+    if (subscription !== null && !isRestaurantServable(subscription)) {
+      return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+    }
+
+    const categories = await findMenuByRestaurantId(restaurantId);
 
     return NextResponse.json(categories, {
       headers: {

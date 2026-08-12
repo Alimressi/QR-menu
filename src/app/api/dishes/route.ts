@@ -68,23 +68,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
   }
 
-  const dishes = await prisma.dish.findMany({
-    where: { restaurantId },
-    include: {
-      category: true,
-      options: {
-        orderBy: { id: "asc" },
+  try {
+    const dishes = await prisma.dish.findMany({
+      where: { restaurantId },
+      include: {
+        category: true,
+        options: {
+          orderBy: { id: "asc" },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    });
 
-  // Matches /api/categories: ?fresh=1 is the admin-side, never-cached variant.
-  return NextResponse.json(dishes, {
-    headers: {
-      "Cache-Control": searchParams.get("fresh") === "1" ? "no-store" : "public, s-maxage=60",
-    },
-  });
+    // Matches /api/categories: ?fresh=1 is the admin-side, never-cached variant.
+    return NextResponse.json(dishes, {
+      headers: {
+        "Cache-Control": searchParams.get("fresh") === "1" ? "no-store" : "public, s-maxage=60",
+      },
+    });
+  } catch {
+    // Cold-start failure: empty and uncached, so the client retries on a warm
+    // isolate instead of getting a cached 500. Mirrors /api/categories.
+    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+  }
 }
 
 export async function POST(request: NextRequest) {
