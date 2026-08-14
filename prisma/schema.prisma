@@ -24,6 +24,12 @@ model Restaurant {
   /// When a trial stops counting as served. Ignored unless status is "trial".
   trialEndsAt DateTime?
 
+  /// Lemon Squeezy subscription this tenant is billed through, when it has one.
+  /// The checkout carries restaurant_id as custom data so the first webhook can
+  /// find the tenant; this is how every webhook after it finds them again.
+  lemonSqueezySubscriptionId String? @unique
+  lemonSqueezyCustomerId     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   categories  Category[]

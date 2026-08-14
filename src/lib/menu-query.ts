@@ -226,6 +226,67 @@ export async function findDishesWithCategory(restaurantId: number): Promise<unkn
   }));
 }
 
+/**
+ * Apply a billing webhook to the restaurant it belongs to.
+ *
+ * Finds the tenant by the restaurant_id the checkout carried, and failing that
+ * by the subscription id recorded on a previous webhook. The second route is why
+ * those columns exist: custom data is attached at checkout, so a renewal that
+ * arrives without it must still be able to find its way home rather than let a
+ * paying restaurant slide into past_due.
+ *
+ * The subscription and customer ids are written on every event, so the first
+ * webhook for a new subscription is what establishes the link.
+ */
+export async function applySubscriptionFromBilling(event: {
+  subscriptionId: string;
+  customerId: string | null;
+  restaurantId: number | null;
+  status: string;
+  trialEndsAt: Date | null;
+}): Promise<{ matched: boolean; restaurantId: number | null }> {
+  const sql = getSql();
+
+  // Exactly one row, and an established subscription link beats custom data.
+  //
+  // Two reasons. The mundane one: matching both conditions at once would touch
+  // two rows whenever custom data named one restaurant while the subscription
+  // was already recorded against another, and since the subscription id is
+  // unique that lands as a constraint violation and a 500 Lemon Squeezy retries
+  // for hours.
+  //
+  // The one that matters: restaurant_id is a query parameter on a checkout URL,
+  // so anyone can edit it. If custom data could move an existing subscription,
+  // buying one month against a competitor's id and then cancelling would close
+  // their menu. Once Lemon Squeezy has told us which restaurant a subscription
+  // belongs to, only Lemon Squeezy gets to change it; custom data is trusted
+  // for first contact and nothing else.
+  const rows = (await withRetry(
+    () => sql`
+      UPDATE "Restaurant"
+      SET "status" = ${event.status},
+          "trialEndsAt" = ${event.trialEndsAt},
+          "lemonSqueezySubscriptionId" = ${event.subscriptionId},
+          "lemonSqueezyCustomerId" = ${event.customerId},
+          "updatedAt" = NOW()
+      WHERE "id" = (
+        SELECT "id"
+        FROM "Restaurant"
+        WHERE "lemonSqueezySubscriptionId" = ${event.subscriptionId}
+           OR "id" = ${event.restaurantId}
+        ORDER BY CASE WHEN "lemonSqueezySubscriptionId" = ${event.subscriptionId} THEN 0 ELSE 1 END
+        LIMIT 1
+      )
+      RETURNING "id"
+    `,
+  )) as Array<{ id: number }>;
+
+  return {
+    matched: rows.length > 0,
+    restaurantId: rows[0] ? Number(rows[0].id) : null,
+  };
+}
+
 /** Subscription fields only — the gate the public menu endpoints check. */
 export async function findRestaurantStatusById(
   restaurantId: number,

@@ -23,6 +23,7 @@ const steps = [
   { name: "menu queries", args: ["scripts/check-menu-query.ts"] },
   { name: "snapshot", args: ["scripts/check-snapshot.ts"] },
   { name: "orders", args: ["scripts/check-orders-query.ts"] },
+  { name: "billing", args: ["scripts/check-billing.ts"] },
 ];
 
 const results = [];

@@ -28,7 +28,8 @@
     "check:qr": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-qr-token.ts",
     "check:menu": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-menu-query.ts",
     "check:snapshot": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-snapshot.ts",
-    "check": "node scripts/check-all.mjs"
+    "check": "node scripts/check-all.mjs",
+    "check:billing": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-billing.ts"
   },
   "dependencies": {
     "@prisma/adapter-neon": "^6.16.2",
