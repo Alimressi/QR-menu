@@ -1,4 +1,5 @@
 import { LEGAL } from "@/lib/legal";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 // Shared shell for the Terms and Privacy pages.
@@ -29,9 +30,9 @@ export function LegalPage({
   return (
     <main className="min-h-screen bg-white px-5 py-12 text-neutral-800">
       <article className="mx-auto w-full max-w-2xl">
-        <a href="/" className="text-sm text-neutral-500 underline underline-offset-4">
+        <Link href="/" className="text-sm text-neutral-500 underline underline-offset-4">
           {LEGAL.serviceName}
-        </a>
+        </Link>
 
         <h1 className="mt-6 text-3xl font-semibold tracking-tight text-neutral-900">{title}</h1>
 
@@ -53,13 +54,13 @@ export function LegalPage({
             </a>
           </p>
           <p className="mt-4">
-            <a className="underline underline-offset-4" href="/terms">
+            <Link className="underline underline-offset-4" href="/terms">
               Terms of Service
-            </a>
+            </Link>
             {" · "}
-            <a className="underline underline-offset-4" href="/privacy">
+            <Link className="underline underline-offset-4" href="/privacy">
               Privacy Policy
-            </a>
+            </Link>
           </p>
         </footer>
       </article>
