@@ -31,6 +31,18 @@
     }
   ],
 
+  // The monitor refreshes the last-known-good copy of every menu here, so the app
+  // can still serve one when the database is down. Deliberately the monitor's job
+  // and not the app's: writing these from the guest page put an 85 KB menu in the
+  // app isolate's memory per render and got the Worker killed for exceeding
+  // resources. Same bucket the dish photos live in, under snapshots/menu/.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "qr-menu-media"
+    }
+  ],
+
   // Remembers whether each menu was up on the previous run, so a menu that stays
   // down produces one message rather than one every ten minutes.
   "kv_namespaces": [

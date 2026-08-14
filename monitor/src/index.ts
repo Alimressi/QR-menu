@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { buildMenuSnapshot, snapshotKeyFor } from "../../src/lib/menu-snapshot";
 
 // Uptime watchdog for the guest menus.
 //
@@ -25,8 +26,14 @@ type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
 /** Direct Worker-to-Worker channel to the app. See wrangler.jsonc. */
 type ServiceBinding = { fetch(input: string, init?: RequestInit): Promise<Response> };
 
+/** Only the one method the snapshot refresh needs. */
+type ObjectStore = {
+  put(key: string, value: string, options?: { httpMetadata?: Record<string, string> }): Promise<unknown>;
+};
+
 type Env = {
   APP: ServiceBinding;
+  MEDIA_BUCKET: ObjectStore;
   MONITOR_STATE: KvStore;
   SITE_URL: string;
   DATABASE_URL: string;
@@ -119,6 +126,50 @@ async function getServableSlugs(env: Env): Promise<string[]> {
   throw lastError;
 }
 
+/**
+ * Refresh the last-known-good copy of every menu in R2.
+ *
+ * This used to happen inside the app, on the guest page, after the response was
+ * sent. It cost the app isolate an 85 KB serialised menu per render and its
+ * `exceededResources` kill rate went from 0% to 81% within the hour. Here it
+ * runs in a Worker that carries no Next.js, is already awake on a schedule, and
+ * can fail without a single guest noticing.
+ *
+ * Best effort throughout: a menu that cannot be snapshotted leaves the previous
+ * one in place, which is exactly what a fallback should do.
+ */
+async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
+  // The shared query layer reads its connection string from process.env, which is
+  // how the app's runtime supplies it. Set it explicitly rather than depending on
+  // the Workers runtime mirroring bindings into process.env for us.
+  process.env.DATABASE_URL ||= env.DATABASE_URL;
+
+  let saved = 0;
+  let skipped = 0;
+
+  for (const slug of slugs) {
+    try {
+      const snapshot = await buildMenuSnapshot(slug);
+
+      if (!snapshot) {
+        skipped += 1;
+        continue;
+      }
+
+      await env.MEDIA_BUCKET.put(snapshotKeyFor(slug), JSON.stringify(snapshot), {
+        httpMetadata: { contentType: "application/json", cacheControl: "no-store" },
+      });
+
+      saved += 1;
+    } catch (error) {
+      skipped += 1;
+      console.error(`snapshot failed for ${slug}:`, String(error).slice(0, 200));
+    }
+  }
+
+  return `snapshots: ${saved} saved, ${skipped} skipped`;
+}
+
 async function measure(env: Env, url: string): Promise<{ failures: number; lastStatus: number }> {
   let failures = 0;
   let lastStatus = 0;
@@ -203,6 +254,10 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
   }
 
   await env.MONITOR_STATE.put(STATE_KEY, JSON.stringify(next));
+
+  // After the checks, never before: a slow or failing snapshot refresh must not
+  // delay the thing people actually get alerted by.
+  lines.push(await refreshSnapshots(env, slugs));
 
   return lines.join("\n");
 }

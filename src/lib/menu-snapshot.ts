@@ -1,6 +1,5 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import type { MenuRestaurant } from "./menu-query";
-import type { CategoryWithDishes } from "@/types";
+import { findMenuByRestaurantId, findRestaurantBySlug, type MenuRestaurant } from "./menu-query";
+import type { CategoryWithDishes } from "../types";
 
 // A last-known-good copy of each menu, so a database outage is not a blank table.
 //
@@ -9,29 +8,35 @@ import type { CategoryWithDishes } from "@/types";
 // of throwing, but what it degraded to was an empty menu — and to a guest sitting
 // at a table with a QR code, an empty menu and a dead site are the same thing.
 //
-// The database stays the source of truth. The snapshot is written only after a
-// successful read, and read only after a failed one, so nothing here can serve
-// stale data while the database is healthy: an edit in the admin panel still
-// shows up on the very next load.
+// WHO WRITES THESE: the monitor Worker, not this app. The first version wrote a
+// snapshot from the guest page itself, inside waitUntil. That put an 85 KB
+// serialised menu in the app isolate's memory after every render, and the app's
+// `exceededResources` kill rate went from 0% to 81% within the hour. The monitor
+// already walks every menu on a schedule, is a separate Worker, and carries none
+// of Next.js — it is the right place for housekeeping. See monitor/src/index.ts.
 //
-// R2 is used because it is already bound for dish photos. It needs no new
-// binding, no new namespace, and no dashboard trip. The Cache API would have
-// been the obvious choice and is not usable: it is a silent no-op on a
-// workers.dev subdomain, which is exactly where this app is served from.
+// This module holds only what both sides must agree on: the key, the format, and
+// how a snapshot is built from the database. The app's read path lives in
+// menu-snapshot-store.ts, which is the half that needs a Cloudflare request
+// context; keeping it out of here is what lets the monitor import this file.
+//
+// R2 rather than the Cache API, which is a silent no-op on a workers.dev
+// subdomain — exactly where this app is served from.
+
+/** Imports here stay relative on purpose: the monitor is bundled by esbuild
+ *  without the app's `@/*` path alias. */
 
 const KEY_PREFIX = "snapshots/menu";
-
-/**
- * Do not rewrite a snapshot more often than this. Menus change a few times a
- * week; every guest scan re-reading them would be a write per page view.
- */
-const MIN_WRITE_INTERVAL_MS = 10 * 60 * 1000;
 
 /**
  * Refuse a snapshot older than this. A menu from last month has wrong prices,
  * and wrong prices are worse than an honest "we're having trouble".
  */
-const MAX_SNAPSHOT_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+export const MAX_SNAPSHOT_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function snapshotKeyFor(slug: string) {
+  return `${KEY_PREFIX}/${encodeURIComponent(slug)}.json`;
+}
 
 export type MenuSnapshot = {
   restaurant: MenuRestaurant;
@@ -41,46 +46,55 @@ export type MenuSnapshot = {
 };
 
 /** The JSON shape on disk: Date does not survive a round trip through JSON. */
-type StoredSnapshot = Omit<MenuSnapshot, "restaurant"> & {
+export type StoredSnapshot = Omit<MenuSnapshot, "restaurant"> & {
   restaurant: Omit<MenuRestaurant, "trialEndsAt"> & { trialEndsAt: string | null };
 };
 
-async function getBucket() {
-  try {
-    const { env } = await getCloudflareContext({ async: true });
-    return env.MEDIA_BUCKET ?? null;
-  } catch {
-    // Plain `next dev` without the Cloudflare dev proxy — no bindings exist.
+/**
+ * Read the menu straight from the database and shape it for storage.
+ *
+ * Returns null when there is nothing worth saving — an unknown slug, or a menu
+ * that came back empty. Saving an empty menu would mean the fallback serves
+ * nothing on the day it is finally needed.
+ */
+export async function buildMenuSnapshot(slug: string): Promise<StoredSnapshot | null> {
+  const restaurant = await findRestaurantBySlug(slug);
+
+  if (!restaurant) {
     return null;
   }
-}
 
-function keyFor(slug: string) {
-  return `${KEY_PREFIX}/${encodeURIComponent(slug)}.json`;
+  const categories = await findMenuByRestaurantId(restaurant.id);
+
+  if (categories.length === 0) {
+    return null;
+  }
+
+  return {
+    savedAt: new Date().toISOString(),
+    categories,
+    restaurant: {
+      ...restaurant,
+      trialEndsAt: restaurant.trialEndsAt ? restaurant.trialEndsAt.toISOString() : null,
+    },
+  };
 }
 
 /**
- * The menu as it last looked when the database was working, or null when there
- * is no snapshot, it is too old, or R2 itself is unreachable.
+ * Turn stored JSON back into a usable snapshot, or null when it is unusable.
  *
- * Never throws: this runs on the path where something has already gone wrong.
+ * Never throws: every caller is already on a path where something has gone wrong.
  */
-export async function readMenuSnapshot(slug: string): Promise<MenuSnapshot | null> {
+export function parseMenuSnapshot(raw: unknown): MenuSnapshot | null {
   try {
-    const bucket = await getBucket();
-    if (!bucket) {
-      return null;
-    }
-
-    const object = await bucket.get(keyFor(slug));
-    if (!object) {
-      return null;
-    }
-
-    const stored = (await object.json()) as StoredSnapshot;
-    const savedAt = Date.parse(stored.savedAt);
+    const stored = raw as StoredSnapshot;
+    const savedAt = Date.parse(stored?.savedAt);
 
     if (!Number.isFinite(savedAt) || Date.now() - savedAt > MAX_SNAPSHOT_AGE_MS) {
+      return null;
+    }
+
+    if (!Array.isArray(stored.categories) || !stored.restaurant) {
       return null;
     }
 
@@ -96,52 +110,5 @@ export async function readMenuSnapshot(slug: string): Promise<MenuSnapshot | nul
     };
   } catch {
     return null;
-  }
-}
-
-/**
- * Record a healthy read, unless a recent snapshot already exists.
- *
- * Never throws, and is meant to be handed to `waitUntil` so a guest never waits
- * on it. A failed snapshot write is not worth failing a page that just worked.
- */
-export async function writeMenuSnapshot(
-  slug: string,
-  restaurant: MenuRestaurant,
-  categories: CategoryWithDishes[],
-): Promise<void> {
-  // An empty menu is what a half-broken read looks like. Saving it would mean
-  // the fallback serves nothing on the day it is finally needed.
-  if (categories.length === 0) {
-    return;
-  }
-
-  try {
-    const bucket = await getBucket();
-    if (!bucket) {
-      return;
-    }
-
-    const key = keyFor(slug);
-    const existing = await bucket.head(key);
-
-    if (existing && Date.now() - existing.uploaded.getTime() < MIN_WRITE_INTERVAL_MS) {
-      return;
-    }
-
-    const payload: StoredSnapshot = {
-      savedAt: new Date().toISOString(),
-      categories,
-      restaurant: {
-        ...restaurant,
-        trialEndsAt: restaurant.trialEndsAt ? restaurant.trialEndsAt.toISOString() : null,
-      },
-    };
-
-    await bucket.put(key, JSON.stringify(payload), {
-      httpMetadata: { contentType: "application/json", cacheControl: "no-store" },
-    });
-  } catch {
-    // Best effort by design — see the doc comment.
   }
 }

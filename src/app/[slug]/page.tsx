@@ -5,11 +5,10 @@ import {
   findMenuByRestaurantId,
   findRestaurantBySlug,
 } from "@/lib/menu-query";
-import { readMenuSnapshot, writeMenuSnapshot } from "@/lib/menu-snapshot";
+import { readMenuSnapshot } from "@/lib/menu-snapshot-store";
 import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 
@@ -23,17 +22,6 @@ type Params = {
 // Restaurants with a hand-made social banner at /images/og/<slug>.jpg. Add a slug
 // here after committing its banner (generated via scripts/make-og-banner.mjs).
 const OG_BANNER_SLUGS = new Set(["lumiere"]);
-
-/** Run after the response is sent, where such a thing exists. */
-async function afterResponse(work: Promise<unknown>) {
-  try {
-    const { ctx } = await getCloudflareContext({ async: true });
-    ctx.waitUntil(work);
-  } catch {
-    // `next dev` has no ExecutionContext. Let it run unawaited.
-    void work;
-  }
-}
 
 type LoadedMenu = {
   restaurant: MenuRestaurant | null;
@@ -51,6 +39,10 @@ type LoadedMenu = {
  * August 2026 Neon outage that was every scan for five and a half hours. The
  * database is still tried first and always wins; the snapshot only covers the
  * window where there is otherwise nothing to show.
+ *
+ * This path only ever READS a snapshot. Writing them is the monitor Worker's
+ * job — doing it here, even inside waitUntil, cost the app isolate enough memory
+ * to get it killed. See src/lib/menu-snapshot.ts.
  */
 async function loadMenu(slug: string): Promise<LoadedMenu> {
   // Held outside the try so a restaurant that loaded before the dishes failed is
@@ -73,8 +65,6 @@ async function loadMenu(slug: string): Promise<LoadedMenu> {
     }
 
     const categories = await findMenuByRestaurantId(restaurant.id);
-
-    await afterResponse(writeMenuSnapshot(slug, restaurant, categories));
 
     return { restaurant, categories, degraded: false };
   } catch {

@@ -1,5 +1,5 @@
-import { getSql, withRetry } from "@/lib/db";
-import type { CategoryWithDishes, Dish, DishOption } from "@/types";
+import { getSql, withRetry } from "./db";
+import type { CategoryWithDishes, Dish, DishOption } from "../types";
 
 // The guest menu reads the database WITHOUT Prisma, on purpose — see src/lib/db.ts
 // for why the WASM query engine has no place on a guest-facing path.
