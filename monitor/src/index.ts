@@ -84,18 +84,39 @@ async function sendTelegram(env: Env, text: string): Promise<{ ok: boolean; deta
   }
 }
 
-/** Slugs of restaurants currently served to guests — the ones worth alerting on. */
+/**
+ * Slugs of restaurants currently served to guests — the ones worth alerting on.
+ *
+ * Retried, because Neon's `Control plane request failed` is a wake-up hiccup that
+ * a second attempt usually survives. Without this, one unlucky cold start sent a
+ * "the database is unreachable" alert for a database that was fine — and an alert
+ * that cries wolf is an alert people stop reading.
+ */
 async function getServableSlugs(env: Env): Promise<string[]> {
   const sql = neon(env.DATABASE_URL);
+  const delaysMs = [500, 1500, 3000];
+  let lastError: unknown;
 
-  const rows = (await sql`
-    SELECT "slug"
-    FROM "Restaurant"
-    WHERE "status" IN ('active', 'trial')
-    ORDER BY "id" ASC
-  `) as Array<Record<string, unknown>>;
+  for (let attempt = 0; attempt <= delaysMs.length; attempt += 1) {
+    try {
+      const rows = (await sql`
+        SELECT "slug"
+        FROM "Restaurant"
+        WHERE "status" IN ('active', 'trial')
+        ORDER BY "id" ASC
+      `) as Array<Record<string, unknown>>;
 
-  return rows.map((row) => String(row.slug));
+      return rows.map((row) => String(row.slug));
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < delaysMs.length) {
+        await new Promise((resolve) => setTimeout(resolve, delaysMs[attempt]));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 async function measure(env: Env, url: string): Promise<{ failures: number; lastStatus: number }> {

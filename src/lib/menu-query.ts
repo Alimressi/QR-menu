@@ -36,6 +36,55 @@ function getSql(): SqlClient {
   return _sql;
 }
 
+// Neon answers some requests with a 500 that means "try again", not "this is
+// broken". The one seen in production is the compute wake-up:
+//
+//   NeonDbError: Server error (HTTP status 500):
+//   {"message":"Control plane request failed", ...}
+//
+// The serverless driver does not retry on its own, so a single unlucky wake-up
+// used to be a guest staring at an empty menu. Retrying costs nothing on the
+// happy path and no CPU while waiting — a Worker is not billed for time spent
+// on I/O.
+function isTransientDbError(error: unknown): boolean {
+  const message = String((error as { message?: unknown })?.message ?? error);
+
+  return (
+    message.includes("Control plane request failed") ||
+    // Any Neon 5xx: their gateway is unhappy, the query itself is fine.
+    /Server error \(HTTP status 5\d\d\)/.test(message) ||
+    message.includes("fetch failed") ||
+    message.includes("Connection terminated") ||
+    message.includes("terminating connection") ||
+    message.includes("ECONNRESET")
+  );
+}
+
+/** Waits between attempts. Length is also the cap on added latency: ~1.9s. */
+const RETRY_DELAYS_MS = [200, 600, 1100];
+
+async function withRetry<T>(run: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+
+      // A real error — bad SQL, missing column — must surface immediately
+      // rather than be tried three more times.
+      if (!isTransientDbError(error) || attempt === RETRY_DELAYS_MS.length) {
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+
+  throw lastError;
+}
+
 export type MenuRestaurant = {
   id: number;
   name: string;
@@ -49,12 +98,14 @@ export type MenuRestaurant = {
 export async function findRestaurantBySlug(slug: string): Promise<MenuRestaurant | null> {
   const sql = getSql();
 
-  const rows = (await sql`
-    SELECT "id", "name", "slug", "logoUrl", "settings", "status", "trialEndsAt"
-    FROM "Restaurant"
-    WHERE "slug" = ${slug}
-    LIMIT 1
-  `) as Array<Record<string, unknown>>;
+  const rows = (await withRetry(
+    () => sql`
+      SELECT "id", "name", "slug", "logoUrl", "settings", "status", "trialEndsAt"
+      FROM "Restaurant"
+      WHERE "slug" = ${slug}
+      LIMIT 1
+    `,
+  )) as Array<Record<string, unknown>>;
 
   const row = rows[0];
   if (!row) {
@@ -81,29 +132,33 @@ export async function findRestaurantBySlug(slug: string): Promise<MenuRestaurant
 export async function findMenuByRestaurantId(restaurantId: number): Promise<CategoryWithDishes[]> {
   const sql = getSql();
 
-  const [categoryRows, dishRows, optionRows] = (await Promise.all([
-    sql`
-      SELECT "id", "nameEn", "nameRu", "nameAz"
-      FROM "Category"
-      WHERE "restaurantId" = ${restaurantId}
-      ORDER BY "id" ASC
-    `,
-    sql`
-      SELECT "id", "nameEn", "nameRu", "nameAz",
-             "descriptionEn", "descriptionRu", "descriptionAz",
-             "price", "imageUrl", "imagePositionX", "imagePositionY", "categoryId", "soldOut"
-      FROM "Dish"
-      WHERE "restaurantId" = ${restaurantId}
-      ORDER BY "createdAt" DESC
-    `,
-    sql`
-      SELECT o."id", o."dishId", o."nameEn", o."nameRu", o."nameAz", o."price"
-      FROM "DishOption" o
-      JOIN "Dish" d ON d."id" = o."dishId"
-      WHERE d."restaurantId" = ${restaurantId}
-      ORDER BY o."id" ASC
-    `,
-  ])) as Array<Array<Record<string, unknown>>>;
+  // Retried as one unit: if any of the three fails the menu is incomplete
+  // anyway, and re-running all three is a single extra round trip.
+  const [categoryRows, dishRows, optionRows] = (await withRetry(() =>
+    Promise.all([
+      sql`
+        SELECT "id", "nameEn", "nameRu", "nameAz"
+        FROM "Category"
+        WHERE "restaurantId" = ${restaurantId}
+        ORDER BY "id" ASC
+      `,
+      sql`
+        SELECT "id", "nameEn", "nameRu", "nameAz",
+               "descriptionEn", "descriptionRu", "descriptionAz",
+               "price", "imageUrl", "imagePositionX", "imagePositionY", "categoryId", "soldOut"
+        FROM "Dish"
+        WHERE "restaurantId" = ${restaurantId}
+        ORDER BY "createdAt" DESC
+      `,
+      sql`
+        SELECT o."id", o."dishId", o."nameEn", o."nameRu", o."nameAz", o."price"
+        FROM "DishOption" o
+        JOIN "Dish" d ON d."id" = o."dishId"
+        WHERE d."restaurantId" = ${restaurantId}
+        ORDER BY o."id" ASC
+      `,
+    ]),
+  )) as Array<Array<Record<string, unknown>>>;
 
   const optionsByDish = new Map<number, DishOption[]>();
   for (const row of optionRows) {
@@ -170,13 +225,15 @@ export async function findMenuByRestaurantId(restaurantId: number): Promise<Cate
 export async function findFirstDishImage(restaurantId: number): Promise<string | null> {
   const sql = getSql();
 
-  const rows = (await sql`
-    SELECT "imageUrl"
-    FROM "Dish"
-    WHERE "restaurantId" = ${restaurantId}
-    ORDER BY "id" ASC
-    LIMIT 1
-  `) as Array<Record<string, unknown>>;
+  const rows = (await withRetry(
+    () => sql`
+      SELECT "imageUrl"
+      FROM "Dish"
+      WHERE "restaurantId" = ${restaurantId}
+      ORDER BY "id" ASC
+      LIMIT 1
+    `,
+  )) as Array<Record<string, unknown>>;
 
   const imageUrl = rows[0]?.imageUrl;
   return typeof imageUrl === "string" && imageUrl ? imageUrl : null;
@@ -188,12 +245,14 @@ export async function findRestaurantStatusById(
 ): Promise<{ status: string; trialEndsAt: Date | null } | null> {
   const sql = getSql();
 
-  const rows = (await sql`
-    SELECT "status", "trialEndsAt"
-    FROM "Restaurant"
-    WHERE "id" = ${restaurantId}
-    LIMIT 1
-  `) as Array<Record<string, unknown>>;
+  const rows = (await withRetry(
+    () => sql`
+      SELECT "status", "trialEndsAt"
+      FROM "Restaurant"
+      WHERE "id" = ${restaurantId}
+      LIMIT 1
+    `,
+  )) as Array<Record<string, unknown>>;
 
   const row = rows[0];
   if (!row) {

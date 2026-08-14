@@ -1,8 +1,15 @@
 import { MenuClient } from "@/components/menu-client";
-import { findFirstDishImage, findMenuByRestaurantId, findRestaurantBySlug } from "@/lib/menu-query";
+import {
+  type MenuRestaurant,
+  findFirstDishImage,
+  findMenuByRestaurantId,
+  findRestaurantBySlug,
+} from "@/lib/menu-query";
+import { readMenuSnapshot, writeMenuSnapshot } from "@/lib/menu-snapshot";
 import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 
@@ -17,15 +24,78 @@ type Params = {
 // here after committing its banner (generated via scripts/make-og-banner.mjs).
 const OG_BANNER_SLUGS = new Set(["lumiere"]);
 
-async function fetchCategories(restaurantId: number): Promise<CategoryWithDishes[]> {
+/** Run after the response is sent, where such a thing exists. */
+async function afterResponse(work: Promise<unknown>) {
+  try {
+    const { ctx } = await getCloudflareContext({ async: true });
+    ctx.waitUntil(work);
+  } catch {
+    // `next dev` has no ExecutionContext. Let it run unawaited.
+    void work;
+  }
+}
+
+type LoadedMenu = {
+  restaurant: MenuRestaurant | null;
+  categories: CategoryWithDishes[];
+  /** True when the database failed and this came out of the R2 snapshot. */
+  degraded: boolean;
+};
+
+/**
+ * The menu, from the database when it answers and from the last good snapshot
+ * when it does not.
+ *
+ * Reads used to be individually try/caught, which never threw but could return a
+ * restaurant with no dishes — a blank menu on a guest's phone. During the 13
+ * August 2026 Neon outage that was every scan for five and a half hours. The
+ * database is still tried first and always wins; the snapshot only covers the
+ * window where there is otherwise nothing to show.
+ */
+async function loadMenu(slug: string): Promise<LoadedMenu> {
+  // Held outside the try so a restaurant that loaded before the dishes failed is
+  // not thrown away — its name and theme are still the right ones to paint with.
+  let restaurant: MenuRestaurant | null = null;
+
   // Was an HTTP self-fetch to /api/categories — a Worker calling itself just to
   // read its own database, which the docs warn is unreliable and which doubled
   // the exposure to the Prisma client bug. Read directly instead.
   try {
-    return await findMenuByRestaurantId(restaurantId);
+    restaurant = await findRestaurantBySlug(slug);
+
+    if (!restaurant) {
+      // A genuinely unknown slug, not a failure. Nothing to fall back to.
+      return { restaurant: null, categories: [], degraded: false };
+    }
+
+    if (!isRestaurantServable(restaurant)) {
+      return { restaurant, categories: [], degraded: false };
+    }
+
+    const categories = await findMenuByRestaurantId(restaurant.id);
+
+    await afterResponse(writeMenuSnapshot(slug, restaurant, categories));
+
+    return { restaurant, categories, degraded: false };
   } catch {
-    // MenuClient refetches on the client when this comes back empty.
-    return [];
+    const snapshot = await readMenuSnapshot(slug);
+
+    if (!snapshot) {
+      // MenuClient refetches on the client when this comes back empty.
+      return { restaurant, categories: [], degraded: false };
+    }
+
+    // Live data beats the snapshot wherever we have it: if the restaurant row
+    // was read successfully, only the dishes come from the snapshot.
+    const effective = restaurant ?? snapshot.restaurant;
+
+    // The snapshot carries the subscription fields it was saved with, so a
+    // tenant switched off since then is still not served a menu.
+    if (!isRestaurantServable(effective)) {
+      return { restaurant: effective, categories: [], degraded: true };
+    }
+
+    return { restaurant: effective, categories: snapshot.categories, degraded: true };
   }
 }
 
@@ -96,19 +166,24 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function RestaurantPage({ params }: Params) {
   const { slug } = await params;
 
-  // The restaurant (name + theme) comes straight from Prisma: a Worker fetching
-  // its own URL is unreliable, so the self-fetch used to return null and the page
-  // fell back to the dark default theme, flashing before the client corrected it.
-  // Categories (the bulk) still use the cached edge API.
+  // The restaurant (name + theme) comes straight from the database: a Worker
+  // fetching its own URL is unreliable, so the self-fetch used to return null and
+  // the page fell back to the dark default theme, flashing before the client
+  // corrected it.
   // A cold-start failure here used to throw and render a 500 for the guest.
   // MenuClient already refetches everything on the client when server data is
   // missing, so degrade to that instead of failing the page.
-  const restaurant = await findRestaurantBySlug(slug).catch(() => null);
+  const { restaurant, categories, degraded } = await loadMenu(slug);
+
+  if (degraded) {
+    // Observability is on for this Worker, so this is the trail that says the
+    // guests were served from R2 rather than from a working database.
+    console.warn(`Served ${slug} from the menu snapshot: the database read failed.`);
+  }
 
   // A lapsed or switched-off tenant serves a notice instead of the menu. The
   // dishes are never fetched, so nothing leaks into the page payload either.
   const suspended = restaurant !== null && !isRestaurantServable(restaurant);
-  const categories = restaurant && !suspended ? await fetchCategories(restaurant.id) : [];
   // Credentials live in the same settings blob and would otherwise be serialized
   // into the client props (visible in the page's RSC payload) — strip them here.
   const settings = getPublicSettingsFromRaw(restaurant?.settings);

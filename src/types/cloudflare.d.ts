@@ -11,20 +11,29 @@ interface MediaBucketHttpMetadata {
   cacheControl?: string;
 }
 
-interface MediaBucketObject {
-  body: ReadableStream;
+/** What `head()` returns: metadata only, no body. */
+interface MediaBucketObjectHead {
   httpMetadata?: MediaBucketHttpMetadata;
   httpEtag: string;
   size: number;
+  /** Write time. Used to rate-limit menu snapshot writes (src/lib/menu-snapshot.ts). */
+  uploaded: Date;
+}
+
+interface MediaBucketObject extends MediaBucketObjectHead {
+  body: ReadableStream;
+  json(): Promise<unknown>;
 }
 
 interface MediaBucket {
   put(
     key: string,
-    value: ArrayBuffer,
+    // Strings are allowed for the JSON menu snapshots; photos pass an ArrayBuffer.
+    value: ArrayBuffer | string,
     options?: { httpMetadata?: MediaBucketHttpMetadata },
   ): Promise<unknown>;
   get(key: string): Promise<MediaBucketObject | null>;
+  head(key: string): Promise<MediaBucketObjectHead | null>;
   delete(key: string): Promise<void>;
 }
 
