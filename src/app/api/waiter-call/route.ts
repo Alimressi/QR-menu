@@ -1,5 +1,5 @@
 import { resolveTenantScope } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { createWaiterCall, findActiveWaiterCalls, findRestaurantForOrdering } from "@/lib/orders-query";
 import { getRestaurantServiceModeFromSettings } from "@/lib/restaurant";
 import { isRestaurantServable } from "@/lib/subscription";
 import { NextRequest, NextResponse } from "next/server";
@@ -17,10 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId },
-      select: { settings: true, status: true, trialEndsAt: true },
-    });
+    const restaurant = await findRestaurantForOrdering(restaurantId);
 
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
@@ -34,13 +31,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Waiter call is unavailable in Lite mode" }, { status: 403 });
     }
 
-    const call = await prisma.waiterCall.create({
-      data: {
-        tableNumber,
-        restaurantId,
-        status: "active",
-      },
-    });
+    const call = await createWaiterCall(tableNumber, restaurantId);
 
     return NextResponse.json({ success: true, call });
   } catch {
@@ -62,13 +53,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: scope.error }, { status: scope.status });
     }
 
-    const calls = await prisma.waiterCall.findMany({
-      where: {
-        status: "active",
-        ...(scope.restaurantId ? { restaurantId: scope.restaurantId } : {}),
-      },
-      orderBy: { createdAt: "asc" },
-    });
+    const calls = await findActiveWaiterCalls(scope.restaurantId || null);
 
     return NextResponse.json({ calls });
   } catch {

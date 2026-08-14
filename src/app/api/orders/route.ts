@@ -1,11 +1,20 @@
 import { resolveTenantScope } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import {
+  type NewOrderItem,
+  createOrderWithItems,
+  findActiveOrderWithItems,
+  findDishOptionsForOrder,
+  findDishesForOrder,
+  findLatestPaidOrderUpdatedAt,
+  findOrderWithItemsById,
+  findOrdersWithItems,
+  findRestaurantForOrdering,
+  mergeItemsIntoOrder,
+} from "@/lib/orders-query";
 import { getRestaurantServiceModeFromSettings } from "@/lib/restaurant";
 import { isRestaurantServable } from "@/lib/subscription";
 import { verifyQrSessionToken } from "@/lib/qr-token";
 import { NextRequest, NextResponse } from "next/server";
-
-const ACTIVE_ORDER_STATUSES = ["new", "preparing"];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,15 +26,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: scope.error }, { status: scope.status });
   }
 
-  const orders = await prisma.order.findMany({
-    where: scope.restaurantId ? { restaurantId: scope.restaurantId } : undefined,
-    include: {
-      items: {
-        orderBy: { id: "asc" },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const orders = await findOrdersWithItems(scope.restaurantId || null);
 
   return NextResponse.json(orders);
 }
@@ -66,10 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "QR session does not belong to this restaurant." }, { status: 400 });
     }
 
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId },
-      select: { settings: true, status: true, trialEndsAt: true },
-    });
+    const restaurant = await findRestaurantForOrdering(restaurantId);
 
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
@@ -88,21 +86,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ordering is unavailable in Lite mode." }, { status: 403 });
     }
 
-    const latestPaidOrder = await prisma.order.findFirst({
-      where: {
-        tableNumber,
-        restaurantId,
-        status: "paid",
-      },
-      select: {
-        updatedAt: true,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+    const latestPaidAt = await findLatestPaidOrderUpdatedAt(tableNumber, restaurantId);
 
-    if (latestPaidOrder && latestPaidOrder.updatedAt.getTime() >= verifiedSession.issuedAt) {
+    if (latestPaidAt && latestPaidAt.getTime() >= verifiedSession.issuedAt) {
       return NextResponse.json(
         { error: "QR session is closed after payment. Please scan the table QR again." },
         { status: 401 },
@@ -132,12 +118,7 @@ export async function POST(request: Request) {
     }
 
     const dishIds = [...new Set<number>(normalizedItems.map((item) => item.dishId))];
-    const dishes = await prisma.dish.findMany({ 
-      where: { 
-        id: { in: dishIds },
-        restaurantId,
-      } 
-    });
+    const dishes = await findDishesForOrder(dishIds, restaurantId);
 
     if (dishes.length !== dishIds.length) {
       return NextResponse.json({ error: "Some dishes are unavailable." }, { status: 400 });
@@ -161,19 +142,10 @@ export async function POST(request: Request) {
 
     const dishMap = new Map(dishes.map((dish) => [dish.id, dish]));
     const optionIds = [...new Set(normalizedItems.map((item) => item.optionId).filter((id): id is number => id !== null))];
-    const options = optionIds.length > 0
-      ? await prisma.dishOption.findMany({
-          where: {
-            id: { in: optionIds },
-            dish: {
-              restaurantId,
-            },
-          },
-        })
-      : [];
+    const options = await findDishOptionsForOrder(optionIds, restaurantId);
     const optionMap = new Map(options.map((option) => [option.id, option]));
 
-    const items = normalizedItems.map((item) => {
+    const items: NewOrderItem[] = normalizedItems.map((item) => {
       const dish = dishMap.get(item.dishId);
 
       if (!dish) {
@@ -208,102 +180,34 @@ export async function POST(request: Request) {
       };
     });
 
-    const existingOrder = await prisma.order.findFirst({
-      where: {
-        tableNumber,
-        restaurantId,
-        status: {
-          in: ACTIVE_ORDER_STATUSES,
-        },
-      },
-      include: {
-        items: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const existingOrder = await findActiveOrderWithItems(tableNumber, restaurantId);
 
     if (!existingOrder) {
       const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-      const order = await prisma.order.create({
-        data: {
-          tableNumber,
-          restaurantId,
-          total,
-          items: {
-            create: items,
-          },
-        },
-        include: {
-          items: {
-            orderBy: { id: "asc" },
-          },
-        },
-      });
+      const order = await createOrderWithItems(tableNumber, restaurantId, total, items);
 
       return NextResponse.json({ order, mergedIntoExisting: false }, { status: 201 });
     }
 
     const existingItemsMap = new Map(existingOrder.items.map((item) => [`${item.dishId}:${item.optionId ?? "none"}`, item]));
 
-    const newItemsToCreate = items.filter((item) => !existingItemsMap.has(`${item.dishId}:${item.optionId ?? "none"}`));
+    const quantityIncrements: Array<{ orderItemId: number; addQuantity: number }> = [];
+    const newItemsToCreate: NewOrderItem[] = [];
 
-    await prisma.$transaction(async (tx) => {
-      for (const item of items) {
-        const existingItem = existingItemsMap.get(`${item.dishId}:${item.optionId ?? "none"}`);
+    for (const item of items) {
+      const existingItem = existingItemsMap.get(`${item.dishId}:${item.optionId ?? "none"}`);
 
-        if (existingItem) {
-          await tx.orderItem.update({
-            where: { id: existingItem.id },
-            data: {
-              quantity: existingItem.quantity + item.quantity,
-            },
-          });
-        }
+      if (existingItem) {
+        quantityIncrements.push({ orderItemId: existingItem.id, addQuantity: item.quantity });
+      } else {
+        newItemsToCreate.push(item);
       }
+    }
 
-      if (newItemsToCreate.length > 0) {
-        await tx.orderItem.createMany({
-          data: newItemsToCreate.map((item) => ({
-            orderId: existingOrder.id,
-            dishId: item.dishId,
-            optionId: item.optionId,
-            quantity: item.quantity,
-            price: item.price,
-            nameEn: item.nameEn,
-            nameRu: item.nameRu,
-            nameAz: item.nameAz,
-            optionNameEn: item.optionNameEn,
-            optionNameRu: item.optionNameRu,
-            optionNameAz: item.optionNameAz,
-          })),
-        });
-      }
+    await mergeItemsIntoOrder(existingOrder.id, quantityIncrements, newItemsToCreate);
 
-      const allOrderItems = await tx.orderItem.findMany({
-        where: { orderId: existingOrder.id },
-      });
-
-      const recalculatedTotal = allOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-      await tx.order.update({
-        where: { id: existingOrder.id },
-        data: {
-          total: recalculatedTotal,
-        },
-      });
-    });
-
-    const updatedOrder = await prisma.order.findUnique({
-      where: { id: existingOrder.id },
-      include: {
-        items: {
-          orderBy: { id: "asc" },
-        },
-      },
-    });
+    const updatedOrder = await findOrderWithItemsById(existingOrder.id);
 
     return NextResponse.json({ order: updatedOrder, mergedIntoExisting: true }, { status: 200 });
   } catch (error) {

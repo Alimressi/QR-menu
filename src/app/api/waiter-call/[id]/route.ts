@@ -1,5 +1,5 @@
 import { resolveTenantScope } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { findWaiterCallRestaurantId, updateWaiterCallStatus } from "@/lib/orders-query";
 import { NextRequest, NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -29,26 +29,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
     }
 
-    const existing = await prisma.waiterCall.findUnique({
-      where: { id: callId },
-      select: { restaurantId: true },
-    });
+    const ownerRestaurantId = await findWaiterCallRestaurantId(callId);
 
-    if (!existing) {
+    if (ownerRestaurantId === null) {
       return NextResponse.json({ error: "Waiter call not found." }, { status: 404 });
     }
 
-    if (scope.role === "RESTAURANT_ADMIN" && existing.restaurantId !== scope.restaurantId) {
+    if (scope.role === "RESTAURANT_ADMIN" && ownerRestaurantId !== scope.restaurantId) {
       return NextResponse.json({ error: "Forbidden: restaurant mismatch." }, { status: 403 });
     }
 
-    const call = await prisma.waiterCall.update({
-      where: { id: callId },
-      data: {
-        status,
-        resolvedAt: status === "resolved" ? new Date() : null,
-      },
-    });
+    const call = await updateWaiterCallStatus(callId, status);
 
     return NextResponse.json({ success: true, call });
   } catch {
