@@ -1,6 +1,8 @@
 import { MenuClient } from "@/components/menu-client";
+import { LEGAL } from "@/lib/legal";
 import { findFirstRestaurant, findMenuByRestaurantId } from "@/lib/menu-query";
 import { getRestaurantSettings } from "@/lib/restaurant";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,6 +38,26 @@ export default async function Home() {
         logoUrl={defaultRestaurant.logoUrl}
         restaurantName={defaultRestaurant.name}
       />
+
+      {/*
+        The only route that links to the policies, and deliberately so.
+        "/" is the address given to Lemon Squeezy, so it is where a reviewer
+        lands — and pages nothing links to are pages a reviewer does not find.
+        A guest scanning a table QR arrives at /<slug> instead and still sees a
+        clean menu with no legal furniture on it.
+      */}
+      <footer className="mx-auto mt-10 max-w-2xl px-5 text-center text-xs opacity-60">
+        <Link href="/terms" className="underline underline-offset-4">
+          Terms of Service
+        </Link>
+        <span aria-hidden> · </span>
+        <Link href="/privacy" className="underline underline-offset-4">
+          Privacy Policy
+        </Link>
+        <p className="mt-2">
+          {LEGAL.operatorLegalName} · {LEGAL.contactEmail}
+        </p>
+      </footer>
     </div>
   );
 }

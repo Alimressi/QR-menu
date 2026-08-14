@@ -311,6 +311,8 @@ export function SuperAdminDashboard() {
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
+  /** Which restaurant's checkout link was just copied, for the button's label. */
+  const [copiedBillingFor, setCopiedBillingFor] = useState<number | null>(null);
   const [categories, setCategories] = useState<CategoryWithDishes[]>([]);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dishSearchQuery, setDishSearchQuery] = useState("");
@@ -950,6 +952,37 @@ export function SuperAdminDashboard() {
     setRestaurantForm(emptyRestaurantForm());
     setEditingRestaurantId(null);
     await loadRestaurants();
+  }
+
+  /**
+   * Copy the checkout link for one restaurant.
+   *
+   * Built on the server, because the link carries this restaurant's id as custom
+   * data and that is what ties the payment back to them when the webhook lands.
+   * Hand a venue the wrong link and you switch on somebody else's menu.
+   */
+  async function copyBillingLink(restaurantId: number) {
+    try {
+      const response = await fetch(`/api/superadmin/checkout-link?restaurantId=${restaurantId}`, {
+        cache: "no-store",
+      });
+
+      const data = (await response.json()) as { url?: string; error?: string };
+
+      if (!response.ok || !data.url) {
+        alert(data.error || "Could not build the checkout link.");
+        return;
+      }
+
+      await navigator.clipboard.writeText(data.url);
+      setCopiedBillingFor(restaurantId);
+      setTimeout(() => setCopiedBillingFor((current) => (current === restaurantId ? null : current)), 2000);
+    } catch {
+      // Clipboard access is refused outside a secure context, and on http://
+      // during local development that is every time. Show the link so it can
+      // still be copied by hand rather than failing silently.
+      alert("Could not copy automatically. Open the network tab for the link, or try again over HTTPS.");
+    }
   }
 
   function editRestaurant(restaurant: Restaurant) {
@@ -1663,6 +1696,14 @@ export function SuperAdminDashboard() {
                       className="min-h-9 flex-1 rounded-lg bg-gold-600/20 px-3 py-1 text-sm text-gold-400 hover:bg-gold-600/30"
                     >
                       Manage Menu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyBillingLink(restaurant.id)}
+                      title="Copy the Lemon Squeezy checkout link for this restaurant"
+                      className="min-h-9 rounded-lg border border-dark-600 bg-dark-800 px-3 py-1 text-sm text-gold-300 hover:bg-dark-700"
+                    >
+                      {copiedBillingFor === restaurant.id ? "Copied" : "Billing link"}
                     </button>
                     <button
                       type="button"

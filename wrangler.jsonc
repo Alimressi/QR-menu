@@ -6,7 +6,13 @@
   "compatibility_date": "2026-04-18",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "NEXT_PUBLIC_BASE_URL": "https://qr-menu.imran-ask-2006.workers.dev"
+    "NEXT_PUBLIC_BASE_URL": "https://qr-menu.imran-ask-2006.workers.dev",
+
+    // Not secrets: both appear in the checkout URL a restaurant opens. The
+    // signing secret that actually protects the webhook is set separately with
+    // `wrangler secret put LEMON_SQUEEZY_WEBHOOK_SECRET`.
+    "LEMON_SQUEEZY_STORE_URL": "https://qrmenu.lemonsqueezy.com",
+    "LEMON_SQUEEZY_VARIANT_ID": "8a7425fc-ffa4-47e3-bdbd-e862f9c156f3"
   },
   "ai": {
     "binding": "AI"
