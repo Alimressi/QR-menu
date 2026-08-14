@@ -209,7 +209,18 @@ async function measure(env: Env, url: string): Promise<{ failures: number; lastS
       });
 
       lastStatus = response.status;
-      if (!response.ok) {
+
+      // Drain the body. Reading the status alone leaves the response stream
+      // hanging, which is why every one of these invocations was recorded as
+      // `clientDisconnected` — and those are the only invocations Cloudflare has
+      // ever killed here with `exceededResources`. The app Worker holds the page
+      // it rendered until somebody reads it.
+      //
+      // It also makes the check honest. A 200 whose body never arrived, or
+      // arrived empty, used to be counted as a healthy menu.
+      const body = await response.text();
+
+      if (!response.ok || body.length === 0) {
         failures += 1;
       }
     } catch {
