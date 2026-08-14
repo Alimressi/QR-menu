@@ -14,6 +14,18 @@ export type MenuRestaurant = {
   trialEndsAt: Date | null;
 };
 
+function toMenuRestaurant(row: Record<string, unknown>): MenuRestaurant {
+  return {
+    id: Number(row.id),
+    name: String(row.name),
+    slug: String(row.slug),
+    logoUrl: row.logoUrl === null ? null : String(row.logoUrl),
+    settings: row.settings === null ? null : String(row.settings),
+    status: typeof row.status === "string" ? row.status : "active",
+    trialEndsAt: row.trialEndsAt ? new Date(row.trialEndsAt as string) : null,
+  };
+}
+
 export async function findRestaurantBySlug(slug: string): Promise<MenuRestaurant | null> {
   const sql = getSql();
 
@@ -26,20 +38,7 @@ export async function findRestaurantBySlug(slug: string): Promise<MenuRestaurant
     `,
   )) as Array<Record<string, unknown>>;
 
-  const row = rows[0];
-  if (!row) {
-    return null;
-  }
-
-  return {
-    id: Number(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    logoUrl: row.logoUrl === null ? null : String(row.logoUrl),
-    settings: row.settings === null ? null : String(row.settings),
-    status: typeof row.status === "string" ? row.status : "active",
-    trialEndsAt: row.trialEndsAt ? new Date(row.trialEndsAt as string) : null,
-  };
+  return rows[0] ? toMenuRestaurant(rows[0]) : null;
 }
 
 /**
@@ -156,6 +155,75 @@ export async function findFirstDishImage(restaurantId: number): Promise<string |
 
   const imageUrl = rows[0]?.imageUrl;
   return typeof imageUrl === "string" && imageUrl ? imageUrl : null;
+}
+
+/** Lowest-numbered restaurant — what the bare "/" route shows. */
+export async function findFirstRestaurant(): Promise<MenuRestaurant | null> {
+  const sql = getSql();
+
+  const rows = (await withRetry(
+    () => sql`
+      SELECT "id", "name", "slug", "logoUrl", "settings", "status", "trialEndsAt"
+      FROM "Restaurant"
+      ORDER BY "id" ASC
+      LIMIT 1
+    `,
+  )) as Array<Record<string, unknown>>;
+
+  return rows[0] ? toMenuRestaurant(rows[0]) : null;
+}
+
+/**
+ * Dishes with their category and options attached, shaped like the Prisma
+ * `include` the public /api/dishes response has always returned.
+ */
+export async function findDishesWithCategory(restaurantId: number): Promise<unknown[]> {
+  const sql = getSql();
+
+  const [dishRows, categoryRows, optionRows] = (await withRetry(() =>
+    Promise.all([
+      sql`
+        SELECT "id", "nameEn", "nameRu", "nameAz",
+               "descriptionEn", "descriptionRu", "descriptionAz",
+               "price", "imageUrl", "imagePositionX", "imagePositionY",
+               "categoryId", "restaurantId", "createdAt", "updatedAt", "soldOut"
+        FROM "Dish"
+        WHERE "restaurantId" = ${restaurantId}
+        ORDER BY "createdAt" DESC
+      `,
+      sql`
+        SELECT "id", "nameEn", "nameRu", "nameAz", "restaurantId"
+        FROM "Category"
+        WHERE "restaurantId" = ${restaurantId}
+      `,
+      sql`
+        SELECT o."id", o."dishId", o."nameEn", o."nameRu", o."nameAz", o."price"
+        FROM "DishOption" o
+        JOIN "Dish" d ON d."id" = o."dishId"
+        WHERE d."restaurantId" = ${restaurantId}
+        ORDER BY o."id" ASC
+      `,
+    ]),
+  )) as Array<Array<Record<string, unknown>>>;
+
+  const categoryById = new Map(categoryRows.map((row) => [Number(row.id), row]));
+
+  const optionsByDish = new Map<number, Array<Record<string, unknown>>>();
+  for (const row of optionRows) {
+    const dishId = Number(row.dishId);
+    const existing = optionsByDish.get(dishId);
+    if (existing) {
+      existing.push(row);
+    } else {
+      optionsByDish.set(dishId, [row]);
+    }
+  }
+
+  return dishRows.map((row) => ({
+    ...row,
+    category: categoryById.get(Number(row.categoryId)) ?? null,
+    options: optionsByDish.get(Number(row.id)) ?? [],
+  }));
 }
 
 /** Subscription fields only — the gate the public menu endpoints check. */

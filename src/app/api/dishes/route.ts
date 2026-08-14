@@ -1,4 +1,7 @@
 import { requireTenantScope } from "@/lib/auth";
+import { findDishesWithCategory } from "@/lib/menu-query";
+// Prisma stays for the admin-only POST below. The public GET must never touch it:
+// loading the WASM engine is what put this Worker near its memory ceiling.
 import prisma from "@/lib/prisma";
 import { isRestaurantServableById } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
@@ -69,16 +72,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const dishes = await prisma.dish.findMany({
-      where: { restaurantId },
-      include: {
-        category: true,
-        options: {
-          orderBy: { id: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const dishes = await findDishesWithCategory(restaurantId);
 
     // Matches /api/categories: ?fresh=1 is the admin-side, never-cached variant.
     return NextResponse.json(dishes, {

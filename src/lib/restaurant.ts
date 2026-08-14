@@ -1,4 +1,4 @@
-import prisma from "./prisma";
+import { findRestaurantBySlug, findRestaurantStatusById } from "./menu-query";
 import { isRestaurantServable } from "./subscription";
 
 /**
@@ -14,25 +14,19 @@ export async function isRestaurantServableById(restaurantId: number): Promise<bo
   }
 
   try {
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId },
-      select: { status: true, trialEndsAt: true },
-    });
+    const restaurant = await findRestaurantStatusById(restaurantId);
 
     return restaurant !== null && isRestaurantServable(restaurant);
   } catch {
-    // Prisma cold-starts flakily on Workers. A failed lookup must not be read as
-    // "unpaid" — that would take a paying restaurant's menu down over a blip.
-    // Serve, and let the next request decide.
+    // A failed lookup must not be read as "unpaid" — that would take a paying
+    // restaurant's menu down over a database blip. Serve, and let the next
+    // request decide.
     return true;
   }
 }
 
 export async function getRestaurantBySlug(slug: string) {
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-  });
-  return restaurant;
+  return findRestaurantBySlug(slug);
 }
 
 export async function getRestaurantSettings(slug: string) {

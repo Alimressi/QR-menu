@@ -1,5 +1,5 @@
 import { createQrSessionToken, verifyTableAccessKey } from "@/lib/qr-token";
-import prisma from "@/lib/prisma";
+import { findRestaurantBySlug } from "@/lib/menu-query";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -13,10 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Restaurant, table and access key are required." }, { status: 400 });
     }
 
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { slug: restaurantSlug },
-      select: { id: true, slug: true },
-    });
+    const restaurant = await findRestaurantBySlug(restaurantSlug);
 
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });

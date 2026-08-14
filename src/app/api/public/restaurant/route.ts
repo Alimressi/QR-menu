@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { findRestaurantBySlug } from "@/lib/menu-query";
 import { stripSensitiveSettings } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -10,24 +10,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "slug is required." }, { status: 400 });
   }
 
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      logoUrl: true,
-      settings: true,
-    },
-  });
+  const restaurant = await findRestaurantBySlug(slug);
 
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
   }
 
   // Strip admin credentials out of the settings blob before it leaves the server.
+  // Subscription fields are dropped here too: this response is public, and the
+  // shape it has always had is id/name/slug/logoUrl/settings.
   const publicRestaurant = {
-    ...restaurant,
+    id: restaurant.id,
+    name: restaurant.name,
+    slug: restaurant.slug,
+    logoUrl: restaurant.logoUrl,
     settings: stripSensitiveSettings(restaurant.settings),
   };
 
