@@ -43,11 +43,33 @@ type Env = {
   MONITOR_TRIGGER_TOKEN?: string;
 };
 
-/** Requests per menu per run. One request cannot see an intermittent fault. */
-const SAMPLES = 4;
+/**
+ * Requests per menu per run. One request cannot see an intermittent fault.
+ *
+ * Was 4, fired back to back, which meant 20 full server-rendered pages hitting a
+ * single app isolate within a couple of seconds. Cloudflare kept killing that
+ * isolate with `exceededResources` — and the kills landed on these very requests
+ * while spaced-out checks from outside the account sailed through, including
+ * during runs where all 20 died. A watchdog that triggers the outage it reports
+ * is worse than no watchdog, so the burst is gone: half as many requests, spread
+ * out instead of stacked.
+ */
+const SAMPLES = 2;
 
-/** Alert above this share of failed samples. One slow request is not an outage. */
-const FAILURE_THRESHOLD = 0.25;
+/**
+ * Alert above this share of failed samples. One slow request is not an outage.
+ *
+ * Tied to SAMPLES: at 2 samples this means both must fail before a menu counts as
+ * down, which keeps the old "a single blip is not an outage" behaviour. Raising
+ * SAMPLES without revisiting this makes the monitor twitchier, not sharper.
+ */
+const FAILURE_THRESHOLD = 0.5;
+
+/**
+ * Pause between requests. The point is the gap, not the total: it gives the app
+ * isolate room to finish and collect one render before the next arrives.
+ */
+const SAMPLE_SPACING_MS = 1500;
 
 const STATE_KEY = "menu-status";
 
@@ -175,6 +197,10 @@ async function measure(env: Env, url: string): Promise<{ failures: number; lastS
   let lastStatus = 0;
 
   for (let index = 0; index < SAMPLES; index += 1) {
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, SAMPLE_SPACING_MS));
+    }
+
     try {
       const response = await env.APP.fetch(url, {
         headers: { "User-Agent": "qr-menu-monitor" },
@@ -220,7 +246,13 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
   const next: MenuState = {};
   const lines: string[] = [];
 
-  for (const slug of slugs) {
+  for (const [index, slug] of slugs.entries()) {
+    // Menus are spaced apart too, or the gap inside measure() would just be
+    // undone at every boundary between one menu and the next.
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, SAMPLE_SPACING_MS));
+    }
+
     const url = `${env.SITE_URL}/${slug}`;
     const measured = await measure(env, url);
     const simulated = simulateDownSlug === slug;
