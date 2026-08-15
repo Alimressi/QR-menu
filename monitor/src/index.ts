@@ -192,9 +192,75 @@ async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
   return `snapshots: ${saved} saved, ${skipped} skipped`;
 }
 
-async function measure(env: Env, url: string): Promise<{ failures: number; lastStatus: number }> {
+/** One request, over whichever channel actually reaches the app. */
+type Probe = { ok: boolean; status: number; via: "public" | "binding" };
+
+/**
+ * Ask for a menu the way a guest does, and only fall back to the private
+ * channel if Cloudflare refuses.
+ *
+ * On 15 August 2026 the service binding reported all five menus down for eleven
+ * hours while the same pages, requested from outside, returned 200 in under a
+ * second. Every one of those binding invocations was killed with
+ * `exceededResources` before it made a single database call. Whatever that is,
+ * it is not what a guest experiences — and a watchdog that measures a channel no
+ * customer uses will keep raising alarms nobody can act on.
+ *
+ * So the public URL comes first: it goes through DNS, TLS and the edge, which is
+ * the whole path a phone at a table takes. Cloudflare blocks some Worker-to-
+ * Worker requests on a shared workers.dev subdomain (Error 1042), and until this
+ * app has its own domain that block may still apply — hence the fallback, and
+ * hence `via`, which says in the logs which channel actually answered.
+ */
+async function probe(env: Env, url: string): Promise<Probe> {
+  // The public request can only ever CONFIRM health, never declare an outage.
+  //
+  // A Worker asking for its own account's workers.dev address does not reach the
+  // app: the first version of this check trusted the answer and reported 404 for
+  // all five menus while every one of them was serving guests normally in under
+  // a second. Detecting Cloudflare's Error 1042 was not enough — the refusal
+  // arrives as an ordinary-looking 404, indistinguishable from a menu that is
+  // genuinely missing.
+  //
+  // So a good answer here is believed, and a bad one is never acted on alone.
+  // When this app has its own domain the public path will start working and this
+  // becomes the real end-to-end check, through DNS, TLS and the edge, which is
+  // the whole path a phone at a table takes.
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "qr-menu-monitor" },
+      // Never let an edge cache answer for the origin we are testing.
+      cache: "no-store",
+    });
+
+    // Drain the body: reading only the status leaves the stream hanging, and an
+    // empty body behind a 200 is a broken menu that used to count as healthy.
+    const body = await response.text();
+
+    if (response.ok && body.length > 0) {
+      return { ok: true, status: response.status, via: "public" };
+    }
+  } catch {
+    // Fall through: the private channel decides.
+  }
+
+  const response = await env.APP.fetch(url, {
+    headers: { "User-Agent": "qr-menu-monitor" },
+    cache: "no-store",
+  });
+
+  const body = await response.text();
+
+  return { ok: response.ok && body.length > 0, status: response.status, via: "binding" };
+}
+
+async function measure(
+  env: Env,
+  url: string,
+): Promise<{ failures: number; lastStatus: number; via: string }> {
   let failures = 0;
   let lastStatus = 0;
+  let via = "public";
 
   for (let index = 0; index < SAMPLES; index += 1) {
     if (index > 0) {
@@ -202,25 +268,12 @@ async function measure(env: Env, url: string): Promise<{ failures: number; lastS
     }
 
     try {
-      const response = await env.APP.fetch(url, {
-        headers: { "User-Agent": "qr-menu-monitor" },
-        // Never let an edge cache answer for the origin we are testing.
-        cache: "no-store",
-      });
+      const result = await probe(env, url);
 
-      lastStatus = response.status;
+      lastStatus = result.status;
+      via = result.via;
 
-      // Drain the body. Reading the status alone leaves the response stream
-      // hanging, which is why every one of these invocations was recorded as
-      // `clientDisconnected` — and those are the only invocations Cloudflare has
-      // ever killed here with `exceededResources`. The app Worker holds the page
-      // it rendered until somebody reads it.
-      //
-      // It also makes the check honest. A 200 whose body never arrived, or
-      // arrived empty, used to be counted as a healthy menu.
-      const body = await response.text();
-
-      if (!response.ok || body.length === 0) {
+      if (!result.ok) {
         failures += 1;
       }
     } catch {
@@ -229,7 +282,7 @@ async function measure(env: Env, url: string): Promise<{ failures: number; lastS
     }
   }
 
-  return { failures, lastStatus };
+  return { failures, lastStatus, via };
 }
 
 /**
@@ -268,6 +321,7 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
     const measured = await measure(env, url);
     const simulated = simulateDownSlug === slug;
     const { failures, lastStatus } = simulated ? { failures: SAMPLES, lastStatus: 500 } : measured;
+    const via = simulated ? "simulated" : measured.via;
     const rate = failures / SAMPLES;
     const down = rate > FAILURE_THRESHOLD;
     const wasDown = previous[slug]?.down ?? false;
@@ -277,7 +331,10 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
       since: down === wasDown ? (previous[slug]?.since ?? new Date().toISOString()) : new Date().toISOString(),
     };
 
-    lines.push(`${slug}: ${SAMPLES - failures}/${SAMPLES} ok${down ? ` (HTTP ${lastStatus})` : ""}`);
+    // `via` is in the summary on purpose: if it ever reads "binding", the public
+    // check is being refused and the watchdog is measuring the private channel
+    // rather than what a guest gets.
+    lines.push(`${slug}: ${SAMPLES - failures}/${SAMPLES} ok via ${via}${down ? ` (HTTP ${lastStatus})` : ""}`);
 
     if (down && !wasDown) {
       await sendTelegram(
