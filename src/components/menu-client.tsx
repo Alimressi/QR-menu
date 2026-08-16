@@ -1534,9 +1534,11 @@ export function MenuClient({
         throw new Error(t.failed);
       }
 
-      setMessage(
-        `${data.mergedIntoExisting ? t.mergedOrderSuccess : t.newOrderSuccess} #${nextOrder.id}.`,
-      );
+      // No number here either: the id is a global sequence across every
+      // restaurant on the platform, so it meant nothing to the guest and
+      // disclosed the platform's total volume. Both strings are already whole
+      // sentences, so nothing is missing without it.
+      setMessage(data.mergedIntoExisting ? t.mergedOrderSuccess : t.newOrderSuccess);
       setActiveOrder(nextOrder);
       setCart({});
       setSelectedOptionByDish({});
