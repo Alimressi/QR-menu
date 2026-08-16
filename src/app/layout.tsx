@@ -1,3 +1,4 @@
+import { LEGAL } from "@/lib/legal";
 import type { Metadata } from "next";
 import { Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
@@ -19,7 +20,14 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   // Lets relative og:image paths resolve to absolute URLs so social crawlers
   // (LinkedIn, WhatsApp, Telegram) can actually fetch the preview image.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"),
+  //
+  // Taken from LEGAL.siteUrl rather than NEXT_PUBLIC_BASE_URL, which Next inlines
+  // at build time from `.env` — that is `http://localhost:3000`, and it was
+  // shipping to production, pointing every social preview at a machine only
+  // Imran can reach. This export is static so it cannot read request headers the
+  // way the menu pages do; a constant in the repo is the honest substitute, and
+  // it is already on the list of places to change when the domain lands.
+  metadataBase: new URL(LEGAL.siteUrl),
   title: {
     default: "QR Menu",
     template: "%s | QR Menu",

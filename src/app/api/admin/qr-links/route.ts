@@ -1,5 +1,6 @@
 import { getUserRestaurantId, isAdminRequest } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { publicOriginFrom } from "@/lib/public-origin";
 import { createTableAccessKey } from "@/lib/qr-token";
 import { getRestaurantTableCountFromSettings } from "@/lib/restaurant";
 import { NextRequest, NextResponse } from "next/server";
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+  // Never NEXT_PUBLIC_BASE_URL: baked in at build time. See src/lib/public-origin.ts.
+  const baseUrl = publicOriginFrom(request);
   const tableCount = getRestaurantTableCountFromSettings(restaurant.settings);
 
   const links = Array.from({ length: tableCount }, (_, index) => {
