@@ -19,6 +19,7 @@ import {
   findLatestPaidOrderUpdatedAt,
   findOrderRestaurantId,
   findOrderWithItemsById,
+  ORDER_HISTORY_DAYS,
   findOrdersWithItems,
   findRestaurantForOrdering,
   findWaiterCallRestaurantId,
@@ -180,6 +181,41 @@ async function main() {
     const listed = await findOrdersWithItems(restaurantId);
     check("listing scoped to the tenant", listed.length === 1 && listed[0].id === orderId, listed.length);
     check("listing carries items", listed[0]?.items.length === 3);
+
+    console.log(`\nhistory window (${ORDER_HISTORY_DAYS} days)`);
+    // Backdate rows directly: the point is what the query filters, and going
+    // through the normal path would only ever produce timestamps from today.
+    const backdate = async (id: number, days: number) => {
+      await sql`
+        UPDATE "Order"
+        SET "createdAt" = NOW() - (${days} || ' days')::interval
+        WHERE "id" = ${id}
+      `;
+    };
+
+    const makeBackdated = async (status: string, days: number) => {
+      const [row] = (await sql`
+        INSERT INTO "Order" ("tableNumber","status","total","restaurantId","updatedAt")
+        VALUES (${table}, ${status}, 1, ${restaurantId}, NOW())
+        RETURNING "id"
+      `) as Array<{ id: number }>;
+      await backdate(Number(row.id), days);
+      return Number(row.id);
+    };
+
+    const oldPaid = await makeBackdated("paid", ORDER_HISTORY_DAYS + 1);
+    const recentPaid = await makeBackdated("paid", 1);
+    const oldUnpaid = await makeBackdated("new", ORDER_HISTORY_DAYS + 30);
+
+    const windowed = await findOrdersWithItems(restaurantId);
+    const ids = new Set(windowed.map((order) => order.id));
+
+    check("a paid order inside the window is listed", ids.has(recentPaid));
+    check("a paid order past the window is dropped", !ids.has(oldPaid));
+    check(
+      "an unpaid order is kept however old — somebody is still waiting",
+      ids.has(oldUnpaid),
+    );
 
     console.log("\nwaiter calls");
     const call = await createWaiterCall(table, restaurantId);

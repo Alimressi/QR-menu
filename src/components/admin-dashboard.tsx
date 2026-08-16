@@ -254,6 +254,69 @@ type Props = {
   restaurantSlug?: string;
 };
 
+/**
+ * Kitchen clock. Fixed to Baku rather than the device's own time zone.
+ *
+ * A tablet behind the bar with the wrong region set would otherwise print times
+ * that disagree with the clock on the wall, and staff comparing an order to
+ * "twenty minutes ago" would be reading a different hour entirely. The venues
+ * are in Azerbaijan; when that stops being true this becomes a per-restaurant
+ * setting rather than a constant.
+ */
+const KITCHEN_TIME_ZONE = "Asia/Baku";
+
+const LOCALE_BY_LANGUAGE: Record<AdminLanguage, string> = {
+  en: "en-GB",
+  ru: "ru-RU",
+  az: "az-Latn-AZ",
+};
+
+/** YYYY-MM-DD as it reads in Baku, for "is this today?" without time-zone maths. */
+function kitchenDayKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: KITCHEN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+/**
+ * The time an order arrived: `19:42` today, `14.08 19:42` before that.
+ *
+ * The date only appears when it adds something. On the active-orders tab every
+ * order is from today and a repeated date would be noise; in a week of history
+ * it is the whole point.
+ */
+function formatKitchenTime(value: string, language: AdminLanguage) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const locale = LOCALE_BY_LANGUAGE[language];
+
+  const time = new Intl.DateTimeFormat(locale, {
+    timeZone: KITCHEN_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+
+  if (kitchenDayKey(date) === kitchenDayKey(new Date())) {
+    return time;
+  }
+
+  const day = new Intl.DateTimeFormat(locale, {
+    timeZone: KITCHEN_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+
+  return `${day} ${time}`;
+}
+
 export function AdminDashboard({ restaurantSlug }: Props) {
   const [language, setLanguage] = useState<AdminLanguage>("en");
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -778,7 +841,11 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
       <div className="mb-6 flex flex-wrap gap-2">
         {([
-          ["active-orders", t.activeOrders, null],
+          // Orders carry a count for the same reason waiter calls always did:
+          // staff live on whichever tab they were last on, and an order that
+          // arrives while they are reading yesterday's history is invisible
+          // otherwise. The chime is easy to miss in a busy room.
+          ["active-orders", t.activeOrders, activeOrders.length],
           ["order-history", t.orderHistory, null],
           ["waiter-calls", t.waiterCalls, waiterCalls.length],
         ] as const).map(([key, label, badgeCount]) => (
@@ -847,7 +914,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                       {getStatusLabel(order.status)}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm" style={{ color: design.mutedTextColor }}>{t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)}</p>
+                  <p className="mt-1 text-sm" style={{ color: design.mutedTextColor }}>
+                    {t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)} | {formatKitchenTime(order.createdAt, language)}
+                  </p>
                 </div>
 
                 <select
@@ -910,7 +979,9 @@ export function AdminDashboard({ restaurantSlug }: Props) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
-                  <p className="text-sm" style={{ color: design.mutedTextColor }}>{t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)}</p>
+                  <p className="text-sm" style={{ color: design.mutedTextColor }}>
+                    {t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)} | {formatKitchenTime(order.createdAt, language)}
+                  </p>
                 </div>
 
                 <select
@@ -960,7 +1031,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                         {t.callFromTable} #{call.tableNumber}
                       </h2>
                       <p className="mt-1 text-sm" style={{ color: design.mutedTextColor }}>
-                        {new Date(call.createdAt).toLocaleTimeString()}
+                        {formatKitchenTime(call.createdAt, language)}
                       </p>
                     </div>
                     <button

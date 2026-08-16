@@ -120,6 +120,21 @@ async function attachItems(orders: OrderRow[]): Promise<OrderWithItems[]> {
 }
 
 /** Every order for a restaurant, or for all of them when the id is null. */
+/**
+ * How far back the paid-order history reaches.
+ *
+ * This query used to return every order ever placed, with every line item, on a
+ * ten-second poll. A venue doing fifty orders a day would be shipping tens of
+ * thousands of rows to a phone behind the bar within a year, and the staff only
+ * ever look at the last day or two.
+ *
+ * Unpaid orders are never dropped no matter their age: an order still sitting on
+ * "new" is somebody waiting, and hiding it because it is old would be the worst
+ * possible behaviour. Nothing is deleted either — this only bounds what the
+ * panel asks for, and the rows stay in the database for exports and accounting.
+ */
+export const ORDER_HISTORY_DAYS = 7;
+
 export async function findOrdersWithItems(restaurantId: number | null): Promise<OrderWithItems[]> {
   const sql = getSql();
 
@@ -128,12 +143,18 @@ export async function findOrdersWithItems(restaurantId: number | null): Promise<
       ? sql`
           SELECT ${sql.unsafe(ORDER_COLUMNS)}
           FROM "Order"
+          WHERE "status" <> 'paid'
+             OR "createdAt" >= NOW() - (${ORDER_HISTORY_DAYS} || ' days')::interval
           ORDER BY "createdAt" DESC
         `
       : sql`
           SELECT ${sql.unsafe(ORDER_COLUMNS)}
           FROM "Order"
           WHERE "restaurantId" = ${restaurantId}
+            AND (
+              "status" <> 'paid'
+              OR "createdAt" >= NOW() - (${ORDER_HISTORY_DAYS} || ' days')::interval
+            )
           ORDER BY "createdAt" DESC
         `,
   )) as OrderRow[];
