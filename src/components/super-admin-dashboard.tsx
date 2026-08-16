@@ -843,6 +843,13 @@ export function SuperAdminDashboard() {
       setDishForm(emptyDishForm);
       setEditingDishId(null);
       await loadMenu();
+    } catch (error) {
+      // Without this the throw above went nowhere: React swallows a rejected
+      // promise from an event handler, so a failed save looked exactly like a
+      // successful one that changed nothing. Ticking "sold out", pressing
+      // Update and seeing the dish unchanged is what that bug looks like from
+      // the outside — the session had expired and nobody was told.
+      alert(error instanceof Error ? error.message : t.saveDishFailed);
     } finally {
       setSavingDish(false);
     }
@@ -1295,8 +1302,13 @@ export function SuperAdminDashboard() {
                   </div>
 
                   {/* The very same <DishCard/> the guest menu renders, so this
-                      preview cannot drift from the real thing. */}
-                  <div className="flex flex-wrap items-start gap-5">
+                      preview cannot drift from the real thing.
+
+                      `menu-preview` keeps the panel's own theme out: see the
+                      .superadmin-dracula rules in globals.css, which force
+                      heading colours with !important and were repainting the
+                      dish name in pink. */}
+                  <div className="menu-preview flex flex-wrap items-start gap-5">
                     <div>
                       <p className="mb-1.5 text-[11px] uppercase tracking-wider text-gold-400/70">{t.previewPhone}</p>
                       <div className="w-[366px] max-w-full">

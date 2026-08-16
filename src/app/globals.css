@@ -232,12 +232,26 @@ button:active:not(:disabled) {
   color: #c98a9c !important;
 }
 
-/* Headings glow rather than shout — a tight halo, not a blur. */
-.superadmin-dracula h1,
-.superadmin-dracula h2,
-.superadmin-dracula h3 {
+/* Headings glow rather than shout — a tight halo, not a blur.
+ *
+ * Never inside .menu-preview. That block renders the real <DishCard/>, and a
+ * dish name is an <h3>, so this rule was repainting it in the panel's pink with
+ * a red halo while the guest menu showed the restaurant's own colour and serif.
+ * The preview exists to show what the guest will see; a preview that lies about
+ * it is worse than none. The card sets its colours inline, so simply not
+ * matching here is enough to hand them back. */
+.superadmin-dracula h1:not(.menu-preview *),
+.superadmin-dracula h2:not(.menu-preview *),
+.superadmin-dracula h3:not(.menu-preview *) {
   color: #ffe9e9 !important;
   text-shadow: 0 0 12px rgba(255, 85, 85, 0.45), 0 0 2px rgba(255, 85, 85, 0.6);
+}
+
+/* Belt and braces for everything else the panel theme forces with !important:
+ * inside the preview, colours come from the restaurant's design, never here. */
+.superadmin-dracula .menu-preview,
+.superadmin-dracula .menu-preview * {
+  text-shadow: none;
 }
 
 /* Primary action: solid neon with a lamp-like spill beneath it. */

@@ -144,24 +144,35 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       );
     }
 
+    // Absent means "leave them alone", not "delete them".
+    //
+    // This is a PATCH, and the super admin's dish form has no options editor, so
+    // it sends no `options` key at all. Rewriting them unconditionally meant
+    // every edit — a price change, a new photo, ticking sold out — silently wiped
+    // that dish's options. An empty array still clears them, deliberately; that
+    // is what a client with an options editor sends when the last one is removed.
+    const replaceOptions = body?.options !== undefined;
+
     const dish = await prisma.$transaction(async (tx) => {
       await tx.dish.update({
         where: { id: dishId },
         data,
       });
 
-      await tx.dishOption.deleteMany({ where: { dishId } });
+      if (replaceOptions) {
+        await tx.dishOption.deleteMany({ where: { dishId } });
 
-      if (options.length > 0) {
-        await tx.dishOption.createMany({
-          data: options.map((option) => ({
-            dishId,
-            nameEn: option.nameEn,
-            nameRu: option.nameRu,
-            nameAz: option.nameAz,
-            price: option.price,
-          })),
-        });
+        if (options.length > 0) {
+          await tx.dishOption.createMany({
+            data: options.map((option) => ({
+              dishId,
+              nameEn: option.nameEn,
+              nameRu: option.nameRu,
+              nameAz: option.nameAz,
+              price: option.price,
+            })),
+          });
+        }
       }
 
       return tx.dish.findUnique({
