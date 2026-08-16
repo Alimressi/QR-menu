@@ -331,6 +331,8 @@ export const dictionary: Record<
     addCategoryButton: string;
     qrTitle: string;
     tableCount: string;
+    tableCountQrHint: string;
+    tableCountInvalid: string;
     tableCountHint: string;
     tableLabel: string;
     edit: string;
@@ -408,6 +410,9 @@ export const dictionary: Record<
     addCategoryButton: "Add category",
     qrTitle: "QR Menu Links",
     tableCount: "Tables Count",
+    tableCountQrHint:
+      "Raising this adds codes for the new tables; lowering it hides the extra ones. Codes already printed keep working either way — a table's link never changes.",
+    tableCountInvalid: "Enter a number of tables between 1 and 200.",
     tableCountHint: "Set how many tables this restaurant has. QR codes are generated automatically.",
     tableLabel: "Table",
     edit: "Edit",
@@ -484,6 +489,9 @@ export const dictionary: Record<
     addCategoryButton: "Добавить категорию",
     qrTitle: "QR меню ссылки",
     tableCount: "Количество столов",
+    tableCountQrHint:
+      "Увеличите — добавятся коды для новых столов. Уменьшите — лишние просто перестанут показываться. Уже напечатанные коды продолжат работать: ссылка стола не меняется никогда.",
+    tableCountInvalid: "Введите количество столов от 1 до 200.",
     tableCountHint: "Укажите количество столов. QR-коды будут сгенерированы автоматически.",
     tableLabel: "Стол",
     edit: "Изменить",
@@ -560,6 +568,9 @@ export const dictionary: Record<
     addCategoryButton: "Kateqoriya elave et",
     qrTitle: "QR menyu linkleri",
     tableCount: "Masa sayi",
+    tableCountQrHint:
+      "Artirsaniz yeni masalar ucun kodlar elave olunur, azaltsaniz artiq olanlar sadece gorunmur. Artiq cap edilmis kodlar hər halda islemeye davam edir: masanin linki hec vaxt deyismir.",
+    tableCountInvalid: "1 ile 200 arasinda masa sayi daxil edin.",
     tableCountHint: "Bu restoran ucun masa sayini daxil edin. QR kodlar avtomatik yaranacaq.",
     tableLabel: "Masa",
     edit: "Redakte et",

@@ -3,6 +3,7 @@
 import { CategoryWithDishes, Dish } from "@/types";
 import { formatCurrency } from "@/lib/design";
 import { compressImage } from "@/lib/image-compress";
+import { getRestaurantTableCountFromSettings } from "@/lib/restaurant";
 import { RESTAURANT_STATUSES, getEffectiveStatus, getTrialDaysLeft } from "@/lib/subscription";
 import {
   ColorField,
@@ -313,6 +314,9 @@ export function SuperAdminDashboard() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
   /** Which restaurant's checkout link was just copied, for the button's label. */
   const [copiedBillingFor, setCopiedBillingFor] = useState<number | null>(null);
+  /** Table count as typed in the QR tab, before it is saved. */
+  const [qrTableCount, setQrTableCount] = useState("");
+  const [savingTableCount, setSavingTableCount] = useState(false);
   const [categories, setCategories] = useState<CategoryWithDishes[]>([]);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dishSearchQuery, setDishSearchQuery] = useState("");
@@ -458,9 +462,13 @@ export function SuperAdminDashboard() {
     }
 
     if (!selectedRestaurant) return;
-    
+
     const url = `${window.location.origin}/${selectedRestaurant.slug}`;
     setMenuUrl(url);
+
+    // Show what is actually stored, so the field never claims a count the
+    // generated codes below do not match.
+    setQrTableCount(String(getRestaurantTableCountFromSettings(selectedRestaurant.settings)));
 
     const generateQr = async () => {
       const QRCode = await import("qrcode");
@@ -657,6 +665,52 @@ export function SuperAdminDashboard() {
     }
   }
 
+  /**
+   * Change how many tables this restaurant has, from the QR tab.
+   *
+   * Sends only `tableCount`; the PATCH merges into the stored settings, so the
+   * design, service mode and admin login are all left alone.
+   *
+   * Printed codes are safe. A table's access key is an HMAC over
+   * `restaurant:<slug>|table:<n>` and nothing else — not the total. Going from 12
+   * tables to 20 mints keys for 13-20 and leaves 1-12 byte-identical; going back
+   * to 8 simply stops listing 9-12, whose keys still verify if someone scans a
+   * code printed earlier. The only thing that would ever invalidate them is
+   * rotating QR_TABLE_KEY_SECRET.
+   */
+  async function saveTableCount() {
+    if (!selectedRestaurantId) return;
+
+    const parsed = Number.parseInt(qrTableCount, 10);
+
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200) {
+      alert(t.tableCountInvalid);
+      return;
+    }
+
+    setSavingTableCount(true);
+
+    try {
+      const response = await fetch(`/api/superadmin/restaurants/${selectedRestaurantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { tableCount: parsed } }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to update table count");
+      }
+
+      await loadRestaurants();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to update table count");
+    } finally {
+      setSavingTableCount(false);
+    }
+  }
+
   function applyAutoPaletteFromThreeColors() {
     const nextPalette = generatePaletteFromThreeColors(
       designForm.basePrimaryColor,
@@ -676,7 +730,14 @@ export function SuperAdminDashboard() {
     const cardRadius = `${parseRadiusPx(design.cardRadius, 20)}px`;
 
     return (
-      <article className="rounded-2xl border p-4" style={{ borderColor: design.borderColor, background: design.panelColor }}>
+      // `menu-preview` for the same reason as the dish card: the panel's own
+      // theme forces heading colours with !important, and the brand name here is
+      // an <h3>. Without it this preview showed the restaurant's name in the
+      // panel's pink glow instead of the colour the guest will actually see.
+      <article
+        className="menu-preview rounded-2xl border p-4"
+        style={{ borderColor: design.borderColor, background: design.panelColor }}
+      >
         <p className="mb-3 text-xs uppercase tracking-wide" style={{ color: design.mutedTextColor }}>{previewLabel}</p>
 
         <div className="rounded-xl border p-4" style={{ borderColor: design.borderColor, background: `linear-gradient(160deg, ${design.backgroundFrom} 0%, ${design.backgroundTo} 100%)` }}>
@@ -1742,6 +1803,29 @@ export function SuperAdminDashboard() {
           <section className="rounded-2xl border p-6 shadow-sm" style={{ borderColor: dracula.border, background: dracula.panel }}>
             <h2 className="font-serif text-3xl" style={{ color: dracula.text }}>{t.qrTitle}</h2>
             <p className="mt-2 break-all text-sm" style={{ color: dracula.cyan }}>{menuUrl}</p>
+
+            <div className="mt-5 rounded-xl border border-dark-600 p-4">
+              <label className="block text-sm text-gold-300">{t.tableCount}</label>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={qrTableCount}
+                  onChange={(event) => setQrTableCount(event.target.value)}
+                  className="w-28 rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-gold-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveTableCount()}
+                  disabled={savingTableCount}
+                  className="min-h-10 rounded-lg bg-gold-600 px-4 py-2 text-sm text-dark-950 hover:bg-gold-500"
+                >
+                  {savingTableCount ? t.saving : t.update}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gold-500">{t.tableCountQrHint}</p>
+            </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {tableQrs.map((entry) => (

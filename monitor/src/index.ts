@@ -192,8 +192,17 @@ async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
   return `snapshots: ${saved} saved, ${skipped} skipped`;
 }
 
-/** One request, over whichever channel actually reaches the app. */
-type Probe = { ok: boolean; status: number; via: "public" | "binding" };
+/**
+ * One request, asked over both channels when the first does not answer.
+ *
+ * `publicOk` is the one that decides whether anyone is told. See runCheck.
+ */
+type Probe = {
+  publicOk: boolean;
+  bindingOk: boolean;
+  status: number;
+  via: "public" | "binding";
+};
 
 /**
  * Ask for a menu the way a guest does, and only fall back to the private
@@ -238,10 +247,10 @@ async function probe(env: Env, url: string): Promise<Probe> {
     const body = await response.text();
 
     if (response.ok && body.length > 0) {
-      return { ok: true, status: response.status, via: "public" };
+      return { publicOk: true, bindingOk: true, status: response.status, via: "public" };
     }
   } catch {
-    // Fall through: the private channel decides.
+    // Fall through: ask the private channel so the logs still say something.
   }
 
   const response = await env.APP.fetch(url, {
@@ -251,14 +260,29 @@ async function probe(env: Env, url: string): Promise<Probe> {
 
   const body = await response.text();
 
-  return { ok: response.ok && body.length > 0, status: response.status, via: "binding" };
+  return {
+    publicOk: false,
+    bindingOk: response.ok && body.length > 0,
+    status: response.status,
+    via: "binding",
+  };
 }
 
-async function measure(
-  env: Env,
-  url: string,
-): Promise<{ failures: number; lastStatus: number; via: string }> {
-  let failures = 0;
+type Measurement = {
+  /** Failures as judged by the channel a guest actually uses. */
+  publicFailures: number;
+  /** Failures over the private channel, kept for the log only. */
+  bindingFailures: number;
+  /** True if the public channel answered properly at least once. */
+  publicAnswered: boolean;
+  lastStatus: number;
+  via: string;
+};
+
+async function measure(env: Env, url: string): Promise<Measurement> {
+  let publicFailures = 0;
+  let bindingFailures = 0;
+  let publicAnswered = false;
   let lastStatus = 0;
   let via = "public";
 
@@ -273,16 +297,23 @@ async function measure(
       lastStatus = result.status;
       via = result.via;
 
-      if (!result.ok) {
-        failures += 1;
+      if (result.publicOk) {
+        publicAnswered = true;
+      } else {
+        publicFailures += 1;
+      }
+
+      if (!result.bindingOk) {
+        bindingFailures += 1;
       }
     } catch {
-      failures += 1;
+      publicFailures += 1;
+      bindingFailures += 1;
       lastStatus = 0;
     }
   }
 
-  return { failures, lastStatus, via };
+  return { publicFailures, bindingFailures, publicAnswered, lastStatus, via };
 }
 
 /**
@@ -310,6 +341,9 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
   const next: MenuState = {};
   const lines: string[] = [];
 
+  type Checked = { slug: string; url: string; measured: Measurement; simulated: boolean };
+  const checked: Checked[] = [];
+
   for (const [index, slug] of slugs.entries()) {
     // Menus are spaced apart too, or the gap inside measure() would just be
     // undone at every boundary between one menu and the next.
@@ -318,23 +352,64 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
     }
 
     const url = `${env.SITE_URL}/${slug}`;
-    const measured = await measure(env, url);
-    const simulated = simulateDownSlug === slug;
-    const { failures, lastStatus } = simulated ? { failures: SAMPLES, lastStatus: 500 } : measured;
+    checked.push({ slug, url, measured: await measure(env, url), simulated: simulateDownSlug === slug });
+  }
+
+  // Does the public channel work AT ALL right now?
+  //
+  // This is the question that decides whether anyone gets woken up, and it is
+  // asked across all menus rather than per menu. A Worker requesting its own
+  // account's workers.dev address does not reach the app — the refusal arrives as
+  // an ordinary 404 — so on this deployment the public check fails for every
+  // menu, always, no matter how healthy they are.
+  //
+  // Judging each menu on its own could not tell that apart from a real outage,
+  // and on 15-16 August it did not: the watchdog held all five "down" for twelve
+  // hours and sent two rounds of false alarms while every page was serving
+  // guests in under a second. An alert nobody can act on trains people to ignore
+  // the next one, which is the failure that actually costs money.
+  //
+  // If no menu answers publicly, the channel is broken rather than the menus.
+  // Alerts are suppressed and the run is logged as observation only. If at least
+  // one answers, the channel demonstrably works, so a menu that fails it is
+  // genuinely failing for guests, and alerts mean something again.
+  //
+  // Nothing needs changing when this app gets its own domain: the public check
+  // will start answering and alerting resumes by itself.
+  const publicChannelWorks = checked.some((entry) => entry.measured.publicAnswered);
+
+  for (const { slug, url, measured, simulated } of checked) {
+    const failures = simulated
+      ? SAMPLES
+      : publicChannelWorks
+        ? measured.publicFailures
+        : measured.bindingFailures;
+    const lastStatus = simulated ? 500 : measured.lastStatus;
     const via = simulated ? "simulated" : measured.via;
-    const rate = failures / SAMPLES;
-    const down = rate > FAILURE_THRESHOLD;
+
+    const down = failures / SAMPLES > FAILURE_THRESHOLD;
     const wasDown = previous[slug]?.down ?? false;
 
+    // While the public channel is unusable, nothing is recorded as down. Writing
+    // it would fire a "recovered" message later for an outage that never was.
+    const recorded = publicChannelWorks ? down : false;
+
     next[slug] = {
-      down,
-      since: down === wasDown ? (previous[slug]?.since ?? new Date().toISOString()) : new Date().toISOString(),
+      down: recorded,
+      since:
+        recorded === wasDown
+          ? (previous[slug]?.since ?? new Date().toISOString())
+          : new Date().toISOString(),
     };
 
-    // `via` is in the summary on purpose: if it ever reads "binding", the public
-    // check is being refused and the watchdog is measuring the private channel
-    // rather than what a guest gets.
-    lines.push(`${slug}: ${SAMPLES - failures}/${SAMPLES} ok via ${via}${down ? ` (HTTP ${lastStatus})` : ""}`);
+    const note = publicChannelWorks ? "" : " [public check unavailable — not alerting]";
+    lines.push(
+      `${slug}: ${SAMPLES - failures}/${SAMPLES} ok via ${via}${down ? ` (HTTP ${lastStatus})` : ""}${note}`,
+    );
+
+    if (!publicChannelWorks && !simulated) {
+      continue;
+    }
 
     if (down && !wasDown) {
       await sendTelegram(
