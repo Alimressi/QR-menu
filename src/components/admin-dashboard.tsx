@@ -1,6 +1,6 @@
 "use client";
 
-import { Order } from "@/types";
+import { Order, OrderItem } from "@/types";
 import {
   RestaurantDesign,
   defaultDesign,
@@ -67,6 +67,8 @@ const dictionary: Record<
     statusPreparing: string;
     statusReady: string;
     statusPaid: string;
+    toppedUp: string;
+    addedLater: string;
     waiterCalls: string;
     noWaiterCalls: string;
     callFromTable: string;
@@ -126,6 +128,8 @@ const dictionary: Record<
     statusPreparing: "preparing",
     statusReady: "ready",
     statusPaid: "paid",
+    toppedUp: "ADDED TO",
+    addedLater: "added",
     waiterCalls: "Waiter Calls",
     noWaiterCalls: "No active waiter calls",
     callFromTable: "Call from table",
@@ -184,6 +188,8 @@ const dictionary: Record<
     statusPreparing: "готовится",
     statusReady: "готов",
     statusPaid: "оплачен",
+    toppedUp: "ДОЗАКАЗ",
+    addedLater: "добавлено",
     waiterCalls: "Вызовы официанта",
     noWaiterCalls: "Нет активных вызовов",
     callFromTable: "Вызов со стола",
@@ -242,6 +248,8 @@ const dictionary: Record<
     statusPreparing: "hazirlanir",
     statusReady: "hazirdir",
     statusPaid: "odenilib",
+    toppedUp: "ELAVE SIFARIS",
+    addedLater: "elave edildi",
     waiterCalls: "Ofisiant cagirislari",
     noWaiterCalls: "Aktiv cagiris yoxdur",
     callFromTable: "Masadan cagiris",
@@ -315,6 +323,46 @@ function formatKitchenTime(value: string, language: AdminLanguage) {
   }).format(date);
 
   return `${day} ${time}`;
+}
+
+/**
+ * Was this line added after the order was first placed?
+ *
+ * Two ways a guest orders again into the same open order: a brand-new line, or
+ * more of something already on it. The first shows up as a later `createdAt`,
+ * the second as an `updatedAt` past its own `createdAt`. A few seconds of slack
+ * absorbs the gap between writing the order row and its items in the same
+ * request — without it every line of every order would look like a top-up.
+ */
+const TOP_UP_SLACK_MS = 5000;
+
+function itemAddedLater(item: OrderItem, orderCreatedAt: string) {
+  const placed = new Date(orderCreatedAt).getTime();
+  const created = item.createdAt ? new Date(item.createdAt).getTime() : NaN;
+  const updated = item.updatedAt ? new Date(item.updatedAt).getTime() : NaN;
+
+  if (Number.isFinite(created) && created > placed + TOP_UP_SLACK_MS) {
+    return true;
+  }
+
+  return Number.isFinite(created) && Number.isFinite(updated) && updated > created + TOP_UP_SLACK_MS;
+}
+
+/** The time of the most recent addition, for the badge on the order header. */
+function lastAdditionAt(order: Order): string | null {
+  const times = order.items
+    .filter((item) => itemAddedLater(item, order.createdAt))
+    .map((item) => Math.max(
+      item.createdAt ? new Date(item.createdAt).getTime() : 0,
+      item.updatedAt ? new Date(item.updatedAt).getTime() : 0,
+    ))
+    .filter((value) => value > 0);
+
+  if (times.length === 0) {
+    return null;
+  }
+
+  return new Date(Math.max(...times)).toISOString();
 }
 
 export function AdminDashboard({ restaurantSlug }: Props) {
@@ -890,7 +938,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
+                    <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>{t.order} #{order.displayNumber ?? order.id}</h2>
                     {newOrderIds.has(order.id) ? (
                       <span
                         className="rounded-full px-2.5 py-1 text-xs font-bold leading-none"
@@ -901,6 +949,20 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                         }}
                       >
                         {language === "az" ? "YENİ" : language === "ru" ? "НОВЫЙ" : "NEW"}
+                      </span>
+                    ) : null}
+                    {/* The guest came back and added to this order. Loud on
+                        purpose: the kitchen may already be plating it. */}
+                    {lastAdditionAt(order) ? (
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-bold leading-none"
+                        style={{
+                          color: design.successColor,
+                          background: `color-mix(in srgb, ${design.successColor} 18%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${design.successColor} 55%, transparent)`,
+                        }}
+                      >
+                        {t.toppedUp} {formatKitchenTime(lastAdditionAt(order)!, language)}
                       </span>
                     ) : null}
                     <span
@@ -939,6 +1001,18 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                     {getOrderItemName(item)}
                     {getOrderItemOptionName(item) ? ` (${getOrderItemOptionName(item)})` : ""}
                     {` x${item.quantity} (${formatCurrency(item.price, design.currencyMode)})`}
+                    {itemAddedLater(item, order.createdAt) ? (
+                      <span
+                        className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                        style={{
+                          color: design.successColor,
+                          background: `color-mix(in srgb, ${design.successColor} 16%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${design.successColor} 40%, transparent)`,
+                        }}
+                      >
+                        {t.addedLater} {formatKitchenTime(item.updatedAt ?? item.createdAt ?? order.createdAt, language)}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -978,7 +1052,7 @@ export function AdminDashboard({ restaurantSlug }: Props) {
             <article key={order.id} className="rounded-2xl border p-4 shadow-sm" style={{ borderColor: design.borderColor, background: design.panelColor }}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>Order #{order.id}</h2>
+                  <h2 className="font-serif text-2xl" style={{ color: design.textColor }}>{t.order} #{order.displayNumber ?? order.id}</h2>
                   <p className="text-sm" style={{ color: design.mutedTextColor }}>
                     {t.table} {order.tableNumber} | {formatCurrency(order.total, design.currencyMode)} | {formatKitchenTime(order.createdAt, language)}
                   </p>
@@ -1004,6 +1078,18 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                     {getOrderItemName(item)}
                     {getOrderItemOptionName(item) ? ` (${getOrderItemOptionName(item)})` : ""}
                     {` x${item.quantity} (${formatCurrency(item.price, design.currencyMode)})`}
+                    {itemAddedLater(item, order.createdAt) ? (
+                      <span
+                        className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                        style={{
+                          color: design.successColor,
+                          background: `color-mix(in srgb, ${design.successColor} 16%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${design.successColor} 40%, transparent)`,
+                        }}
+                      >
+                        {t.addedLater} {formatKitchenTime(item.updatedAt ?? item.createdAt ?? order.createdAt, language)}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

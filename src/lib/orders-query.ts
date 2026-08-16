@@ -49,6 +49,10 @@ export async function findRestaurantForOrdering(
 export type OrderItemRow = {
   id: number;
   orderId: number;
+  /** When this line appeared — later than its order means a second round. */
+  createdAt: Date;
+  /** Moves when the quantity changes, the other way a guest adds to an order. */
+  updatedAt: Date;
   dishId: number;
   optionId: number | null;
   quantity: number;
@@ -71,12 +75,20 @@ export type OrderRow = {
   updatedAt: Date;
   checkoutSessionId: string | null;
   paymentIntentId: string | null;
+  /**
+   * The number staff see: 1, 2, 3... per restaurant, in the order placed.
+   *
+   * Only the listing query computes it. `id` is a global sequence shared by
+   * every restaurant on the platform, so one venue's orders read 23, 27, 31 —
+   * gaps that look like lost orders and quietly disclose the platform's volume.
+   */
+  displayNumber?: number;
 };
 
 export type OrderWithItems = OrderRow & { items: OrderItemRow[] };
 
 /** A new item as the route builds it, before it has an id. */
-export type NewOrderItem = Omit<OrderItemRow, "id" | "orderId">;
+export type NewOrderItem = Omit<OrderItemRow, "id" | "orderId" | "createdAt" | "updatedAt">;
 
 const ORDER_COLUMNS = `
   "id", "tableNumber", "status", "total", "restaurantId",
@@ -85,7 +97,8 @@ const ORDER_COLUMNS = `
 
 const ORDER_ITEM_COLUMNS = `
   "id", "orderId", "dishId", "optionId", "quantity", "price",
-  "nameEn", "nameRu", "nameAz", "optionNameEn", "optionNameRu", "optionNameAz"
+  "nameEn", "nameRu", "nameAz", "optionNameEn", "optionNameRu", "optionNameAz",
+  "createdAt", "updatedAt"
 `;
 
 /** Attach items to orders in one extra query rather than one query per order. */
@@ -138,23 +151,31 @@ export const ORDER_HISTORY_DAYS = 7;
 export async function findOrdersWithItems(restaurantId: number | null): Promise<OrderWithItems[]> {
   const sql = getSql();
 
+  // Numbering runs over ALL of the restaurant's orders and the history window is
+  // applied afterwards, so a number never changes. Numbering the visible rows
+  // instead would renumber every order each time an old one aged out — order 40
+  // becoming order 39 overnight, in a list staff read out to the kitchen.
   const orders = (await withRetry(() =>
     restaurantId === null
       ? sql`
-          SELECT ${sql.unsafe(ORDER_COLUMNS)}
-          FROM "Order"
+          SELECT * FROM (
+            SELECT ${sql.unsafe(ORDER_COLUMNS)},
+                   (ROW_NUMBER() OVER (PARTITION BY "restaurantId" ORDER BY "id" ASC))::int AS "displayNumber"
+            FROM "Order"
+          ) numbered
           WHERE "status" <> 'paid'
              OR "createdAt" >= NOW() - (${ORDER_HISTORY_DAYS} || ' days')::interval
           ORDER BY "createdAt" DESC
         `
       : sql`
-          SELECT ${sql.unsafe(ORDER_COLUMNS)}
-          FROM "Order"
-          WHERE "restaurantId" = ${restaurantId}
-            AND (
-              "status" <> 'paid'
-              OR "createdAt" >= NOW() - (${ORDER_HISTORY_DAYS} || ' days')::interval
-            )
+          SELECT * FROM (
+            SELECT ${sql.unsafe(ORDER_COLUMNS)},
+                   (ROW_NUMBER() OVER (PARTITION BY "restaurantId" ORDER BY "id" ASC))::int AS "displayNumber"
+            FROM "Order"
+            WHERE "restaurantId" = ${restaurantId}
+          ) numbered
+          WHERE "status" <> 'paid'
+             OR "createdAt" >= NOW() - (${ORDER_HISTORY_DAYS} || ' days')::interval
           ORDER BY "createdAt" DESC
         `,
   )) as OrderRow[];
@@ -411,9 +432,13 @@ export async function mergeItemsIntoOrder(
 
   const statements = [
     ...quantityIncrements.map(
+      // updatedAt moves so the panel can mark this line as topped up. Adding
+      // three more teas to an existing line is the other way a guest orders
+      // again, and without this it looked identical to the original round.
       (increment) => sql`
         UPDATE "OrderItem"
-        SET "quantity" = "quantity" + ${increment.addQuantity}
+        SET "quantity" = "quantity" + ${increment.addQuantity},
+            "updatedAt" = NOW()
         WHERE "id" = ${increment.orderItemId}
       `,
     ),

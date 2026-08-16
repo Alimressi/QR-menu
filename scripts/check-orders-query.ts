@@ -138,6 +138,13 @@ async function main() {
     check("owner lookup", (await findOrderRestaurantId(orderId)) === restaurantId);
     check("no paid order yet", (await findLatestPaidOrderUpdatedAt(table, restaurantId)) === null);
 
+    console.log("\nline timestamps mark a second round");
+    check("items start with a createdAt", created?.items.every((i) => i.createdAt instanceof Date) === true);
+    check(
+      "nothing looks topped up on a fresh order",
+      created?.items.every((i) => i.updatedAt.getTime() - i.createdAt.getTime() < 5000) === true,
+    );
+
     console.log("\nsecond round merges into the open order");
     const existing = await findActiveOrderWithItems(table, restaurantId);
     const teaItem = existing!.items.find((i) => i.dishId === tea.id)!;
@@ -157,6 +164,17 @@ async function main() {
     const merged = await findOrderWithItemsById(orderId);
     check("no duplicate row for the repeat item", merged?.items.length === 3, merged?.items.length);
     check("quantity accumulated", merged?.items.find((i) => i.id === teaItem.id)?.quantity === 5);
+
+    const bumped = merged?.items.find((i) => i.id === teaItem.id);
+    const freshLine = merged?.items.find((i) => !created?.items.some((c) => c.id === i.id));
+    check(
+      "a topped-up line has updatedAt past its createdAt",
+      (bumped?.updatedAt.getTime() ?? 0) > (bumped?.createdAt.getTime() ?? 0),
+    );
+    check(
+      "a line added in the second round exists and carries its own time",
+      freshLine !== undefined && freshLine.createdAt instanceof Date,
+    );
 
     // 13.5*1 + 2.0*5 + 10.5*1 = 34
     check("total recomputed by the database", merged?.total === 34.0, merged?.total);
@@ -215,6 +233,22 @@ async function main() {
     check(
       "an unpaid order is kept however old — somebody is still waiting",
       ids.has(oldUnpaid),
+    );
+
+    console.log("\nper-restaurant numbering");
+    const numbers = windowed.map((order) => order.displayNumber);
+    check("every listed order carries a number", numbers.every((n) => typeof n === "number"));
+    check("the first order placed is number 1", windowed.find((o) => o.id === orderId)?.displayNumber === 1);
+    check(
+      "numbers follow the order rows were created, not the listing order",
+      [...windowed]
+        .sort((left, right) => left.id - right.id)
+        .every((order, index, all) => index === 0 || (all[index - 1].displayNumber ?? 0) < (order.displayNumber ?? 0)),
+    );
+    check(
+      "numbering counts orders outside the window too, so it never shifts",
+      windowed.find((o) => o.id === oldUnpaid)?.displayNumber ===
+        1 + windowed.filter((o) => o.id < oldUnpaid).length + (ids.has(oldPaid) ? 0 : 1),
     );
 
     console.log("\nwaiter calls");

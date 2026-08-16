@@ -109,6 +109,11 @@ model Order {
 
 model OrderItem {
   id           Int         @id @default(autoincrement())
+  /// When this line appeared. A line created after its order was placed is a
+  /// second round — the panel marks it so the kitchen can see what is new.
+  createdAt    DateTime    @default(now())
+  /// Bumped when the quantity changes, which is the other way a guest adds.
+  updatedAt    DateTime    @default(now())
   orderId      Int
   dishId       Int
   optionId     Int? // выбранная опция (если есть)

@@ -1628,8 +1628,12 @@ export function MenuClient({
 
         {activeOrder ? (
           <div className="mb-4 rounded-xl border p-3" style={{ borderColor: design.borderColor, background: design.panelColor }}>
+            {/* No number for the guest. The database id is global across every
+                restaurant on the platform, so it leaks roughly how many orders
+                the whole business has taken — and it means nothing to someone at
+                a table anyway. Staff get a per-restaurant number in the panel. */}
             <p className="text-sm font-semibold" style={{ color: design.textColor }}>
-              {t.activeOrder}: #{activeOrder.id}
+              {t.activeOrder}
             </p>
             <p className="mt-1 text-xs" style={{ color: design.mutedTextColor }}>
               {t.status}: {getStatusLabel(activeOrder.status)}
