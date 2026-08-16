@@ -96,19 +96,36 @@ const CLASSES: Record<string, ClassSet> = {
     phone: "flex min-w-0 flex-1 flex-col gap-2 p-3",
     desktop: "space-y-3 p-4",
   },
+  // On a phone the price sits UNDER the name rather than beside it.
+  //
+  // Side by side, the badge left the name 92px on a 375px screen — about seven
+  // characters of the serif face at 20px. "Шоколадный" needs 109px, so it was
+  // being split across two lines as "Шоколадны" + "й". Any Russian or Azerbaijani
+  // word past seven letters had the same problem; it was not one bad dish name.
+  //
+  // Stacking gives the name the full 159px, which fits that word whole and lets
+  // "Шоколадный фондан" fall into two clean lines. The two-line reserve below
+  // (h-14) already accounted for names that wrap, so cards still line up.
   titleRow: {
-    responsive: "flex items-start justify-between gap-2 sm:gap-3",
-    phone: "flex items-start justify-between gap-2",
+    responsive: "flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3",
+    phone: "flex flex-col gap-1.5",
     desktop: "flex items-start justify-between gap-3",
   },
   title: {
-    responsive: "line-clamp-2 h-14 min-w-0 break-words font-serif text-[20px] sm:line-clamp-none sm:h-auto sm:text-[26px]",
-    phone: "line-clamp-2 h-14 min-w-0 break-words font-serif text-[20px]",
+    // `break-words` stays as a last resort: it only splits a word that cannot fit
+    // a line on its own, which now takes a name far longer than any real dish.
+    // Without it such a name would spill outside the card instead.
+    responsive:
+      "line-clamp-2 h-14 w-full min-w-0 break-words font-serif text-[20px] leading-tight sm:line-clamp-none sm:h-auto sm:w-auto sm:text-[26px]",
+    phone: "line-clamp-2 h-14 w-full min-w-0 break-words font-serif text-[20px] leading-tight",
     desktop: "min-w-0 break-words font-serif text-[26px]",
   },
+  // `self-start` keeps the badge hugging its text once the row became a column;
+  // stretched full width it would read as a button rather than a price.
   price: {
-    responsive: "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]",
-    phone: "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
+    responsive:
+      "w-fit shrink-0 self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none sm:px-3 sm:py-1.5 sm:text-[0.95rem]",
+    phone: "w-fit shrink-0 self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none",
     desktop: "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[0.95rem] font-semibold leading-none",
   },
   description: {
