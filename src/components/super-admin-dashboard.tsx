@@ -1363,51 +1363,34 @@ export function SuperAdminDashboard() {
                   </div>
 
                   {/* The very same <DishCard/> the guest menu renders, so this
-                      preview cannot drift from the real thing.
+                      preview cannot drift from the real thing. One card, because
+                      the menu now draws one card — phone and desktop stopped
+                      being two designs.
 
                       `menu-preview` keeps the panel's own theme out: see the
                       .superadmin-dracula rules in globals.css, which force
                       heading colours with !important and were repainting the
                       dish name in pink. */}
-                  <div className="menu-preview flex flex-wrap items-start gap-5">
-                    <div>
-                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-gold-400/70">{t.previewPhone}</p>
-                      <div className="w-[366px] max-w-full">
-                        <DishCard
-                          variant="phone"
-                          staticImage
-                          dish={dishCardPreview}
-                          design={savedDesign}
-                          addLabel={designLabels.addButton}
-                          imageOverlay={
-                            <FramingOverlay
-                              x={Number(dishForm.imagePositionX) || 50}
-                              y={Number(dishForm.imagePositionY) || 50}
-                              onChange={(nextX, nextY) =>
-                                setDishForm((prev) => ({
-                                  ...prev,
-                                  imagePositionX: String(nextX),
-                                  imagePositionY: String(nextY),
-                                }))
-                              }
-                            />
+                  <div className="menu-preview w-[420px] max-w-full">
+                    <DishCard
+                      staticImage
+                      dish={dishCardPreview}
+                      design={savedDesign}
+                      addLabel={designLabels.addButton}
+                      imageOverlay={
+                        <FramingOverlay
+                          x={Number(dishForm.imagePositionX) || 50}
+                          y={Number(dishForm.imagePositionY) || 50}
+                          onChange={(nextX, nextY) =>
+                            setDishForm((prev) => ({
+                              ...prev,
+                              imagePositionX: String(nextX),
+                              imagePositionY: String(nextY),
+                            }))
                           }
                         />
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-gold-400/70">{t.previewDesktop}</p>
-                      <div className="w-[420px] max-w-full">
-                        <DishCard
-                          variant="desktop"
-                          staticImage
-                          dish={dishCardPreview}
-                          design={savedDesign}
-                          addLabel={designLabels.addButton}
-                        />
-                      </div>
-                    </div>
+                      }
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">

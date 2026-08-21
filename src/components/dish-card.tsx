@@ -6,12 +6,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { isWorkerServedMedia } from "@/lib/media-url";
 import type { CurrencyMode } from "@/lib/design";
 
-// Single source of truth for how a dish looks in the guest menu.
-// The public menu renders it with variant="responsive"; the super-admin dish
-// editor renders the very same component with variant="phone" / "desktop" so a
-// preview can never drift from the real thing.
-
-export type DishCardVariant = "responsive" | "phone" | "desktop";
+// Single source of truth for how a dish looks in the guest menu — one layout at
+// every width, so the super-admin's preview cannot drift from what a guest sees
+// and there is no second design to keep in step.
 
 /** The subset of a restaurant's design settings the card paints with. */
 export type DishCardDesign = {
@@ -52,6 +49,21 @@ export function formatMenuPrice(value: number, mode: CurrencyMode) {
   return `${value.toFixed(2)} ₼`;
 }
 
+/**
+ * Zero-width spaces after the slashes in a name, so a line can end there.
+ *
+ * CSS offers no break after a solidus, so "Chicken/Shrimps/Salmon" is one
+ * unbreakable word: the only way to fit it was `break-words` cutting mid-word,
+ * and the card read "Chicken/Shrimps/S" then "almon". With a break opportunity
+ * after each slash the whole word moves down instead.
+ *
+ * U+200B renders as nothing and collapses at a line end. `break-words` stays on
+ * the heading as the last resort for a single word too long for a line by itself.
+ */
+function withWrapPoints(name: string) {
+  return name.replace(/\//g, "/\u200B");
+}
+
 /** Neutral photo placeholder — a framed picture with a mountain and a sun. */
 function ImagePlaceholderIcon() {
   return (
@@ -74,135 +86,85 @@ function ImagePlaceholderIcon() {
   );
 }
 
-type ClassSet = Record<DishCardVariant, string>;
+// A few values reach the markup as custom properties rather than inline styles.
+// They are read by classes (`bg-[color:var(--dish-price-bg)]`) so that Tailwind
+// still owns the rule; an inline style would win over the class and could not be
+// varied per state. Every class name below is spelled out in full — Tailwind
+// scans this file as text, so a name assembled at runtime is never generated.
 
-const pick = (set: ClassSet, variant: DishCardVariant) => set[variant];
+// The photo card: one row, at every width. A 4:3 thumbnail on the left, the
+// name, description and price stacked beside it, and a round "+" pinned to the
+// bottom-right corner (`relative` on the <article> is what it hangs off).
+const PHOTO = {
+  layout: "relative flex items-stretch gap-3 p-2.5",
 
-// Colours and radii that differ between the phone row and the wide card (the
-// price is a plain figure on a phone and a filled pill above sm) cannot live in
-// `style` — an inline value has no breakpoints. They are published as custom
-// properties on the <article> instead, so a single element picks the right one
-// per width. Every class below is spelled out in full: Tailwind scans this file
-// as text, so a name assembled at runtime would never be generated.
+  // Sized to the row rather than the row to the photo, and left at the dishes'
+  // own 4:3 — cropped square, a plated dish lost its sides. The 100px height is
+  // what the card is built around: the gaps in the text column are set so the
+  // text comes out the same height, and neither side leaves a band of empty card
+  // above and below the other. The 133px width that ratio costs comes straight
+  // out of the name's column, the tightest part of the row.
+  image: "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl",
 
-const CLASSES: Record<string, ClassSet> = {
-  // Phone: one compact row — square photo, text column, round "+" pinned to the
-  // bottom-right corner of the card (`relative` is what that button hangs off).
-  // sm+: the original stacked card with an edge-to-edge banner on top.
-  layout: {
-    responsive: "relative flex items-stretch gap-3 p-2.5 sm:block sm:gap-0 sm:p-0",
-    phone: "relative flex items-stretch gap-3 p-2.5",
-    desktop: "relative block",
-  },
-  image: {
-    // A 4:3 thumbnail, sized to the row rather than the row to the photo. It
-    // keeps the dishes' own aspect ratio: cropped square to 1:1, a plated dish
-    // shot lost its sides. The 100px height is what the card is built around —
-    // the gaps between the three text lines are set so the text column comes out
-    // the same height, and neither side leaves a band of empty card above and
-    // below the other. The 133px width is the cost of that ratio, and it comes
-    // straight out of the name's column, which is the tightest part of the row.
-    responsive:
-      "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl sm:aspect-[21/11] sm:h-auto sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl",
-    desktop: "relative aspect-[21/11] w-full overflow-hidden",
-  },
+  // Pinned to the photo's height and spreading its lines over it, so slack lands
+  // between them instead of as empty card above the name and below the price.
   // `pr-12` keeps the text clear of the round button in the corner.
   //
-  // The column is pinned to the photo's height and spreads its three lines over
-  // it, so slack lands between them instead of as empty card above the name and
-  // below the price. Name and price never yield; the description is the one that
-  // gives way when a long name needs the room, and the rest of it is still there
-  // in the dish sheet.
-  //
-  // The 10px minimum gap is picked so it gives way a whole line at a time. Once
-  // the column is over-full the gaps sit at that minimum, which leaves the
-  // description exactly 100 - 47.5 (two-line name) - 20 - 16 = 16.5px: one line,
-  // to the pixel. A three-line name leaves -7.25px and it disappears entirely.
-  // At 6px the same sums came out at 24.5px and 0.8px — a line and a half, and a
-  // hairline of clipped letters.
-  body: {
-    responsive:
-      "flex h-25 min-w-0 flex-1 flex-col justify-between gap-y-2.5 pr-12 sm:block sm:h-auto sm:space-y-3 sm:p-4 sm:pr-4",
-    phone: "flex h-25 min-w-0 flex-1 flex-col justify-between gap-y-2.5 pr-12",
-    desktop: "space-y-3 p-4",
-  },
-  // On a phone the price is not beside the name — it sits under the description,
-  // as the last line of the text column. `contents` dissolves this wrapper so
-  // name and price become siblings of the description and can be re-ordered;
-  // above sm the wrapper comes back as the usual name/price row.
-  titleRow: {
-    responsive: "contents sm:flex sm:items-start sm:justify-between sm:gap-3",
-    phone: "contents",
-    desktop: "flex items-start justify-between gap-3",
-  },
-  title: {
-    // `break-words` stays as a last resort: it only splits a word that cannot fit
-    // a line on its own. Without it such a name would spill outside the card.
-    //
-    // A name may run to three lines rather than be cut: at 19px in a 165px
-    // column, a two-line ceiling truncated 57 of Nine Lives' 209 dishes.
-    //
-    // Nothing is reserved below it. A 48px two-line reserve did keep every card
-    // exactly level, but under a one-line name — most of the menu — it left a
-    // 24px band of dead space that read as a hole in the middle of the card.
-    // Cards now close up around their text; a two-line name simply makes that
-    // one card taller.
-    responsive:
-      "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight sm:order-none sm:line-clamp-none sm:w-auto sm:text-[26px] sm:font-normal",
-    phone: "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
-    desktop: "min-w-0 break-words font-serif text-[26px]",
-  },
-  price: {
-    responsive:
-      "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)] sm:order-none sm:rounded-full sm:bg-[color:var(--dish-price-bg)] sm:px-3 sm:py-1.5 sm:text-[0.95rem] sm:font-semibold sm:text-[color:var(--dish-price-fg)]",
-    phone: "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
-    desktop:
-      "shrink-0 whitespace-nowrap rounded-full bg-[color:var(--dish-price-bg)] px-3 py-1.5 text-[0.95rem] font-semibold leading-none text-[color:var(--dish-price-fg)]",
-  },
-  description: {
-    responsive:
-      "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug sm:order-none sm:overflow-visible sm:line-clamp-none sm:text-sm sm:leading-6",
-    phone: "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug",
-    desktop: "text-sm leading-6",
-  },
-  controls: {
-    responsive: "absolute bottom-2.5 right-2.5 sm:static sm:mt-0",
-    phone: "absolute bottom-2.5 right-2.5",
-    desktop: "",
-  },
-  // Phone: an icon-only circle. sm+: the full-width labelled button.
-  addButton: {
-    responsive:
-      "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90 sm:h-auto sm:min-h-11 sm:w-full sm:rounded-[var(--dish-btn-radius)] sm:py-2.5",
-    phone: "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90",
-    desktop:
-      "w-full min-h-11 rounded-[var(--dish-btn-radius)] py-2.5 text-center text-sm font-semibold transition hover:opacity-90",
-  },
-  // The option picker is hidden on phones so every card keeps the same height.
-  options: {
-    responsive: "hidden sm:block",
-    phone: "hidden",
-    desktop: "block",
-  },
-  // The badge has to fit inside an 88px thumbnail on a phone.
-  soldOutBadge: {
-    responsive:
-      "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider sm:px-3 sm:py-1 sm:text-[11px]",
-    phone: "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
-    desktop: "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider",
-  },
+  // Name and price never yield; the description is the one that gives way when a
+  // long name needs the room, and the rest of it is still there in the dish
+  // sheet. The 10px minimum gap is picked so it gives way a whole line at a
+  // time: once the column is over-full the gaps sit at that minimum, which
+  // leaves the description exactly 100 - 47.5 (two-line name) - 20 - 16 =
+  // 16.5px, one line to the pixel. A three-line name leaves -7.25px and it
+  // disappears entirely. At a 6px minimum those same sums came out at 24.5px and
+  // 0.8px — a line and a half, and a hairline of clipped letters.
+  body: "flex h-25 min-w-0 flex-1 flex-col justify-between gap-y-2.5 pr-12",
+
+  // The price is not beside the name — it is the last line of the text column.
+  // `contents` dissolves this wrapper so the name and the price become siblings
+  // of the description and can be ordered around it.
+  titleRow: "contents",
+
+  // `break-words` stays as a last resort: it only splits a word that cannot fit
+  // a line on its own. Without it such a name would spill outside the card. A
+  // name may run to three lines rather than be cut short.
+  title:
+    "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
+  description: "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug",
+  price:
+    "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
+
+  controls: "absolute bottom-2.5 right-2.5",
+  // Icon-only: at 40px across there is no room for "Əlavə et". The label lives
+  // on as the button's accessible name.
+  addButton: "flex h-10 w-10 items-center justify-center rounded-full transition hover:opacity-90",
+  // The badge has to fit inside a 133x100 thumbnail.
+  soldOutBadge: "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+};
+
+// A text-only menu has no photo to lay out against, so it keeps the stacked card
+// and hugs its content — nothing to line up against means no reserved space.
+const TEXT_ONLY = {
+  layout: "relative block",
+  body: "flex flex-col gap-1.5 p-4",
+  titleRow: "flex items-start justify-between gap-3",
+  title: "min-w-0 break-words font-serif text-[21px] leading-tight",
+  description: "text-sm leading-snug",
+  price:
+    "shrink-0 whitespace-nowrap rounded-full bg-[color:var(--dish-price-bg)] px-3 py-1 text-sm font-semibold leading-none text-[color:var(--dish-price-fg)]",
+  controls: "mt-1",
+  addButton:
+    "w-full min-h-11 rounded-[var(--dish-btn-radius)] py-2.5 text-center text-base font-semibold transition hover:opacity-90",
 };
 
 type Props = {
   dish: DishCardData;
   design: DishCardDesign;
   addLabel: string;
-  variant?: DishCardVariant;
   /** Interactive menu wiring — omitted in previews, which render inert. */
   onOpen?: () => void;
   onAdd?: () => void;
-  /** Option <select> block, menu only. */
+  /** Option <select> block. Text-only menus have the room to show it inline. */
   optionsSlot?: ReactNode;
   /** Extra layer above the photo — the editor's framing handle. */
   imageOverlay?: ReactNode;
@@ -218,7 +180,6 @@ export function DishCard({
   dish,
   design,
   addLabel,
-  variant = "responsive",
   onOpen,
   onAdd,
   optionsSlot,
@@ -232,39 +193,17 @@ export function DishCard({
   const soldOut = dish.soldOut === true;
   const stop = (event: React.MouseEvent) => event.stopPropagation();
 
-  // A text-only menu has no photo row to lay out against, so it keeps the
-  // stacked card and hugs its content instead — no empty gaps.
   const textOnly = !showPhoto;
+  const cls = textOnly ? TEXT_ONLY : PHOTO;
   // A photo menu keeps its layout even before the photos arrive: a dish imported
   // in bulk has no imageUrl yet, and dropping it to the text-only layout would
   // make the grid jump around as photos are added one by one. It gets a
   // placeholder in the same slot instead. An empty src would throw in next/image.
   const hasPhoto = showPhoto && !!dish.imageUrl;
-  const bodyCls = textOnly ? "flex flex-col gap-1.5 p-4" : pick(CLASSES.body, variant);
-  const titleRowCls = textOnly ? "flex items-start justify-between gap-3" : pick(CLASSES.titleRow, variant);
-  const titleCls = textOnly ? "min-w-0 break-words font-serif text-[21px] leading-tight" : pick(CLASSES.title, variant);
-  const priceCls = textOnly
-    ? "shrink-0 whitespace-nowrap rounded-full bg-[color:var(--dish-price-bg)] px-3 py-1 text-sm font-semibold leading-none text-[color:var(--dish-price-fg)]"
-    : pick(CLASSES.price, variant);
-  const descCls = textOnly ? "text-sm leading-snug" : pick(CLASSES.description, variant);
-  const controlsCls = textOnly ? "mt-1" : pick(CLASSES.controls, variant);
-  // Text-only menu has room for a roomier button; photo cards keep it compact.
-  const buttonCls = textOnly
-    ? "w-full min-h-11 rounded-[var(--dish-btn-radius)] py-2.5 text-center text-base font-semibold transition hover:opacity-90"
-    : pick(CLASSES.addButton, variant);
-  const optionsCls = textOnly ? "block" : pick(CLASSES.options, variant);
-  // The compact button carries a "+" instead of the word: at 36px across there
-  // is no room for "Əlavə et". The label lives on as the accessible name.
-  const showAddIcon = !textOnly && variant !== "desktop";
-  const showAddLabel = textOnly || variant !== "phone";
-  const addLabelCls = !textOnly && variant === "responsive" ? "hidden sm:inline" : undefined;
 
   return (
     <article
-      // Photo-less cards are always block-flow (no side-by-side image column).
-      className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${
-        showPhoto ? pick(CLASSES.layout, variant) : "relative block"
-      }`}
+      className={`group card-hover card-glow mx-auto w-full max-w-[420px] overflow-hidden border shadow-sm ${cls.layout}`}
       onClick={soldOut ? undefined : onOpen}
       style={
         {
@@ -280,13 +219,13 @@ export function DishCard({
       }
     >
       {showPhoto ? (
-        <div className={pick(CLASSES.image, variant)}>
+        <div className={PHOTO.image}>
           {hasPhoto ? (
             <Image
               src={dish.imageUrl}
               alt={dish.name}
               fill
-              sizes="(max-width: 640px) 280px, 420px"
+              sizes="133px"
               quality={95}
               unoptimized={isWorkerServedMedia(dish.imageUrl)}
               className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
@@ -307,7 +246,7 @@ export function DishCard({
           {soldOut ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black/45 px-1">
               <span
-                className={pick(CLASSES.soldOutBadge, variant)}
+                className={PHOTO.soldOutBadge}
                 style={{ background: design.surfaceColor, color: design.textColor }}
               >
                 {soldOutLabel}
@@ -318,23 +257,23 @@ export function DishCard({
         </div>
       ) : null}
 
-      <div className={bodyCls}>
-        <div className={titleRowCls}>
-          <h3 className={titleCls} style={{ color: design.textColor }}>
-            {dish.name}
+      <div className={cls.body}>
+        <div className={cls.titleRow}>
+          <h3 className={cls.title} style={{ color: design.textColor }}>
+            {withWrapPoints(dish.name)}
           </h3>
-          <p className={priceCls}>{formatMenuPrice(dish.price, design.currencyMode)}</p>
+          <p className={cls.price}>{formatMenuPrice(dish.price, design.currencyMode)}</p>
         </div>
 
         {/* An empty description would otherwise just add a blank gap. */}
         {!dish.description ? null : (
-          <p className={descCls} style={{ color: design.mutedTextColor }}>
+          <p className={cls.description} style={{ color: design.mutedTextColor }}>
             {dish.description}
           </p>
         )}
 
         {/* One clear "Add" (adds 1) — quantity is chosen in the dish modal. */}
-        <div className={controlsCls}>
+        <div className={cls.controls}>
           <button
             type="button"
             disabled={soldOut}
@@ -345,7 +284,7 @@ export function DishCard({
                 onAdd?.();
               }
             }}
-            className={buttonCls}
+            className={cls.addButton}
             style={{
               // A stop-listed dish keeps the button in place so the grid does not
               // reflow, but it reads as unavailable rather than clickable.
@@ -354,22 +293,18 @@ export function DishCard({
               cursor: soldOut ? "not-allowed" : undefined,
             }}
           >
-            {showAddIcon ? (
-              <Plus
-                size={20}
-                strokeWidth={2.5}
-                aria-hidden="true"
-                className={variant === "responsive" ? "sm:hidden" : undefined}
-              />
-            ) : null}
-            {showAddLabel ? (
-              <span className={addLabelCls}>{soldOut ? soldOutLabel : addLabel}</span>
-            ) : null}
+            {textOnly ? (
+              soldOut ? soldOutLabel : addLabel
+            ) : (
+              <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
+            )}
           </button>
         </div>
 
-        {/* Picking an option is pointless when the dish cannot be ordered. */}
-        {optionsSlot && !soldOut ? <div className={optionsCls}>{optionsSlot}</div> : null}
+        {/* The photo row has no space for a <select>; those menus pick their
+            option in the dish sheet instead. Picking one is pointless anyway
+            when the dish cannot be ordered. */}
+        {textOnly && optionsSlot && !soldOut ? <div className="block">{optionsSlot}</div> : null}
       </div>
     </article>
   );

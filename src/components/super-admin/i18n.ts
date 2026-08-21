@@ -318,8 +318,6 @@ export const dictionary: Record<
     framingPreview: string;
     positionX: string;
     positionY: string;
-    previewPhone: string;
-    previewDesktop: string;
     framingHint: string;
     create: string;
     update: string;
@@ -397,8 +395,6 @@ export const dictionary: Record<
     framingPreview: "Menu framing preview",
     positionX: "Position X",
     positionY: "Position Y",
-    previewPhone: "Phone",
-    previewDesktop: "Desktop",
     framingHint: "Drag on the photo to choose what stays in frame.",
     create: "Create",
     update: "Update",
@@ -476,8 +472,6 @@ export const dictionary: Record<
     framingPreview: "Предпросмотр кадрирования меню",
     positionX: "Позиция X",
     positionY: "Позиция Y",
-    previewPhone: "Телефон",
-    previewDesktop: "Десктоп",
     framingHint: "Потяните по фото, чтобы выбрать, что останется в кадре.",
     create: "Создать",
     update: "Обновить",
@@ -555,8 +549,6 @@ export const dictionary: Record<
     framingPreview: "Menyu kadr preview",
     positionX: "Pozisiya X",
     positionY: "Pozisiya Y",
-    previewPhone: "Telefon",
-    previewDesktop: "Desktop",
     framingHint: "Kadri secmek ucun sekil uzerinde suruyun.",
     create: "Yarat",
     update: "Yenile",
