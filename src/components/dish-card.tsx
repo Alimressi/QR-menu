@@ -90,22 +90,28 @@ const CLASSES: Record<string, ClassSet> = {
   // bottom-right corner of the card (`relative` is what that button hangs off).
   // sm+: the original stacked card with an edge-to-edge banner on top.
   layout: {
-    responsive: "relative flex items-stretch gap-3 p-3 sm:block sm:gap-0 sm:p-0",
-    phone: "relative flex items-stretch gap-3 p-3",
+    responsive: "relative flex items-stretch gap-3 p-2.5 sm:block sm:gap-0 sm:p-0",
+    phone: "relative flex items-stretch gap-3 p-2.5",
     desktop: "relative block",
   },
   image: {
     // A square thumbnail, sized to the row rather than the row to the photo.
-    // It cannot grow much further: every pixel it gains comes straight out of
-    // the name's column, which is already the tightest part of the row.
+    // The 100px height is what the card is built around: the gaps between the
+    // three text lines are set so the text column comes out the same height, and
+    // neither side leaves a band of empty card above and below the other. It
+    // cannot gain width without taking it straight out of the name's column,
+    // which is already the tightest part of the row.
     responsive:
-      "relative h-[100px] w-[100px] shrink-0 self-center overflow-hidden rounded-2xl sm:aspect-[21/11] sm:h-auto sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative h-[100px] w-[100px] shrink-0 self-center overflow-hidden rounded-2xl",
+      "relative h-25 w-25 shrink-0 self-center overflow-hidden rounded-2xl sm:aspect-[21/11] sm:h-auto sm:w-full sm:self-auto sm:rounded-none",
+    phone: "relative h-25 w-25 shrink-0 self-center overflow-hidden rounded-2xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   // `pr-12` keeps the text clear of the round button in the corner. The gaps
   // between the three lines differ (name/description sit closer than
-  // description/price), so they are set per line rather than with `gap`.
+  // description/price), so they are set per line rather than with `gap`. Their
+  // sizes are what make a one-line name's column measure the photo's 100px:
+  // 24 + 12 + 31 + 16 + 16. Slack left over would show as empty card above the
+  // name and below the price, so it is spent on the gaps instead.
   body: {
     responsive:
       "flex min-w-0 flex-1 flex-col justify-center pr-12 sm:block sm:space-y-3 sm:p-4 sm:pr-4",
@@ -125,32 +131,35 @@ const CLASSES: Record<string, ClassSet> = {
     // `break-words` stays as a last resort: it only splits a word that cannot fit
     // a line on its own. Without it such a name would spill outside the card.
     //
-    // Two lines are reserved so the list scrolls evenly, but a name is allowed a
-    // third rather than being cut: at 19px in a 165px column, a two-line ceiling
-    // truncated 57 of Nine Lives' 209 dishes. A third line costs 22px on the few
-    // cards that need it and none on the rest. The reserve is 48px because that
-    // is what two lines of 19px actually measure at this leading.
+    // A name may run to three lines rather than be cut: at 19px in a 165px
+    // column, a two-line ceiling truncated 57 of Nine Lives' 209 dishes.
+    //
+    // Nothing is reserved below it. A 48px two-line reserve did keep every card
+    // exactly level, but under a one-line name — most of the menu — it left a
+    // 24px band of dead space that read as a hole in the middle of the card.
+    // Cards now close up around their text; a two-line name simply makes that
+    // one card taller.
     responsive:
-      "order-1 line-clamp-3 min-h-12 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight sm:order-none sm:line-clamp-none sm:min-h-0 sm:w-auto sm:text-[26px] sm:font-normal",
-    phone: "order-1 line-clamp-3 min-h-12 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
+      "order-1 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight sm:order-none sm:line-clamp-none sm:w-auto sm:text-[26px] sm:font-normal",
+    phone: "order-1 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
     desktop: "min-w-0 break-words font-serif text-[26px]",
   },
   price: {
     responsive:
-      "order-3 mt-2.5 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)] sm:order-none sm:mt-0 sm:shrink-0 sm:rounded-full sm:bg-[color:var(--dish-price-bg)] sm:px-3 sm:py-1.5 sm:text-[0.95rem] sm:font-semibold sm:text-[color:var(--dish-price-fg)]",
-    phone: "order-3 mt-2.5 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
+      "order-3 mt-4 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)] sm:order-none sm:mt-0 sm:shrink-0 sm:rounded-full sm:bg-[color:var(--dish-price-bg)] sm:px-3 sm:py-1.5 sm:text-[0.95rem] sm:font-semibold sm:text-[color:var(--dish-price-fg)]",
+    phone: "order-3 mt-4 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
     desktop:
       "shrink-0 whitespace-nowrap rounded-full bg-[color:var(--dish-price-bg)] px-3 py-1.5 text-[0.95rem] font-semibold leading-none text-[color:var(--dish-price-fg)]",
   },
   description: {
     responsive:
-      "order-2 mt-1.5 line-clamp-2 h-[31px] text-[12px] leading-snug sm:order-none sm:mt-0 sm:line-clamp-none sm:h-auto sm:text-sm sm:leading-6",
-    phone: "order-2 mt-1.5 line-clamp-2 h-[31px] text-[12px] leading-snug",
+      "order-2 mt-3 line-clamp-2 h-[31px] text-[12px] leading-snug sm:order-none sm:mt-0 sm:line-clamp-none sm:h-auto sm:text-sm sm:leading-6",
+    phone: "order-2 mt-3 line-clamp-2 h-[31px] text-[12px] leading-snug",
     desktop: "text-sm leading-6",
   },
   controls: {
-    responsive: "absolute bottom-3 right-3 sm:static sm:mt-0",
-    phone: "absolute bottom-3 right-3",
+    responsive: "absolute bottom-2.5 right-2.5 sm:static sm:mt-0",
+    phone: "absolute bottom-2.5 right-2.5",
     desktop: "",
   },
   // Phone: an icon-only circle. sm+: the full-width labelled button.
