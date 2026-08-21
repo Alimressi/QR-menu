@@ -95,15 +95,16 @@ const CLASSES: Record<string, ClassSet> = {
     desktop: "relative block",
   },
   image: {
-    // A square thumbnail, sized to the row rather than the row to the photo.
-    // The 100px height is what the card is built around: the gaps between the
-    // three text lines are set so the text column comes out the same height, and
-    // neither side leaves a band of empty card above and below the other. It
-    // cannot gain width without taking it straight out of the name's column,
-    // which is already the tightest part of the row.
+    // A 4:3 thumbnail, sized to the row rather than the row to the photo. It
+    // keeps the dishes' own aspect ratio: cropped square to 1:1, a plated dish
+    // shot lost its sides. The 100px height is what the card is built around —
+    // the gaps between the three text lines are set so the text column comes out
+    // the same height, and neither side leaves a band of empty card above and
+    // below the other. The 133px width is the cost of that ratio, and it comes
+    // straight out of the name's column, which is the tightest part of the row.
     responsive:
-      "relative h-25 w-25 shrink-0 self-center overflow-hidden rounded-2xl sm:aspect-[21/11] sm:h-auto sm:w-full sm:self-auto sm:rounded-none",
-    phone: "relative h-25 w-25 shrink-0 self-center overflow-hidden rounded-2xl",
+      "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl sm:aspect-[21/11] sm:h-auto sm:w-full sm:self-auto sm:rounded-none",
+    phone: "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
   // `pr-12` keeps the text clear of the round button in the corner. The gaps
@@ -277,7 +278,7 @@ export function DishCard({
               src={dish.imageUrl}
               alt={dish.name}
               fill
-              sizes="(max-width: 640px) 200px, 420px"
+              sizes="(max-width: 640px) 280px, 420px"
               quality={95}
               unoptimized={isWorkerServedMedia(dish.imageUrl)}
               className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
