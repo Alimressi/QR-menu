@@ -107,16 +107,24 @@ const CLASSES: Record<string, ClassSet> = {
     phone: "relative aspect-[4/3] h-25 w-auto shrink-0 self-center overflow-hidden rounded-2xl",
     desktop: "relative aspect-[21/11] w-full overflow-hidden",
   },
-  // `pr-12` keeps the text clear of the round button in the corner. The gaps
-  // between the three lines differ (name/description sit closer than
-  // description/price), so they are set per line rather than with `gap`. Their
-  // sizes are what make a one-line name's column measure the photo's 100px:
-  // 24 + 12 + 31 + 16 + 16. Slack left over would show as empty card above the
-  // name and below the price, so it is spent on the gaps instead.
+  // `pr-12` keeps the text clear of the round button in the corner.
+  //
+  // The column is pinned to the photo's height and spreads its three lines over
+  // it, so slack lands between them instead of as empty card above the name and
+  // below the price. Name and price never yield; the description is the one that
+  // gives way when a long name needs the room, and the rest of it is still there
+  // in the dish sheet.
+  //
+  // The 10px minimum gap is picked so it gives way a whole line at a time. Once
+  // the column is over-full the gaps sit at that minimum, which leaves the
+  // description exactly 100 - 47.5 (two-line name) - 20 - 16 = 16.5px: one line,
+  // to the pixel. A three-line name leaves -7.25px and it disappears entirely.
+  // At 6px the same sums came out at 24.5px and 0.8px — a line and a half, and a
+  // hairline of clipped letters.
   body: {
     responsive:
-      "flex min-w-0 flex-1 flex-col justify-center pr-12 sm:block sm:space-y-3 sm:p-4 sm:pr-4",
-    phone: "flex min-w-0 flex-1 flex-col justify-center pr-12",
+      "flex h-25 min-w-0 flex-1 flex-col justify-between gap-y-2.5 pr-12 sm:block sm:h-auto sm:space-y-3 sm:p-4 sm:pr-4",
+    phone: "flex h-25 min-w-0 flex-1 flex-col justify-between gap-y-2.5 pr-12",
     desktop: "space-y-3 p-4",
   },
   // On a phone the price is not beside the name — it sits under the description,
@@ -141,21 +149,21 @@ const CLASSES: Record<string, ClassSet> = {
     // Cards now close up around their text; a two-line name simply makes that
     // one card taller.
     responsive:
-      "order-1 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight sm:order-none sm:line-clamp-none sm:w-auto sm:text-[26px] sm:font-normal",
-    phone: "order-1 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
+      "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight sm:order-none sm:line-clamp-none sm:w-auto sm:text-[26px] sm:font-normal",
+    phone: "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
     desktop: "min-w-0 break-words font-serif text-[26px]",
   },
   price: {
     responsive:
-      "order-3 mt-4 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)] sm:order-none sm:mt-0 sm:shrink-0 sm:rounded-full sm:bg-[color:var(--dish-price-bg)] sm:px-3 sm:py-1.5 sm:text-[0.95rem] sm:font-semibold sm:text-[color:var(--dish-price-fg)]",
-    phone: "order-3 mt-4 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
+      "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)] sm:order-none sm:rounded-full sm:bg-[color:var(--dish-price-bg)] sm:px-3 sm:py-1.5 sm:text-[0.95rem] sm:font-semibold sm:text-[color:var(--dish-price-fg)]",
+    phone: "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
     desktop:
       "shrink-0 whitespace-nowrap rounded-full bg-[color:var(--dish-price-bg)] px-3 py-1.5 text-[0.95rem] font-semibold leading-none text-[color:var(--dish-price-fg)]",
   },
   description: {
     responsive:
-      "order-2 mt-3 line-clamp-2 h-[31px] text-[12px] leading-snug sm:order-none sm:mt-0 sm:line-clamp-none sm:h-auto sm:text-sm sm:leading-6",
-    phone: "order-2 mt-3 line-clamp-2 h-[31px] text-[12px] leading-snug",
+      "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug sm:order-none sm:overflow-visible sm:line-clamp-none sm:text-sm sm:leading-6",
+    phone: "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug",
     desktop: "text-sm leading-6",
   },
   controls: {
@@ -318,8 +326,8 @@ export function DishCard({
           <p className={priceCls}>{formatMenuPrice(dish.price, design.currencyMode)}</p>
         </div>
 
-        {/* In text-only mode an empty description would just add a blank gap. */}
-        {textOnly && !dish.description ? null : (
+        {/* An empty description would otherwise just add a blank gap. */}
+        {!dish.description ? null : (
           <p className={descCls} style={{ color: design.mutedTextColor }}>
             {dish.description}
           </p>
