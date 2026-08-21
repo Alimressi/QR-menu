@@ -50,3 +50,6 @@ next-env.d.ts
 
 # Database exports — contain restaurant admin password hashes
 backups/
+
+# Claude Code workspace config (dev-server launch profile) — local tooling
+.claude/
