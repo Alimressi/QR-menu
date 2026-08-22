@@ -132,7 +132,7 @@ const PHOTO = {
     "order-1 shrink-0 line-clamp-3 min-w-0 break-words font-serif text-[19px] font-semibold leading-tight",
   description: "order-2 min-h-0 overflow-hidden line-clamp-2 text-[12px] leading-snug",
   price:
-    "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-bold leading-none text-[color:var(--dish-text)]",
+    "order-3 shrink-0 w-fit whitespace-nowrap text-[16px] font-medium leading-none text-[color:var(--dish-text)]",
 
   controls: "absolute bottom-2.5 right-2.5",
   // Icon-only: at 40px across there is no room for "Əlavə et". The label lives
