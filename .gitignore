@@ -53,3 +53,6 @@ backups/
 
 # Claude Code workspace config (dev-server launch profile) — local tooling
 .claude/
+
+# Photo-match review logs written by the dish-photo scripts — working notes
+*-photos-review.md
