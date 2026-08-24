@@ -56,3 +56,6 @@ backups/
 
 # Photo-match review logs written by the dish-photo scripts — working notes
 *-photos-review.md
+
+# Chosen Pexels sources, so a grade tweak costs no new searches
+gamepoint-photo-picks.json
