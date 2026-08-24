@@ -33,7 +33,7 @@ export const QUERIES = {
   // Qəlyanlar
   247: "hookah close up smoke",
   248: "hookah apple shisha",
-  249: "hookah grapefruit shisha",
+  249: "hookah with grapefruit bowl",
   // Pivə
   250: "lager beer glass",
   251: "unfiltered beer glass",
@@ -51,35 +51,35 @@ export const QUERIES = {
   262: "bbq burger fries drink meal",
   263: "cheeseburger fries cola meal",
   // Soyuq İçkilər
-  264: "cola soda can",
-  265: "glass of cola with ice",
-  266: "cola bottle on table",
-  267: "soda bottle one liter",
-  268: "iced tea can",
-  269: "iced lemon tea in bottle",
-  270: "energy drink can",
-  271: "sparkling water bottle",
-  272: "blank aluminium drink can dark background",
-  273: "blank aluminium can blue background",
-  274: "energy drink can white",
-  275: "turkish ayran",
-  276: "mineral water bottle",
-  277: "homemade lemonade jar",
+  264: "coca cola can cold drink",
+  265: "coca cola glass bottle",
+  266: "plastic cola bottle drink",
+  267: "large bottle of cola soda",
+  268: "canned iced tea",
+  269: "bottle of iced tea with lemon",
+  270: "red bull can",
+  271: "sparkling water bottle and glass",
+  272: "cold beverage can on ice",
+  273: "drink can close up dark",
+  274: "chilled soda can water drops",
+  275: "glass of ayran turkish yogurt drink",
+  276: "plastic water bottle on table",
+  277: "homemade lemonade pitcher",
   // İsti İçkilər
   278: "black tea teapot",
-  279: "cup of tea",
+  279: "cup of black tea",
   280: "americano coffee cup",
   281: "latte coffee with milk",
   282: "hot chocolate glass mug",
   283: "cocoa with marshmallows",
   // Smoothie
-  284: "milkshake glass",
+  284: "chocolate milkshake in glass",
   285: "banana caramel milkshake",
   286: "berry smoothie glass",
   287: "strawberry smoothie glass",
   // Mürəbbə
-  288: "chocolate caramel peanut ice cream",
-  289: "coconut chocolate dessert",
+  288: "caramel nut ice cream",
+  289: "coconut chocolate bar broken",
   290: "white cherry dessert bowl",
   291: "strawberry dessert bowl",
   292: "vanilla ice cream scoops",
@@ -118,6 +118,11 @@ export const QUERIES = {
 export const UNSURE = new Set([226, 288, 289, 290, 291, 299]);
 
 // Branded products: the photo shows the kind of drink or bar, not the brand.
+//
+// Bizon needs saying twice: a search for "energy drink" returns Red Bull, and
+// Red Bull is on this menu as its own line at three times the price. Standing a
+// competitor's can in for it is worse than a plain one, so its queries never say
+// "energy drink".
 // Stock libraries do not carry brand photography, and using it on a menu would
 // be a trademark problem rather than a licensing one.
 export const BRANDED = new Set([264, 265, 266, 267, 268, 269, 270, 272, 273, 274, 276, 271, 250, 251, 252, 253, 254, 255, 288, 289, 294]);
