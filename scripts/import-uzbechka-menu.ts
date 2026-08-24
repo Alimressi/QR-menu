@@ -859,40 +859,53 @@ async function main() {
 
   const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString }) });
 
-  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true } });
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true } });
 
   if (!restaurant) {
     throw new Error(`No restaurant with slug "${slug}".`);
   }
 
-  const existing = await prisma.dish.findMany({ where: { restaurantId: restaurant.id }, select: { id: true } });
+  // The menu as one list, so a dish's position is its position on the printed
+  // page whichever category it lands in.
+  const flat = MENU.flatMap((category, categoryIndex) =>
+    category.dishes.map((dish) => ({ categoryIndex, dish })),
+  );
 
-  // A dish that appears on someone's order cannot be deleted (OrderItem.dish is
-  // onDelete: Restrict), and deleting its category would try to. Stop before
-  // touching anything rather than fail halfway through.
-  const ordered = await prisma.orderItem.findMany({
-    where: { dishId: { in: existing.map((dish) => dish.id) } },
-    select: { dishId: true },
-    distinct: ["dishId"],
-  });
+  const oldCategoryIds = (
+    await prisma.category.findMany({ where: { restaurantId: restaurant.id }, select: { id: true } })
+  ).map((category) => category.id);
 
-  if (ordered.length > 0) {
-    throw new Error(
-      `${ordered.length} of ${slug}'s dishes appear on past orders and cannot be deleted. ` +
-        "Clear that restaurant's orders first, or rewrite those dishes in place.",
-    );
-  }
+  const oldDishIds = (
+    await prisma.dish.findMany({ where: { restaurantId: restaurant.id }, select: { id: true } })
+  ).map((dish) => dish.id);
 
-  console.log(`${slug}: replacing ${existing.length} dishes with ${MENU.reduce((n, c) => n + c.dishes.length, 0)}.`);
+  // A dish someone has ordered cannot be deleted — OrderItem.dish is
+  // onDelete: Restrict, and dropping its category would try to. It does not
+  // have to be deleted, though: an order item carries its own copy of the name
+  // and price it was placed at, so the dish row can be rewritten as one of the
+  // new dishes and the order history still reads the way it did.
+  const lockedDishIds = (
+    await prisma.orderItem.findMany({
+      where: { dishId: { in: oldDishIds } },
+      select: { dishId: true },
+      distinct: ["dishId"],
+    })
+  ).map((item) => item.dishId);
 
-  await prisma.category.deleteMany({ where: { restaurantId: restaurant.id } });
+  console.log(
+    `${slug}: replacing ${oldDishIds.length} dishes with ${flat.length}` +
+      (lockedDishIds.length > 0 ? `, rewriting ${lockedDishIds.length} held by past orders` : "") +
+      ".",
+  );
 
   // The guest menu lists dishes newest first, which would print every section
   // back to front. Stamping each dish a second older than the one above it puts
   // the printed order back — without changing what "newest first" means for
   // every other restaurant.
   const firstStampedAt = Date.now();
-  let position = 0;
+  const stampFor = (position: number) => new Date(firstStampedAt - position * 1000);
+
+  const categoryIds: number[] = [];
 
   for (const category of MENU) {
     const created = await prisma.category.create({
@@ -904,23 +917,51 @@ async function main() {
       },
     });
 
-    await prisma.dish.createMany({
-      data: category.dishes.map((dish) => ({
-        restaurantId: restaurant.id,
-        categoryId: created.id,
-        createdAt: new Date(firstStampedAt - position++ * 1000),
-        nameAz: dish.nameAz,
-        nameRu: dish.nameRu,
-        nameEn: dish.nameAz,
-        descriptionAz: dish.descriptionAz ?? "",
-        descriptionRu: dish.descriptionRu ?? "",
-        descriptionEn: dish.descriptionAz ?? "",
-        price: dish.price,
-        imageUrl: "",
-      })),
-    });
+    categoryIds.push(created.id);
+  }
 
-    console.log(`  ${category.nameAz}: ${category.dishes.length}`);
+  const fieldsFor = (position: number) => {
+    const { categoryIndex, dish } = flat[position];
+
+    return {
+      categoryId: categoryIds[categoryIndex],
+      nameAz: dish.nameAz,
+      nameRu: dish.nameRu,
+      nameEn: dish.nameAz,
+      descriptionAz: dish.descriptionAz ?? "",
+      descriptionRu: dish.descriptionRu ?? "",
+      descriptionEn: dish.descriptionAz ?? "",
+      price: dish.price,
+      imageUrl: "",
+      soldOut: false,
+      createdAt: stampFor(position),
+    };
+  };
+
+  // The held rows take the first positions on the menu; every other old row is
+  // deleted outright.
+  for (const [position, dishId] of lockedDishIds.entries()) {
+    await prisma.dish.update({ where: { id: dishId }, data: fieldsFor(position) });
+  }
+
+  await prisma.dish.deleteMany({
+    where: { restaurantId: restaurant.id, categoryId: { in: oldCategoryIds } },
+  });
+
+  await prisma.category.deleteMany({ where: { id: { in: oldCategoryIds } } });
+
+  for (let index = 0; index < MENU.length; index += 1) {
+    const positions = flat
+      .map((entry, position) => ({ entry, position }))
+      .filter(({ entry, position }) => entry.categoryIndex === index && position >= lockedDishIds.length);
+
+    if (positions.length > 0) {
+      await prisma.dish.createMany({
+        data: positions.map(({ position }) => ({ restaurantId: restaurant.id, ...fieldsFor(position) })),
+      });
+    }
+
+    console.log(`  ${MENU[index].nameAz}: ${MENU[index].dishes.length}`);
   }
 
   const total = await prisma.dish.count({ where: { restaurantId: restaurant.id } });
