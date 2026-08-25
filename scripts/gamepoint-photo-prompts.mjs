@@ -76,31 +76,40 @@ export const PROMPTS = {
   248: "a hookah with a fresh apple bowl on top",
   249: "a hookah with a grapefruit bowl on top",
   // Pivə — the beer as poured, never the branded bottle
-  250: "a tall glass of golden lager beer with thick foam",
-  251: "a glass of cloudy unfiltered wheat beer",
-  252: "a glass of pale light beer on a bar counter",
-  253: "draft beer being poured into a chilled glass",
-  254: "a chilled glass of pilsner beer with condensation",
-  255: "a glass of pale wheat beer with a slice of orange",
+  250: "a chilled unlabelled brown glass bottle of lager with a filled glass beside it",
+  251: "a chilled unlabelled bottle of cloudy unfiltered beer with a filled glass beside it",
+  252: "a chilled unlabelled bottle of pale light beer with a filled glass beside it",
+  253: "draught beer being poured into a chilled glass from a tap",
+  254: "a chilled unlabelled green glass bottle of pilsner with a filled glass beside it",
+  255: "a chilled unlabelled bottle of pale wheat beer with a filled glass and a slice of orange",
   // Setlər
   300: "a lounge table laid with a teapot and glasses of tea, a plate of chocolate and a hookah standing beside them",
-  301: "a large sharing table laid with four shawarma wraps, four baskets of french fries, four glasses of cola, a teapot with glasses, a plate of chocolate and a hookah",
-  302: "a large sharing table laid with four chicken burgers, four baskets of french fries, four glasses of cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
-  // Soyuq İçkilər — poured, not packaged
-  264: "a glass of cola with ice cubes and condensation",
-  265: "a small glass of cola with ice",
-  266: "a tall glass of cola with ice and a straw",
-  267: "a large jug of cola with ice and two glasses",
-  268: "a glass of iced tea with a slice of lemon",
-  269: "a pitcher of iced lemon tea with mint",
-  270: "a glass of energy drink poured over ice",
-  271: "a glass of sparkling mineral water with rising bubbles",
-  272: "a tall glass of energy drink with ice",
-  273: "a tall glass of blue energy drink with ice",
-  274: "a tall glass of clear energy drink with ice",
-  275: "a glass of ayran yogurt drink with mint",
-  276: "a glass of still water with ice",
-  277: "a jar of homemade lemonade with lemon and mint",
+  301: "a large sharing table laid with four shawarma wraps, four baskets of french fries, four unlabelled bottles of cola, a teapot with glasses, a plate of chocolate and a hookah",
+  302: "a large sharing table laid with four chicken burgers, four baskets of french fries, four unlabelled bottles of cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
+  // Soyuq İçkilər — in the bottle it arrives in, not poured out.
+  //
+  // A glass of brown liquid could be anything; the bottle is what the guest
+  // recognises and what they are actually buying. Every one is unlabelled —
+  // shape and colour carry the meaning, and asking for the label returns
+  // lettering that is subtly wrong on drinks everyone knows by heart.
+  //
+  // "Cola / Fanta / Sprite" is one line offering three flavours, so it is
+  // photographed as three bottles together rather than as whichever one the
+  // model felt like drawing.
+  264: "three chilled unlabelled glass bottles standing side by side, one filled with dark cola, one with orange soda, one with clear lemon-lime soda, beaded with condensation, small 330 ml size",
+  265: "three chilled unlabelled glass bottles standing side by side, one filled with dark cola, one with orange soda, one with clear lemon-lime soda, beaded with condensation, small 300 ml size",
+  266: "three chilled unlabelled plastic bottles side by side, one of dark cola, one of orange soda, one of clear lemon-lime soda, half litre size, beaded with condensation",
+  267: "three chilled unlabelled one litre plastic bottles side by side, one of dark cola, one of orange soda, one of clear lemon-lime soda",
+  268: "a chilled unlabelled can of iced tea on ice",
+  269: "a chilled unlabelled one litre bottle of iced tea with lemon slices beside it",
+  270: "a slim chilled unlabelled energy drink can, beaded with condensation",
+  271: "a chilled unlabelled bottle of sparkling mineral water with a glass beside it",
+  272: "a chilled unlabelled energy drink can on a dark surface",
+  273: "a chilled unlabelled energy drink can with a blue tint, beaded with condensation",
+  274: "a chilled unlabelled energy drink can with a white and silver finish",
+  275: "a chilled unlabelled bottle of ayran with a glass poured beside it and mint",
+  276: "a chilled unlabelled half litre bottle of still water",
+  277: "a tall jug of homemade lemonade with lemon slices and mint, and a filled glass beside it",
   // İsti İçkilər
   278: "a teapot and a glass of black tea",
   279: "a traditional armudu glass of black tea",
@@ -128,11 +137,11 @@ export const PROMPTS = {
   298: "scoops of ice cream in a bowl with chocolate sauce",
   299: "a plate of homemade cookies",
   // Spirtli İçkilər — the pour, never the labelled bottle
-  909: "a glass of irish whiskey with ice on a bar",
-  910: "a shot glass of dark herbal liqueur on ice",
-  911: "tequila shots with lime wedges and salt",
-  912: "a glass of whiskey with a large clear ice cube",
-  913: "a glass of red wine on a dark table",
+  909: "a tall unlabelled bottle of amber whiskey with a filled glass on ice beside it",
+  910: "a dark unlabelled bottle of herbal liqueur on ice with a chilled shot glass beside it",
+  911: "a clear unlabelled bottle of tequila with a shot glass, lime wedges and salt beside it",
+  912: "a squat unlabelled bottle of amber whiskey with a filled glass and a large ice cube",
+  913: "an unlabelled bottle of red wine with a filled glass beside it",
   // Sets are photographed as the whole spread, not a token piece of it.
   //
   // A set is bought for what arrives on the table: the 70 AZN one is four
