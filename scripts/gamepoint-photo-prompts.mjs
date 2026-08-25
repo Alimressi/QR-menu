@@ -53,14 +53,14 @@ export const PROMPTS = {
   // dark bottle with condensation reads as cola, while asking for the label
   // gets lettering that is subtly wrong on a product everyone recognises.
   // Kombolar
-  256: "a chicken wrap roll, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
-  257: "a ham and cheese sandwich, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  256: "a chicken wrap roll, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  257: "a ham and cheese sandwich, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
   258: "a lounge table laid with a glass of tea, a plate of dark chocolate pieces and a hookah, all three in one frame",
-  259: "a chicken nugget burger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
-  260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
-  261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
-  262: "a barbecue chicken burger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
-  263: "a cheeseburger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  259: "a chicken nugget burger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  262: "a barbecue chicken burger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  263: "a cheeseburger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
   // Sendviç / Burger
   238: "a toasted sandwich with sausage and melted cheese",
   239: "a toasted sausage sandwich cut in half",
@@ -76,16 +76,16 @@ export const PROMPTS = {
   248: "a hookah with a fresh apple bowl on top",
   249: "a hookah with a grapefruit bowl on top",
   // Pivə — the beer as poured, never the branded bottle
-  250: "a chilled unlabelled brown glass bottle of lager beer",
-  251: "a chilled unlabelled glass bottle of cloudy unfiltered beer",
-  252: "a chilled unlabelled glass bottle of pale light beer",
+  250: "a chilled brown glass bottle of Azerbaijani lager beer",
+  251: "a chilled glass bottle of cloudy unfiltered beer",
+  252: "a chilled glass bottle of pale non-alcoholic beer",
   253: "draught beer being poured into a chilled glass from a tap",
-  254: "a chilled unlabelled green glass bottle of pilsner beer",
-  255: "a chilled unlabelled glass bottle of pale wheat beer",
+  254: "a chilled green glass bottle of Carlsberg beer",
+  255: "a chilled bottle of Kronenbourg 1664 Blanc wheat beer",
   // Setlər
   300: "a lounge table laid with a teapot and glasses of tea, a plate of chocolate and a hookah standing beside them",
-  301: "a large sharing table laid with four shawarma wraps, four baskets of french fries, four unlabelled bottles of cola, a teapot with glasses, a plate of chocolate and a hookah",
-  302: "a large sharing table laid with four chicken burgers, four baskets of french fries, four unlabelled bottles of cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
+  301: "a large sharing table laid with four shawarma wraps, four baskets of french fries, four bottles of Coca-Cola, a teapot with glasses, a plate of chocolate and a hookah",
+  302: "a large sharing table laid with four chicken burgers, four baskets of french fries, four bottles of Coca-Cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
   // Soyuq İçkilər — in the bottle it arrives in, not poured out.
   //
   // A glass of brown liquid could be anything; the bottle is what the guest
@@ -98,21 +98,33 @@ export const PROMPTS = {
   // knows what the line is without reading it, and a second glass in the frame
   // only competes with the thing being sold.
   //
+  // Brands are named. An earlier pass asked for unlabelled bottles, on the
+  // grounds that a small model renders lettering wrongly — true of the one we
+  // were using, and irrelevant to the one we are: Gemini draws a Coca-Cola
+  // bottle correctly, and a venue that sells the drink showing the drink is
+  // ordinary practice.
+  //
+  // Only the brands a model has seen: Coca-Cola, Fanta, Sprite, Fuse Tea, Red
+  // Bull, Carlsberg, 1664 Blanc, Jameson, Jagermeister, Sierra, Jack Daniel's.
+  // Xirdalan, Sirab, Bizon and Meysəri are Azerbaijani labels no model knows,
+  // so those are described by what they look like — the alternative is an
+  // invented label that claims to be theirs.
+  //
   // "Cola / Fanta / Sprite" is the exception, because that one line sells a
   // choice of three: it gets three bottles together, dark, orange and clear.
-  264: "three chilled unlabelled glass bottles standing side by side, one filled with dark cola, one with orange soda, one with clear lemon-lime soda, beaded with condensation, small 330 ml size",
-  265: "three chilled unlabelled glass bottles standing side by side, one filled with dark cola, one with orange soda, one with clear lemon-lime soda, beaded with condensation, small 300 ml size",
-  266: "three chilled unlabelled plastic bottles side by side, one of dark cola, one of orange soda, one of clear lemon-lime soda, half litre size, beaded with condensation",
-  267: "three chilled unlabelled one litre plastic bottles side by side, one of dark cola, one of orange soda, one of clear lemon-lime soda",
-  268: "a chilled unlabelled can of iced tea",
-  269: "a chilled unlabelled one litre bottle of iced tea",
-  270: "a slim chilled unlabelled energy drink can, beaded with condensation",
-  271: "a chilled unlabelled glass bottle of sparkling mineral water",
-  272: "a chilled unlabelled energy drink can on a dark surface",
-  273: "a chilled unlabelled energy drink can with a blue tint, beaded with condensation",
-  274: "a chilled unlabelled energy drink can with a white and silver finish",
-  275: "a chilled unlabelled bottle of ayran",
-  276: "a chilled unlabelled half litre plastic bottle of still water",
+  264: "three chilled 330 ml cans standing side by side: Coca-Cola, Fanta and Sprite",
+  265: "three chilled 300 ml glass bottles standing side by side: Coca-Cola, Fanta and Sprite",
+  266: "three chilled 500 ml plastic bottles standing side by side: Coca-Cola, Fanta and Sprite",
+  267: "three chilled one litre plastic bottles standing side by side: Coca-Cola, Fanta and Sprite",
+  268: "a chilled can of Fuse Tea iced tea",
+  269: "a chilled one litre bottle of Fuse Tea iced tea",
+  270: "a chilled can of Red Bull energy drink, beaded with condensation",
+  271: "a chilled glass bottle of Azerbaijani sparkling mineral water",
+  272: "a chilled can of energy drink on a dark surface",
+  273: "a chilled can of energy drink with a blue design",
+  274: "a chilled can of energy drink with a white and silver design",
+  275: "a chilled bottle of ayran, a salted yogurt drink",
+  276: "a chilled 500 ml plastic bottle of Azerbaijani still mineral water",
   277: "a tall jug of homemade lemonade with lemon slices and mint, and a filled glass beside it",
   // İsti İçkilər
   278: "a teapot and a glass of black tea",
@@ -141,11 +153,11 @@ export const PROMPTS = {
   298: "scoops of ice cream in a bowl with chocolate sauce",
   299: "a plate of homemade cookies",
   // Spirtli İçkilər — the pour, never the labelled bottle
-  909: "a tall unlabelled bottle of amber whiskey",
-  910: "a dark unlabelled bottle of herbal liqueur, frosted with cold",
-  911: "a clear unlabelled bottle of tequila",
-  912: "a squat unlabelled half litre bottle of amber whiskey",
-  913: "an unlabelled bottle of red wine",
+  909: "a tall bottle of Jameson Irish whiskey",
+  910: "a dark bottle of Jagermeister herbal liqueur, frosted with cold",
+  911: "a clear bottle of Sierra tequila",
+  912: "a bottle of Jack Daniel's Tennessee whiskey",
+  913: "a bottle of Azerbaijani red wine",
   // Sets are photographed as the whole spread, not a token piece of it.
   //
   // A set is bought for what arrives on the table: the 70 AZN one is four
