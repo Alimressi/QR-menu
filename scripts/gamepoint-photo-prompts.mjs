@@ -73,9 +73,9 @@ export const PROMPTS = {
   254: "a chilled glass of pilsner beer with condensation",
   255: "a glass of pale wheat beer with a slice of orange",
   // Setlər
-  300: "a table set with a glass of tea, chocolate and a hookah",
-  301: "a sharing platter of shawarma wraps, french fries and glasses of cola",
-  302: "a sharing platter of burgers, nuggets, fries and glasses of cola",
+  300: "a lounge table laid with a teapot and glasses of tea, a plate of chocolate and a hookah standing beside them",
+  301: "a large sharing table laid with four shawarma wraps, four baskets of french fries, four glasses of cola, a teapot with glasses, a plate of chocolate and a hookah",
+  302: "a large sharing table laid with four chicken burgers, four baskets of french fries, four glasses of cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
   // Soyuq İçkilər — poured, not packaged
   264: "a glass of cola with ice cubes and condensation",
   265: "a small glass of cola with ice",
@@ -123,15 +123,23 @@ export const PROMPTS = {
   911: "tequila shots with lime wedges and salt",
   912: "a glass of whiskey with a large clear ice cube",
   913: "a glass of red wine on a dark table",
+  // Sets are photographed as the whole spread, not a token piece of it.
+  //
+  // A set is bought for what arrives on the table: the 70 AZN one is four
+  // burgers, four portions of fries, four colas, crisps, tea, preserve and a
+  // hookah. A single burger in the frame sells none of that, and a guest who
+  // ordered it would wonder what they paid for. Counts are named even though
+  // the model keeps them loosely — naming an item is what puts it in the shot.
+  //
   // VIP Setlər — the table, not the glass.
   //
   // What these sell is the spread: a bottle, a fruit platter, four Red Bull, a
   // litre of juice and three hours of the room, for 139 manat. A single glass
   // showed none of that. The bottle stands in the ice bucket without a readable
   // label, which is the one thing generation cannot do honestly.
-  914: "a vip lounge table laid for guests: a fruit platter, an ice bucket holding a plain unlabelled bottle, two whiskey glasses on ice, a jug of juice and a hookah",
-  915: "a vip lounge table laid for guests: a fruit platter, an ice bucket holding a plain unlabelled bottle, chilled shot glasses of dark herbal liqueur, a jug of juice and a hookah",
-  916: "a vip lounge table laid for guests: a fruit platter, an ice bucket holding a plain unlabelled bottle, tequila glasses with lime and salt, a jug of juice and a hookah",
-  917: "a vip lounge table laid for guests: a fruit platter, an ice bucket holding a plain unlabelled wine bottle, two wine glasses and a hookah",
-  918: "a vip lounge table laid for guests: a fruit platter, a plain unlabelled half bottle on ice, two whiskey glasses, a jug of juice and a hookah",
+  914: "a vip lounge table laid with a plain unlabelled whiskey bottle in an ice bucket, two whiskey glasses on ice, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
+  915: "a vip lounge table laid with a plain unlabelled dark liqueur bottle in an ice bucket, chilled shot glasses, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
+  916: "a vip lounge table laid with a plain unlabelled tequila bottle in an ice bucket, tequila glasses with lime and salt, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
+  917: "a vip lounge table laid with a plain unlabelled wine bottle in an ice bucket, two wine glasses, a large fruit platter and a hookah",
+  918: "a vip lounge table laid with a plain unlabelled half bottle of whiskey on ice, two whiskey glasses, a large fruit platter, two plain drink cans, a jug of juice and a hookah",
 };

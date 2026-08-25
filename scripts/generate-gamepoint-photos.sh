@@ -14,6 +14,10 @@
 # generating, never through the wait, so a multi-hour `wrangler dev` cannot
 # quietly die between the two.
 #
+# Pass ids to do only those — the way a handful is checked before committing the
+# whole set to a day's allowance:
+#   scripts/generate-gamepoint-photos.sh 246,302,914   # a dish, a set, a VIP set
+#
 # Usage: scripts/generate-gamepoint-photos.sh [id,id,...]
 set -uo pipefail
 cd "$(dirname "$0")/.."
