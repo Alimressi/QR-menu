@@ -59,3 +59,6 @@ backups/
 
 # Chosen Pexels sources, so a grade tweak costs no new searches
 gamepoint-photo-picks.json
+
+# Contact sheets built for eyeballing a photo set — regenerated, never shipped
+_review/
