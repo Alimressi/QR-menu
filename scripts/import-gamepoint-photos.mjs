@@ -19,11 +19,6 @@
 // Cropping it away fills the card with the bottle instead of shrinking the
 // bottle to fit the frame it arrived in.
 //
-// A frame taller than the card is the one case where that would cut into the
-// subject — a tall bottle would lose its neck or its base — so those are fitted
-// whole onto black instead. Nothing from AI Studio arrives that way today; the
-// branch is there so a portrait screenshot does not quietly lose its subject.
-//
 // Usage:
 //   node scripts/import-gamepoint-photos.mjs [folder]
 // Folder defaults to ~/Desktop/gamepoint-drinks.
@@ -45,24 +40,24 @@ const env = await fs.readFile(".env", "utf8");
 process.env.DATABASE_URL = env.match(/^DATABASE_URL=(.+)$/m)[1].trim();
 const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL }) });
 
-// Wider than the card, or near enough to it, the crop only takes black off the
-// sides and the subject ends up filling the frame. Taller than the card, the
-// crop would take the subject itself, so the image is fitted whole instead.
+// Everything is cropped to the card, never fitted onto black. Fitting was the
+// safer rule and it looked it: the one portrait frame in the set came back with
+// pillars down both sides and its bowl half the size of every neighbour's. On a
+// 133px card a smaller subject costs more than a tighter crop does.
 //
-// The crop is centred rather than sharp's "attention": the subject is centred
-// by the prompt, and attention chases contrast, which on a black backdrop with
-// a blue glow to one side is not the same thing as the bottle.
+// A frame wider than the card is cropped from the centre, because the prompt
+// puts the subject in the middle and what the sides hold is unlit backdrop. A
+// frame taller than the card has no such guarantee — the subject can sit low,
+// as the pistachios do — so those are cropped on sharp's "attention", which
+// looks for where the detail is instead of assuming the middle.
 async function toCard(buffer) {
   const { width, height } = await sharp(buffer).metadata();
   const taller = width / height < CARD_W / CARD_H;
 
-  return taller
-    ? sharp(buffer)
-        .resize(CARD_W, CARD_H, { fit: "contain", background: BLACK })
-        .flatten({ background: BLACK })
-        .jpeg({ quality: 90 })
-        .toBuffer()
-    : sharp(buffer).resize(CARD_W, CARD_H, { fit: "cover", position: "center" }).jpeg({ quality: 90 }).toBuffer();
+  return sharp(buffer)
+    .resize(CARD_W, CARD_H, { fit: "cover", position: taller ? sharp.strategy.attention : "center" })
+    .jpeg({ quality: 90 })
+    .toBuffer();
 }
 
 const restaurant = await prisma.restaurant.findUnique({ where: { slug: SLUG }, select: { id: true } });
