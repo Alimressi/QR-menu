@@ -34,6 +34,17 @@ const COPY = {
     example: "Nümunəyə baxın",
     contact: "Əlaqə",
   },
+  en: {
+    lead: "One QR code — and the guest sees the menu on their own phone.",
+    title: "A digital menu for your restaurant",
+    points: [
+      ["Three languages", "Azerbaijani, Russian and English — the guest picks."],
+      ["Ordering at the table", "The guest orders from the table, the kitchen sees it at once."],
+      ["Changes go live", "A price changed — the menu is updated. Nothing to reprint."],
+    ],
+    example: "See a live menu",
+    contact: "Get in touch",
+  },
   ru: {
     lead: "Один QR-код — и гость видит меню на своём телефоне.",
     title: "Цифровое меню для вашего ресторана",
@@ -47,7 +58,7 @@ const COPY = {
   },
 } as const;
 
-function Panel({ lang }: { lang: "az" | "ru" }) {
+function Panel({ lang }: { lang: keyof typeof COPY }) {
   const copy = COPY[lang];
 
   return (
@@ -65,7 +76,7 @@ function Panel({ lang }: { lang: "az" | "ru" }) {
       <dl className="mt-12 space-y-px">
         {copy.points.map(([term, detail]) => (
           <div key={term} className="border-t border-gold-500/15 py-5 sm:flex sm:gap-8">
-            <dt className="shrink-0 text-sm font-medium text-gold-100 sm:w-40">{term}</dt>
+            <dt className="shrink-0 text-[17px] font-medium text-gold-100 sm:w-44">{term}</dt>
             <dd className="mt-1 text-sm leading-relaxed text-gold-100/55 sm:mt-0">{detail}</dd>
           </div>
         ))}
@@ -93,7 +104,7 @@ function Panel({ lang }: { lang: "az" | "ru" }) {
 
 export default function Home() {
   return (
-    <main className="relative flex min-h-screen flex-col justify-center overflow-hidden px-6 py-20 sm:px-10">
+    <main className="relative flex min-h-screen flex-col justify-center overflow-hidden px-6 py-10 sm:px-10 sm:py-16">
       {/* One soft pool of light, off to the side — the whole decoration. */}
       <div
         aria-hidden
@@ -106,8 +117,9 @@ export default function Home() {
             SIBLING, so a panel one level deeper never sees the checked state. */}
         <input type="radio" name="lang" id="lang-az" defaultChecked className="peer/az sr-only" />
         <input type="radio" name="lang" id="lang-ru" className="peer/ru sr-only" />
+        <input type="radio" name="lang" id="lang-en" className="peer/en sr-only" />
 
-        <div className="mb-14 flex items-center justify-between">
+        <div className="mb-10 flex items-center justify-between sm:mb-12">
           <span className="font-serif text-lg text-gold-100">QR&nbsp;Menu</span>
 
           <div className="flex gap-1 text-[11px] uppercase tracking-[0.2em]">
@@ -123,6 +135,12 @@ export default function Home() {
             >
               Ru
             </label>
+            <label
+              htmlFor="lang-en"
+              className="cursor-pointer rounded-full px-3 py-1.5 text-gold-100/40 transition hover:text-gold-100/70 peer-checked/en:bg-gold-500/10 peer-checked/en:text-gold-100"
+            >
+              En
+            </label>
           </div>
         </div>
 
@@ -131,6 +149,9 @@ export default function Home() {
         </div>
         <div className="hidden peer-checked/ru:block">
           <Panel lang="ru" />
+        </div>
+        <div className="hidden peer-checked/en:block">
+          <Panel lang="en" />
         </div>
 
         <footer className="mt-20 border-t border-gold-500/10 pt-6 text-xs text-gold-100/35">
