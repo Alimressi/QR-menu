@@ -36,6 +36,25 @@ export const STYLE =
   "contrast, sharp focus, appetising, the whole subject well inside the frame with clear space " +
   "above and below it, no text, no logos, no labels, no branding";
 
+// A set is a group portrait, and the two things that go wrong in one are
+// counting and clutter: "a large spread" invites the model to invent a table
+// of its own, and flux drew eight burgers where the menu says four. So the
+// contents are enumerated with counts rather than described, the arrangement
+// and the camera are dictated, and anything not on the list is refused.
+export const SET_LAYOUT =
+  "arranged as one tidy group on the tabletop, the tall items standing behind and the flat ones " +
+  "in front, every item fully visible and none hidden or overlapping, camera slightly above the " +
+  "table looking down at about thirty degrees, nothing else in the frame beyond the list — no " +
+  "extra plates, bottles, glasses or utensils";
+
+// The food style forbids branding, which is right for a plate of food and
+// wrong for a set: these contain Coca-Cola and Red Bull by name, and AI Studio
+// letters both correctly. The prohibition is swapped for the requirement.
+export const STYLE_SET = STYLE.replace(
+  "no text, no logos, no labels, no branding",
+  "the product labels on the bottles and cans sharp, accurate and correctly spelled",
+);
+
 export const STYLE_BRANDED =
   "on a glossy black surface, warm key light on the bottle itself, deep electric blue neon glow " +
   "in the empty dark background, subtle blue rim light along the edges, plain seamless backdrop " +
@@ -132,9 +151,14 @@ export const PROMPTS = {
   254: "a chilled green glass bottle of Carlsberg beer",
   255: "a chilled bottle of Kronenbourg 1664 Blanc wheat beer",
   // Setlər
-  300: "a teapot with glasses of tea, a plate of chocolate and a hookah arranged together in one frame",
-  301: "a large spread arranged together in one frame: four shawarma wraps, four baskets of french fries, four bottles of Coca-Cola, a teapot with glasses, a plate of chocolate and a hookah",
-  302: "a large spread arranged together in one frame: four chicken burgers, four baskets of french fries, four bottles of Coca-Cola, two bowls of crisps, a teapot with glasses, a dish of fruit preserve and a hookah",
+  300: "a sharing set for a group, containing exactly: one teapot with two traditional armudu tea " +
+       "glasses, one plate of dark chocolate pieces and one clay-bowled hookah",
+  301: "a sharing set for a group, containing exactly: four shawarma wraps, four baskets of french " +
+       "fries, four 300 ml glass bottles of Coca-Cola, one teapot with two armudu tea glasses, one " +
+       "plate of dark chocolate pieces and one clay-bowled hookah",
+  302: "a sharing set for a group, containing exactly: four chicken nugget burgers, four baskets of " +
+       "french fries, four 300 ml glass bottles of Coca-Cola, two bowls of crisps, one teapot with " +
+       "two armudu tea glasses, one dish of fruit preserve and one clay-bowled hookah",
   // Soyuq İçkilər — in the bottle it arrives in, not poured out.
   //
   // A glass of brown liquid could be anything; the bottle is what the guest
@@ -177,7 +201,11 @@ export const PROMPTS = {
   277: "a tall jug of homemade lemonade with lemon slices and mint, and a filled glass beside it",
   // İsti İçkilər
   278: "a teapot and a glass of black tea",
-  279: "a traditional armudu glass of black tea",
+  // Asked for the glass, AI Studio drew the teapot as well, twice, and 279
+  // came back indistinguishable from 278 beside it. The pot is refused by name:
+  // this is the single-glass serving and the pot is the other line on the menu.
+  279: "a single traditional Azerbaijani armudu tea glass on a saucer, filled with black tea, " +
+       "standing alone with no teapot and nothing else in the frame",
   280: "a cup of black americano coffee",
   281: "a latte with milk foam art in a cup",
   282: "a glass mug of thick hot chocolate with whipped cream",
@@ -224,9 +252,18 @@ export const PROMPTS = {
   // litre of juice and three hours of the room, for 139 manat. A single glass
   // showed none of that. The bottle stands in the ice bucket without a readable
   // label, which is the one thing generation cannot do honestly.
-  914: "a large spread arranged together in one frame: a plain unlabelled whiskey bottle in an ice bucket, two whiskey glasses on ice, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
-  915: "a large spread arranged together in one frame: a plain unlabelled dark liqueur bottle in an ice bucket, chilled shot glasses, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
-  916: "a large spread arranged together in one frame: a plain unlabelled tequila bottle in an ice bucket, tequila glasses with lime and salt, a large fruit platter, four plain drink cans, a jug of juice and a hookah",
-  917: "a large spread arranged together in one frame: a plain unlabelled wine bottle in an ice bucket, two wine glasses, a large fruit platter and a hookah",
-  918: "a large spread arranged together in one frame: a plain unlabelled half bottle of whiskey on ice, two whiskey glasses, a large fruit platter, two plain drink cans, a jug of juice and a hookah",
+  914: "a VIP sharing set, containing exactly: one one-litre bottle of Jameson Irish whiskey, one " +
+       "large platter of assorted sliced fruit, one clay-bowled hookah, four cans of Red Bull and " +
+       "one one-litre jug of fruit juice",
+  915: "a VIP sharing set, containing exactly: one one-litre bottle of Jagermeister herbal liqueur, " +
+       "one large platter of assorted sliced fruit, one clay-bowled hookah, four cans of Red Bull " +
+       "and one one-litre jug of fruit juice",
+  916: "a VIP sharing set, containing exactly: one one-litre bottle of Sierra tequila with its red " +
+       "sombrero cap, one large platter of assorted sliced fruit, one clay-bowled hookah, four cans " +
+       "of Red Bull and one one-litre jug of fruit juice",
+  917: "a VIP sharing set, containing exactly: one bottle of Meysəri Azerbaijani red wine, two wine " +
+       "glasses, one large platter of assorted sliced fruit and one clay-bowled hookah",
+  918: "a VIP sharing set, containing exactly: one 500 ml bottle of Jack Daniel's Tennessee whiskey, " +
+       "one large platter of assorted sliced fruit, one clay-bowled hookah, two cans of Red Bull and " +
+       "one one-litre jug of fruit juice",
 };
