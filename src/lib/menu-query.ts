@@ -58,7 +58,7 @@ export async function findMenuByRestaurantId(restaurantId: number): Promise<Cate
         SELECT "id", "nameEn", "nameRu", "nameAz"
         FROM "Category"
         WHERE "restaurantId" = ${restaurantId}
-        ORDER BY "id" ASC
+        ORDER BY "sortOrder" ASC, "id" ASC
       `,
       sql`
         SELECT "id", "nameEn", "nameRu", "nameAz",
@@ -195,6 +195,7 @@ export async function findDishesWithCategory(restaurantId: number): Promise<unkn
         SELECT "id", "nameEn", "nameRu", "nameAz", "restaurantId"
         FROM "Category"
         WHERE "restaurantId" = ${restaurantId}
+        ORDER BY "sortOrder" ASC, "id" ASC
       `,
       sql`
         SELECT o."id", o."dishId", o."nameEn", o."nameRu", o."nameAz", o."price"

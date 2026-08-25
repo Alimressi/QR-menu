@@ -43,6 +43,9 @@ model Category {
   nameEn       String
   nameRu       String
   nameAz       String
+  /// Where the category sits in the menu. Backfilled from id, so an untouched
+  /// menu keeps the order it was created in; moving one is a single write.
+  sortOrder    Int        @default(0)
   restaurantId Int
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   dishes       Dish[]
