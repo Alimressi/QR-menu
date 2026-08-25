@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Plus } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { isWorkerServedMedia } from "@/lib/media-url";
+import { cardThumbUrl, isWorkerServedMedia } from "@/lib/media-url";
 import type { CurrencyMode } from "@/lib/design";
 
 // Single source of truth for how a dish looks in the guest menu — one layout at
@@ -222,12 +222,20 @@ export function DishCard({
         <div className={PHOTO.image}>
           {hasPhoto ? (
             <Image
-              src={dish.imageUrl}
+              src={cardThumbUrl(dish.imageUrl)}
               alt={dish.name}
               fill
               sizes="133px"
               quality={95}
               unoptimized={isWorkerServedMedia(dish.imageUrl)}
+              // The small copy is written beside the photo by the import
+              // script. If one is ever missing, the full photo still shows.
+              onError={(event) => {
+                const image = event.currentTarget;
+                if (!image.src.endsWith(dish.imageUrl)) {
+                  image.src = dish.imageUrl;
+                }
+              }}
               className={`h-full w-full object-cover${staticImage ? "" : " transition duration-700 group-hover:scale-105"}`}
               style={{ objectPosition: `${dish.imagePositionX}% ${dish.imagePositionY}%` }}
             />

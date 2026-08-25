@@ -35,6 +35,7 @@ const OUT = path.join(process.cwd(), "public", "images", "dishes");
 const SRC = process.argv[2] ?? path.join(os.homedir(), "Desktop", "gamepoint-drinks");
 const CARD_W = 1200;
 const CARD_H = 900;
+const THUMB_W = 400;
 const BLACK = { r: 5, g: 5, b: 5 };
 const env = await fs.readFile(".env", "utf8");
 process.env.DATABASE_URL = env.match(/^DATABASE_URL=(.+)$/m)[1].trim();
@@ -56,8 +57,14 @@ async function toCard(buffer) {
 
   return sharp(buffer)
     .resize(CARD_W, CARD_H, { fit: "cover", position: taller ? sharp.strategy.attention : "center" })
-    .jpeg({ quality: 90 })
+    .jpeg({ quality: 80, mozjpeg: true })
     .toBuffer();
+}
+
+// The copy the menu list actually shows. See cardThumbUrl in lib/media-url.ts
+// for why it exists; 400px is the 133px card at the 3x density phones have.
+async function toThumb(cardBuffer) {
+  return sharp(cardBuffer).resize(THUMB_W).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
 }
 
 const restaurant = await prisma.restaurant.findUnique({ where: { slug: SLUG }, select: { id: true } });
@@ -99,6 +106,7 @@ for (const entry of entries.sort()) {
   try {
     const buffer = await toCard(await fs.readFile(path.join(SRC, entry)));
     await fs.writeFile(path.join(OUT, `dish-${id}.jpg`), buffer);
+    await fs.writeFile(path.join(OUT, `dish-${id}-card.jpg`), await toThumb(buffer));
     await prisma.dish.update({ where: { id }, data: { imageUrl: `/images/dishes/dish-${id}.jpg` } });
     done.push(id);
     console.log(`  ${id}  ${dish.nameAz}`);
