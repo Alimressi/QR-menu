@@ -42,15 +42,25 @@ export const PROMPTS = {
   906: "a whole chicken pizza with peppers and melted cheese",
   907: "a whole pizza topped with spicy sausage slices",
   908: "a whole mixed pizza with meat, mushrooms and peppers",
+  // Kombolar — every item the combo is sold as, in one frame.
+  //
+  // The name is the promise: "Nuggets Burger + Fri + Cola 500 ml" is three
+  // things, and a photograph of the burger alone undersells it. Each prompt
+  // names all three and says where they sit, because a model given a list
+  // without an arrangement tends to draw the first item and forget the rest.
+  //
+  // The cola is described by what it looks like rather than by its brand: a
+  // dark bottle with condensation reads as cola, while asking for the label
+  // gets lettering that is subtly wrong on a product everyone recognises.
   // Kombolar
-  256: "a chicken wrap with french fries and a glass of cola",
-  257: "a ham sandwich with french fries and a glass of cola",
-  258: "a glass of tea, dark chocolate pieces and a hookah on a table",
-  259: "a chicken burger with french fries and a glass of cola",
-  260: "a shawarma wrap with french fries and a glass of cola",
-  261: "chicken nuggets with french fries and a glass of cola",
-  262: "a barbecue chicken burger with fries and a glass of cola",
-  263: "a cheeseburger with french fries and a glass of cola",
+  256: "a chicken wrap roll, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  257: "a ham and cheese sandwich, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  258: "a lounge table laid with a glass of tea, a plate of dark chocolate pieces and a hookah, all three in one frame",
+  259: "a chicken nugget burger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  262: "a barbecue chicken burger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
+  263: "a cheeseburger, a portion of golden french fries beside it and a glass bottle of dark cola with condensation standing next to them, all three in one frame",
   // Sendviç / Burger
   238: "a toasted sandwich with sausage and melted cheese",
   239: "a toasted sausage sandwich cut in half",
