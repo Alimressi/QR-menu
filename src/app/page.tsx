@@ -90,18 +90,24 @@ function Panel({ lang }: { lang: keyof typeof COPY }) {
           and that writing is the next step. */}
       <p className="mt-12 text-[15px] text-gold-100/70">{copy.invite}</p>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-4">
+      {/* A pair, not a button with a stray line of text after it. On a phone the
+          label is long enough to fill the row, which pushed the example link
+          onto its own line as small underlined text — an afterthought hanging
+          under the call to action. Both are full-width buttons there and sit
+          side by side once there is room; the second is outlined rather than
+          filled, so it reads as the quieter of the two. */}
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
           href={WHATSAPP}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full bg-gold-500 px-7 py-3 text-sm font-medium text-[#120e08] transition hover:bg-gold-400"
+          className="rounded-full border border-transparent bg-gold-500 px-7 py-3.5 text-center text-sm font-medium text-[#120e08] transition hover:bg-gold-400"
         >
           {copy.contact}
         </a>
         <Link
           href="/lumiere"
-          className="text-sm text-gold-100/55 underline decoration-gold-500/30 underline-offset-[6px] transition hover:text-gold-100"
+          className="rounded-full border border-gold-500/25 px-7 py-3.5 text-center text-sm font-medium text-gold-100/70 transition hover:border-gold-500/50 hover:text-gold-100"
         >
           {copy.example}
         </Link>
