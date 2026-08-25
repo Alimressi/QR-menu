@@ -33,7 +33,7 @@ const COPY = {
     ],
     example: "Nümunəyə baxın",
     invite: "Öz yeriniz üçün belə menyu istəyirsiniz?",
-    contact: "Menyu sifariş edin",
+    contact: "Mənimlə əlaqə saxlayın",
   },
   en: {
     lead: "One QR code — and the guest sees the menu on their own phone. I build these menus for restaurants.",
@@ -45,7 +45,7 @@ const COPY = {
     ],
     example: "See a live menu",
     invite: "Want one for your own place?",
-    contact: "Order a menu",
+    contact: "Get in touch with me",
   },
   ru: {
     lead: "Один QR-код — и гость видит меню на своём телефоне. Делаю такие меню для заведений.",
@@ -57,7 +57,7 @@ const COPY = {
     ],
     example: "Посмотреть пример",
     invite: "Хотите такое же для своего заведения?",
-    contact: "Заказать меню",
+    contact: "Связаться со мной",
   },
 } as const;
 
