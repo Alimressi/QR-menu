@@ -14,7 +14,7 @@ export const LEGAL = {
   serviceName: "QR Menu",
 
   /** Public address of the service. Update when the custom domain is live. */
-  siteUrl: "https://qr-menu.imran-ask-2006.workers.dev",
+  siteUrl: "https://qr-menu.az",
 
   /** Must match the identity verified with Lemon Squeezy, or the store review stalls. */
   operatorLegalName: "Asgarov Alimran",

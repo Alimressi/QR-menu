@@ -5,8 +5,20 @@
   "keep_vars": true,
   "compatibility_date": "2026-04-18",
   "compatibility_flags": ["nodejs_compat"],
+  // Both hostnames are served by this one Worker. `custom_domain` lets Wrangler
+  // create and own the DNS records for them, which is why the zone was left
+  // empty when it was added — a hand-written A record here would only have to
+  // be deleted again.
+  //
+  // The workers.dev address keeps working alongside these, so nothing that
+  // already points at it breaks.
+  "routes": [
+    { "pattern": "qr-menu.az", "custom_domain": true },
+    { "pattern": "www.qr-menu.az", "custom_domain": true }
+  ],
+
   "vars": {
-    "NEXT_PUBLIC_BASE_URL": "https://qr-menu.imran-ask-2006.workers.dev",
+    "NEXT_PUBLIC_BASE_URL": "https://qr-menu.az",
 
     // Not secrets: both appear in the checkout URL a restaurant opens. The
     // signing secret that actually protects the webhook is set separately with
