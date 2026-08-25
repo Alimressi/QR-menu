@@ -1,4 +1,3 @@
-import { LEGAL } from "@/lib/legal";
 import Link from "next/link";
 
 // The service's own front door.
@@ -19,6 +18,9 @@ export const metadata = {
   description:
     "Bir QR kod — qonaq menyunu öz telefonunda görür. Fotolarla, üç dildə, sifarişlə birlikdə.",
 };
+
+// wa.me wants the number bare — no plus, no spaces.
+const WHATSAPP = "https://wa.me/994517770577";
 
 const COPY = {
   az: {
@@ -71,7 +73,9 @@ function Panel({ lang }: { lang: "az" | "ru" }) {
 
       <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4">
         <a
-          href={`mailto:${LEGAL.contactEmail}`}
+          href={WHATSAPP}
+          target="_blank"
+          rel="noreferrer"
           className="rounded-full bg-gold-500 px-7 py-3 text-sm font-medium text-[#120e08] transition hover:bg-gold-400"
         >
           {copy.contact}
@@ -137,9 +141,6 @@ export default function Home() {
             <Link href="/privacy" className="transition hover:text-gold-100/60">
               Privacy Policy
             </Link>
-            <span className="ml-auto">
-              {LEGAL.operatorLegalName} · {LEGAL.contactEmail}
-            </span>
           </div>
         </footer>
       </div>
