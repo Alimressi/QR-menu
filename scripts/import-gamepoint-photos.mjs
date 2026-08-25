@@ -1,11 +1,16 @@
-// Take the thirteen branded drinks made by hand in AI Studio into the menu.
+// Take the photographs made by hand in AI Studio into the menu.
 //
-// Everything else in the set comes from scripts/generate-gamepoint-photos.mjs,
-// which cannot be used here: flux-1-schnell spells a logo the way it spells any
-// other word it has only seen in pictures, and "Coca-Colla" on a menu the guest
-// is holding is worse than an empty frame. These thirteen are generated in AI
-// Studio instead, where the lettering comes out right, and land here as files
-// named by dish id — 254.png, 909.jpg — which is what tells a photo its dish.
+// This started as a way in for the thirteen branded drinks, the ones
+// flux-1-schnell could not letter — it returns "Coca-Colla" in drifting type,
+// and that on a menu the guest is holding is worse than an empty frame. The
+// trial then put flux against the same three dishes twice, at four steps and at
+// eight, and the gap to AI Studio stayed wide: at four steps a cheeseburger
+// came back with no top bun, at eight the burger was right but a VIP set drifted
+// onto a pale grey backdrop, and neither pass could count to four bottles. So
+// the whole set goes through AI Studio now, and this is the door for all of it.
+//
+// Photos land here as files named by dish id — 254.jpeg, 225.jpeg — which is
+// what tells a photo its dish.
 //
 // AI Studio hands back a wide frame — around 1.83:1 — where the card wants
 // 4:3, and the difference is taken off the sides rather than added as bars.
@@ -20,7 +25,7 @@
 // branch is there so a portrait screenshot does not quietly lose its subject.
 //
 // Usage:
-//   node scripts/import-gamepoint-drink-photos.mjs [folder]
+//   node scripts/import-gamepoint-photos.mjs [folder]
 // Folder defaults to ~/Desktop/gamepoint-drinks.
 
 import sharp from "sharp";
@@ -36,10 +41,6 @@ const SRC = process.argv[2] ?? path.join(os.homedir(), "Desktop", "gamepoint-dri
 const CARD_W = 1200;
 const CARD_H = 900;
 const BLACK = { r: 5, g: 5, b: 5 };
-// The thirteen the plan hands to AI Studio. Anything else in the folder is
-// still imported — the list only decides what counts as missing at the end.
-const EXPECTED = [254, 255, 264, 265, 266, 267, 268, 269, 270, 909, 910, 911, 912];
-
 const env = await fs.readFile(".env", "utf8");
 process.env.DATABASE_URL = env.match(/^DATABASE_URL=(.+)$/m)[1].trim();
 const prisma = new PrismaClient({ adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL }) });
@@ -111,10 +112,16 @@ for (const entry of entries.sort()) {
   }
 }
 
-console.log(`\nImported ${done.length} drink photos.`);
+console.log(`\nImported ${done.length} photos.`);
 
-const missing = EXPECTED.filter((id) => !done.includes(id));
-if (missing.length > 0) console.log(`  still to come: ${missing.join(", ")}`);
+// What is left is asked of the menu rather than kept in a list here. The list
+// was right while only the drinks came this way; now that every dish does, a
+// hand-kept copy of the menu is one more thing to forget to update.
+const remaining = await prisma.dish.count({
+  where: { restaurantId: restaurant.id, imageUrl: "" },
+});
+const total = await prisma.dish.count({ where: { restaurantId: restaurant.id } });
+console.log(`  ${total - remaining} of ${total} dishes now have one, ${remaining} to go.`);
 if (failed.length > 0) {
   console.log(`  ${failed.length} skipped:`);
   for (const line of failed) console.log(`    ${line}`);

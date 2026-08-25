@@ -4,10 +4,13 @@
 // scripts/generate-gamepoint-photos.sh; never deployed.
 export default {
   async fetch(request, env) {
-    const { prompt, model } = await request.json();
+    const { prompt, model, steps } = await request.json();
 
     try {
-      const result = await env.AI.run(model, { prompt });
+      // flux-1-schnell takes prompt and steps and nothing else — no width, no
+      // height, no seed. Steps is the only quality dial there is, so it is
+      // passed through rather than left at the model's default of 4.
+      const result = await env.AI.run(model, steps ? { prompt, steps } : { prompt });
 
       // Some models answer with raw bytes, others with base64 inside JSON.
       if (result instanceof ReadableStream) {

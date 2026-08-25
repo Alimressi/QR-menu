@@ -32,6 +32,12 @@ const ENDPOINT = process.env.AI_ENDPOINT ?? "http://localhost:8799";
 // card does not show at 133px wide. The whole set fits the free daily
 // allowance with room to spare; the prettier model would need a paid plan.
 const MODEL = "@cf/black-forest-labs/flux-1-schnell";
+// The model's only quality dial: 4 by default, 8 at most, and roughly linear in
+// what it costs. At 4 the set came back with a cheeseburger missing its top
+// bun, so the extra steps are worth the neurons — 8 across 92 dishes is about
+// 10,600, over the daily 10,000, which is why the set is generated in two
+// sittings rather than one. Override with STEPS=4 to fit more in a day.
+const STEPS = Number(process.env.STEPS ?? 8);
 
 const env = await fs.readFile(".env", "utf8");
 process.env.DATABASE_URL = env.match(/^DATABASE_URL=(.+)$/m)[1].trim();
@@ -41,7 +47,11 @@ async function generate(prompt) {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ prompt: `Professional food photography of ${prompt}, ${STYLE}`, model: MODEL }),
+    body: JSON.stringify({
+      prompt: `Professional food photography of ${prompt}, ${STYLE}`,
+      model: MODEL,
+      steps: STEPS,
+    }),
   });
   if (!response.ok) {
     const body = await response.text();
