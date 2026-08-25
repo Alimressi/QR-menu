@@ -24,7 +24,7 @@ const WHATSAPP = "https://wa.me/994517770577";
 
 const COPY = {
   az: {
-    lead: "Bir QR kod — və qonaq menyunu öz telefonunda görür.",
+    lead: "Bir QR kod — və qonaq menyunu öz telefonunda görür. Restoranlar üçün belə menyular hazırlayıram.",
     title: "Restoranınız üçün rəqəmsal menyu",
     points: [
       ["Üç dil", "Azərbaycan, rus və ingilis — qonaq özü seçir."],
@@ -32,10 +32,11 @@ const COPY = {
       ["Dəyişiklik dərhal", "Qiymət dəyişdi — menyu yeniləndi. Yenidən çap yoxdur."],
     ],
     example: "Nümunəyə baxın",
-    contact: "Əlaqə",
+    invite: "Öz yeriniz üçün belə menyu istəyirsiniz?",
+    contact: "Menyu sifariş edin",
   },
   en: {
-    lead: "One QR code — and the guest sees the menu on their own phone.",
+    lead: "One QR code — and the guest sees the menu on their own phone. I build these menus for restaurants.",
     title: "A digital menu for your restaurant",
     points: [
       ["Three languages", "Azerbaijani, Russian and English — the guest picks."],
@@ -43,10 +44,11 @@ const COPY = {
       ["Changes go live", "A price changed — the menu is updated. Nothing to reprint."],
     ],
     example: "See a live menu",
-    contact: "Get in touch",
+    invite: "Want one for your own place?",
+    contact: "Order a menu",
   },
   ru: {
-    lead: "Один QR-код — и гость видит меню на своём телефоне.",
+    lead: "Один QR-код — и гость видит меню на своём телефоне. Делаю такие меню для заведений.",
     title: "Цифровое меню для вашего ресторана",
     points: [
       ["Три языка", "Азербайджанский, русский и английский — гость выбирает сам."],
@@ -54,7 +56,8 @@ const COPY = {
       ["Правки мгновенно", "Изменилась цена — меню обновилось. Без перепечатки."],
     ],
     example: "Посмотреть пример",
-    contact: "Связаться",
+    invite: "Хотите такое же для своего заведения?",
+    contact: "Заказать меню",
   },
 } as const;
 
@@ -82,7 +85,12 @@ function Panel({ lang }: { lang: keyof typeof COPY }) {
         ))}
       </dl>
 
-      <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4">
+      {/* The page described the product but never said who makes it or how to
+          get one. A visitor has to be told, in one line, that this is on offer
+          and that writing is the next step. */}
+      <p className="mt-12 text-[15px] text-gold-100/70">{copy.invite}</p>
+
+      <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-4">
         <a
           href={WHATSAPP}
           target="_blank"
