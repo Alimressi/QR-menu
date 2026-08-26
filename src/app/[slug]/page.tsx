@@ -21,7 +21,10 @@ type Params = {
 
 // Restaurants with a hand-made social banner at /images/og/<slug>.jpg. Add a slug
 // here after committing its banner (generated via scripts/make-og-banner.mjs).
-const OG_BANNER_SLUGS = new Set(["lumiere"]);
+// Restaurants with a hand-made 1200x630 card in public/images/og. Without one
+// the preview falls back to a dish photo, and a dish photo is whichever sorts
+// first — GamePoint's link previewed as a bowl of popcorn until it got a card.
+const OG_BANNER_SLUGS = new Set(["lumiere", "gamepoint"]);
 
 type LoadedMenu = {
   restaurant: MenuRestaurant | null;

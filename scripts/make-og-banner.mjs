@@ -1,8 +1,14 @@
 // Generates a 1200x630 social-share (Open Graph) banner for a restaurant.
-// Usage: node scripts/make-og-banner.mjs
+// Usage: node scripts/make-og-banner.mjs [slug]        (default: lumiere)
 //
-// Design: warm marble background (Lumière theme) with a serif title block on the
-// left and a dish photo bleeding in from the right behind a soft fade.
+// This is what someone sees when the menu link is pasted into WhatsApp or
+// Telegram. Without one the page falls back to the restaurant's first dish
+// photo, which is whatever happens to sort first — GamePoint's link was
+// previewing as a bowl of popcorn.
+//
+// Design: the restaurant's own background with a title block on the left and a
+// dish photo bleeding in from the right behind a soft fade, so the card reads
+// as the same place the link opens.
 // Output: public/images/og/<slug>.jpg
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
@@ -14,20 +20,49 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const W = 1200;
 const H = 630;
 
-// ---- content + theme (Lumière) -------------------------------------------------
-const cfg = {
-  slug: "lumiere",
-  title: "Lumière",
-  kicker: "QR MENU",
-  subtitle: "Seasonal European kitchen · all-day dining",
-  footer: "qr-menu.imran-ask-2006.workers.dev/lumiere",
-  photo: "public/images/dishes/dish-306.jpg",
-  bgFrom: "#ffffff",
-  bgTo: "#f3efe7",
-  text: "#26231d",
-  muted: "#8a8579",
-  accent: "#b3a173", // warm gold for the divider rule
+// ---- content + theme, one block per restaurant ---------------------------------
+const CONFIGS = {
+  lumiere: {
+    slug: "lumiere",
+    title: "Lumière",
+    kicker: "QR MENU",
+    subtitle: "Seasonal European kitchen · all-day dining",
+    footer: "qr-menu.imran-ask-2006.workers.dev/lumiere",
+    photo: "public/images/dishes/dish-306.jpg",
+    bgFrom: "#ffffff",
+    bgTo: "#f3efe7",
+    text: "#26231d",
+    muted: "#8a8579",
+    accent: "#b3a173", // warm gold for the divider rule
+  },
+
+  // Black and electric blue, the same palette the menu is painted in. The
+  // divider and the frame take the menu's own #2323FF so the card and the page
+  // behind the link look like one thing.
+  gamepoint: {
+    slug: "gamepoint",
+    title: "GamePoint Pro",
+    kicker: "QR MENU",
+    subtitle: "PlayStation lounge · food · hookah",
+    footer: "qr-menu.az/gamepoint",
+    photo: "public/images/dishes/dish-246.jpg",
+    bgFrom: "#000000",
+    bgTo: "#06061c",
+    text: "#f2f2ff",
+    muted: "#8c8c94",
+    accent: "#2323FF",
+    // "GamePoint Pro" is twice the length of "Lumière" and ran into the photo
+    // at the shared size, so this one sets its own.
+    titleSize: 96,
+  },
 };
+
+const slug = process.argv[2] ?? "lumiere";
+const cfg = CONFIGS[slug];
+if (!cfg) {
+  console.error(`No banner config for "${slug}". Known: ${Object.keys(CONFIGS).join(", ")}`);
+  process.exit(1);
+}
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const serif = "Georgia, 'Times New Roman', 'Cormorant Garamond', serif";
@@ -70,7 +105,7 @@ const overlaySvg = `
   <text x="96" y="212" font-family="${sans}" font-size="24" letter-spacing="6"
         fill="${cfg.muted}" font-weight="600">${esc(cfg.kicker)}</text>
 
-  <text x="92" y="340" font-family="${serif}" font-size="122" fill="${cfg.text}"
+  <text x="92" y="340" font-family="${serif}" font-size="${cfg.titleSize ?? 122}" fill="${cfg.text}"
         font-style="italic" font-weight="600">${esc(cfg.title)}</text>
 
   <rect x="96" y="374" width="88" height="3" fill="${cfg.accent}"/>
