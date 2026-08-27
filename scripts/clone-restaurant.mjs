@@ -126,6 +126,13 @@ for (const category of categories) {
         imagePositionX: dish.imagePositionX,
         imagePositionY: dish.imagePositionY,
         soldOut: dish.soldOut,
+        // Carried over, not defaulted to now. The menu lists dishes by
+        // createdAt DESC, so this column is the running order — the imports
+        // stagger it a second apart to put the cheap sets first. Inserting a
+        // clone in one pass makes its own timestamps ascend with the loop, and
+        // DESC then reads the whole menu backwards: GamePoint opened with its
+        // 70 AZN set above its 32.
+        createdAt: dish.createdAt,
         categoryId: copy.id,
         restaurantId: clone.id,
       },
