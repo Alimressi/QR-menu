@@ -41,7 +41,7 @@ const CONFIGS = {
   // behind the link look like one thing.
   gamepoint: {
     slug: "gamepoint",
-    title: "GamePoint Pro",
+    title: "GamePoint",
     kicker: "QR MENU",
     subtitle: "PlayStation lounge · food · hookah",
     footer: "qr-menu.az/gamepoint",
@@ -51,8 +51,22 @@ const CONFIGS = {
     text: "#f2f2ff",
     muted: "#8c8c94",
     accent: "#2323FF",
-    // "GamePoint Pro" is twice the length of "Lumière" and ran into the photo
-    // at the shared size, so this one sets its own.
+  },
+
+  "gamepoint-pro": {
+    slug: "gamepoint-pro",
+    title: "GamePoint Pro",
+    kicker: "QR MENU",
+    subtitle: "PlayStation lounge · food · hookah",
+    footer: "qr-menu.az/gamepoint-pro",
+    photo: "public/images/dishes/dish-246.jpg",
+    bgFrom: "#000000",
+    bgTo: "#06061c",
+    text: "#f2f2ff",
+    muted: "#8c8c94",
+    accent: "#2323FF",
+    // "GamePoint Pro" is longer than the names this type size was set for and
+    // ran into the photo, so this one sets its own.
     titleSize: 96,
   },
 };
