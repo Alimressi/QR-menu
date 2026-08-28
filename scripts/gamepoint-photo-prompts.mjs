@@ -123,7 +123,10 @@ export const PROMPTS = {
   // Kombolar
   256: "a chicken wrap roll, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
   257: "a ham and cheese sandwich, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  258: "a glass of tea, a plate of dark chocolate pieces and a hookah arranged together, all three in one frame",
+  // Tea here is served from the pot, not the glass: the combo is the pot, and
+  // the first photo showed a single armudu glass instead.
+  258: "a teapot of black tea, a plate of dark chocolate pieces and a hookah " +
+       "arranged together, all three in one frame",
   259: "a chicken nugget burger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
   260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
   261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",

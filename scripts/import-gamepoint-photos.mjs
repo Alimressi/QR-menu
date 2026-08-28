@@ -20,8 +20,8 @@
 // bottle to fit the frame it arrived in.
 //
 // Usage:
-//   node scripts/import-gamepoint-photos.mjs [folder]
-// Folder defaults to ~/Desktop/gamepoint-drinks.
+//   node scripts/import-gamepoint-photos.mjs [folder] [slug]
+// Folder defaults to ~/Desktop/gamepoint-drinks, slug to gamepoint-pro.
 
 import sharp from "sharp";
 import { PrismaNeon } from "@prisma/adapter-neon";
@@ -30,7 +30,12 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 
-const SLUG = "gamepoint";
+// The dish ids the files are named after belong to GamePoint Pro, which is the
+// menu the photos were shot for. Its slug moved to /gamepoint-pro when the
+// second venue opened and took /gamepoint, and this script silently imported
+// nothing for a while because it was still pointed at the name, not the menu.
+// Pass a slug to point it somewhere else.
+const SLUG = process.argv[3] ?? "gamepoint-pro";
 const OUT = path.join(process.cwd(), "public", "images", "dishes");
 const SRC = process.argv[2] ?? path.join(os.homedir(), "Desktop", "gamepoint-drinks");
 const CARD_W = 1200;
