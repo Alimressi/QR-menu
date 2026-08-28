@@ -186,7 +186,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     return NextResponse.json(dish);
-  } catch {
+  } catch (error) {
+    // Logged before it is flattened. This handler answered "Failed to update
+    // dish." to a TypeError from the Prisma proxy for as long as the bug lived,
+    // and the message said nothing about where to look.
+    console.error("PATCH /api/dishes/%s failed:", id, error);
     return NextResponse.json({ error: "Failed to update dish." }, { status: 500 });
   }
 }

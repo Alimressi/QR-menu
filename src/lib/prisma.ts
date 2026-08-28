@@ -155,7 +155,13 @@ const prisma = new Proxy(
               throw new Error(`Unknown Prisma client method: ${propertyName}`);
             }
 
-            return method(...args);
+            // Applied to the client, not called bare. These methods read their
+            // own internals off `this`; detaching one and calling it threw
+            // "Cannot read properties of undefined (reading '_engineConfig')",
+            // which surfaced as a flat "Failed to update dish." in the admin
+            // panel. The model proxy below never had this problem because
+            // `model[method](...)` keeps its receiver.
+            return method.apply(client, args);
           });
       }
 

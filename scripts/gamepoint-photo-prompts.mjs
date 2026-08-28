@@ -36,6 +36,9 @@ export const STYLE =
   "contrast, sharp focus, appetising, the whole subject well inside the frame with clear space " +
   "above and below it, no text, no logos, no labels, no branding";
 
+// The combos are named "+ Cola 500 ml", and the first pass asked only for "a
+// glass bottle of Coca-Cola" — which is the 0.33 contour bottle, half the drink
+// the line promises. The size is named now.
 // A set is a group portrait, and the two things that go wrong in one are
 // counting and clutter: "a large spread" invites the model to invent a table
 // of its own, and flux drew eight burgers where the menu says four. So the
@@ -126,17 +129,17 @@ export const PROMPTS = {
   // dark bottle with condensation reads as cola, while asking for the label
   // gets lettering that is subtly wrong on a product everyone recognises.
   // Kombolar
-  256: "a chicken wrap roll, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  257: "a ham and cheese sandwich, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  256: "a chicken wrap roll, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
+  257: "a ham and cheese sandwich, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
   // Tea here is served from the pot, not the glass: the combo is the pot, and
   // the first photo showed a single armudu glass instead.
   258: "a teapot of black tea, a plate of dark chocolate pieces and a hookah " +
        "arranged together, all three in one frame",
-  259: "a chicken nugget burger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  262: "a barbecue chicken burger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
-  263: "a cheeseburger, a portion of golden french fries beside it and a glass bottle of Coca-Cola standing next to them, all three in one frame",
+  259: "a chicken nugget burger, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
+  260: "a shawarma wrap cut in half, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
+  261: "a basket of crispy chicken nuggets, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
+  262: "a barbecue chicken burger, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
+  263: "a cheeseburger, a portion of golden french fries beside it and a 500 ml plastic bottle of Coca-Cola standing next to them, all three in one frame",
   // Sendviç / Burger
   238: "a toasted sandwich with sausage and melted cheese",
   239: "a toasted sausage sandwich cut in half",
