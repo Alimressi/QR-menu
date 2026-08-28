@@ -100,7 +100,12 @@ export const PROMPTS = {
   230: "a bowl of golden toasted bread croutons",
   231: "a bowl of crispy potato chips",
   232: "rustic country style potato wedges in a pan",
-  233: "a bowl of dushbara dumpling soup with herbs",
+  // Düşbərə is usually the soup, and the first photo made it one. GamePoint
+  // serves the fried kind: dry on a plate, no broth. "No broth" is spelled out
+  // because the word alone pulls the model straight back to the bowl.
+  233: "a plate of fried dushbara, dozens of bite-sized golden dumplings each no bigger than a " +
+       "walnut, heaped in a small mound, served dry with no broth and no bowl, scattered with " +
+       "fresh herbs, a small dish of sauce beside them",
   234: "braided string cheese on a wooden board",
   235: "pan fried meat dumplings with dipping sauce",
   236: "thin slices of cured beef basturma on a board",
