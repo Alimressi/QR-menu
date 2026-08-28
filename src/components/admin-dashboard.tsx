@@ -369,8 +369,8 @@ export function AdminDashboard({ restaurantSlug }: Props) {
   const [language, setLanguage] = useState<AdminLanguage>("en");
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-  const [login, setLogin] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
   const [orders, setOrders] = useState<Order[]>([]);

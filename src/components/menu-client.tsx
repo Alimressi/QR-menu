@@ -775,10 +775,18 @@ export function MenuClient({
       return;
     }
 
+    // The endpoint now checks the QR session, so a poll with no token would just
+    // 401. Without one there is nothing this guest is entitled to see anyway.
+    if (!qrSessionToken) {
+      setActiveOrder(null);
+      return;
+    }
+
     const response = await fetch(
       `/api/orders/active?tableNumber=${encodeURIComponent(normalizedTable)}&restaurantId=${liveRestaurantId}`,
       {
         cache: "no-store",
+        headers: { Authorization: `Bearer ${qrSessionToken}` },
       },
     );
 
@@ -788,7 +796,7 @@ export function MenuClient({
 
     const data = (await response.json()) as { order: Order | null };
     setActiveOrder(data.order);
-  }, [isLiteMode, liveRestaurantId]);
+  }, [isLiteMode, liveRestaurantId, qrSessionToken]);
 
   useEffect(() => {
     setRuntimeServiceMode(liveSettings?.serviceMode === "lite" ? "lite" : "pro");

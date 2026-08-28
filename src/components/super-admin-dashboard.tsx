@@ -306,8 +306,11 @@ export function SuperAdminDashboard() {
   const [language, setLanguage] = useState<SuperAdminLanguage>("en");
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-  const [login, setLogin] = useState("superadmin");
-  const [password, setPassword] = useState("superadmin123");
+  // Empty, not prefilled. These once held "superadmin" / "superadmin123", which
+  // are not the real credentials but read as a hint in the page source to anyone
+  // who opens it. The real password lives only in a Worker secret.
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
