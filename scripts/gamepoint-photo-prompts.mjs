@@ -164,9 +164,11 @@ export const PROMPTS = {
   // Setlər
   300: "a sharing set for a group, containing exactly: one teapot with two traditional armudu tea " +
        "glasses, one plate of dark chocolate pieces and one clay-bowled hookah",
+  // No hookah in this one. The 48 AZN set is tea and chocolate; the hookah was
+  // in the description it was written from, and the description was wrong.
   301: "a sharing set for a group, containing exactly: four shawarma wraps, four baskets of french " +
-       "fries, four 300 ml glass bottles of Coca-Cola, one teapot with two armudu tea glasses, one " +
-       "plate of dark chocolate pieces and one clay-bowled hookah",
+       "fries, four 300 ml glass bottles of Coca-Cola, one teapot with two armudu tea glasses and " +
+       "one plate of dark chocolate pieces",
   302: "a sharing set for a group, containing exactly: four chicken nugget burgers, four baskets of " +
        "french fries, four 300 ml glass bottles of Coca-Cola, two bowls of crisps, one teapot with " +
        "two armudu tea glasses, one dish of fruit preserve and one clay-bowled hookah",
