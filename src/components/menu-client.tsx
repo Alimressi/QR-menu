@@ -15,6 +15,8 @@ type Props = {
     serviceMode?: "lite" | "pro";
     /** When false, the menu renders without dish photos (text-only). */
     photosEnabled?: boolean;
+    /** Which language dish NAMES use. "auto" follows the interface. */
+    dishNameLanguage?: "auto" | "az" | "ru" | "en";
     brandName?: string;
     brandSubtitle?: string;
     /** Optional small line under the subtitle: service fee note, etc. */
@@ -311,6 +313,10 @@ function getCategoryFallbackTranslation(language: Language, category: CategoryWi
   return null;
 }
 
+// The language a dish NAME is shown in, which is not always the one the guest
+// picked. Descriptions get translated; names are what the guest says out loud
+// to a waiter, and a waiter matching it against the kitchen's list needs the
+// word the kitchen uses.
 function getDishName(language: Language, dish: CategoryWithDishes["dishes"][number]) {
   if (language === "ru") {
     return dish.nameRu || dish.nameEn;
@@ -734,6 +740,11 @@ export function MenuClient({
 
   // Photos on unless the restaurant explicitly turned them off (text-only menu).
   const showPhotos = liveSettings?.photosEnabled !== false;
+  // Names follow the restaurant's choice; everything else follows the guest's.
+  const nameLanguage: Language =
+    liveSettings?.dishNameLanguage && liveSettings.dishNameLanguage !== "auto"
+      ? liveSettings.dishNameLanguage
+      : language;
 
   // The page <body> has a fixed dark gradient in globals.css (fine for dark
   // restaurants). Paint it with the active theme so a light restaurant doesn't
@@ -1695,7 +1706,7 @@ export function MenuClient({
               <div key={item.dish.id} className="rounded-xl border p-3" style={{ borderColor: design.borderColor, background: design.panelColor }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium" style={{ color: design.textColor }}>{getDishName(language, item.dish)}</p>
+                    <p className="font-medium" style={{ color: design.textColor }}>{getDishName(nameLanguage, item.dish)}</p>
                     {item.selectedOption ? (
                       <p className="text-xs" style={{ color: design.mutedTextColor }}>
                         {t.optionLabel}: {getDishOptionName(language, item.selectedOption)}
@@ -2067,7 +2078,7 @@ export function MenuClient({
                   <DishCard
                     key={dish.id}
                     dish={{
-                      name: getDishName(language, dish),
+                      name: getDishName(nameLanguage, dish),
                       description: getDishDescription(language, dish),
                       price: dish.price,
                       imageUrl: dish.imageUrl,
@@ -2296,7 +2307,7 @@ export function MenuClient({
                     >
                       <Image
                         src={dish.imageUrl}
-                        alt={getDishName(language, dish)}
+                        alt={getDishName(nameLanguage, dish)}
                         fill
                         sizes="(min-width: 1024px) 760px, 100vw"
                         quality={95}
@@ -2309,7 +2320,7 @@ export function MenuClient({
                 ) : null}
 
                 <div className="px-4 pt-4">
-                  <h3 className="font-serif text-3xl" style={{ color: design.textColor }}>{getDishName(language, dish)}</h3>
+                  <h3 className="font-serif text-3xl" style={{ color: design.textColor }}>{getDishName(nameLanguage, dish)}</h3>
                   <p className="mt-2 text-sm leading-6" style={{ color: design.mutedTextColor }}>{getDishDescription(language, dish)}</p>
 
                   {dish.options && dish.options.length > 0 ? (

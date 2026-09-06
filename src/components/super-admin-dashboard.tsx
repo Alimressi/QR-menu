@@ -216,6 +216,18 @@ function parseRestaurantDesign(settings: string | null): RestaurantDesignSetting
   }
 }
 
+/** Which language this restaurant pins its dish names to, "auto" to follow the guest. */
+function parseRestaurantDishNameLanguage(settings: string | null): "auto" | "az" | "ru" | "en" {
+  try {
+    const parsed = settings ? (JSON.parse(settings) as { dishNameLanguage?: unknown }) : {};
+    const value = parsed.dishNameLanguage;
+
+    return value === "az" || value === "ru" || value === "en" ? value : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
 function parseRestaurantServiceMode(settings: string | null): RestaurantServiceMode {
   if (!settings) {
     return "pro";
@@ -1174,6 +1186,29 @@ export function SuperAdminDashboard() {
     await loadRestaurants();
   }
 
+  async function updateRestaurantDishNameLanguage(restaurant: Restaurant, next: string) {
+    const currentSettings = parseRestaurantSettingsObject(restaurant.settings);
+
+    const response = await fetch(`/api/superadmin/restaurants/${restaurant.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        settings: {
+          ...currentSettings,
+          dishNameLanguage: next,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      alert(data.error || "Failed to update dish name language");
+      return;
+    }
+
+    await loadRestaurants();
+  }
+
   if (loadingAuth) {
     return (
       <main className="superadmin-dracula min-h-screen p-6" style={{ background: dracula.page, color: dracula.text }}>
@@ -1742,6 +1777,21 @@ export function SuperAdminDashboard() {
                         >
                           <option value="on">{t.photosOn}</option>
                           <option value="off">{t.photosOff}</option>
+                        </select>
+                      </div>
+                      <div className="mt-2">
+                        <label className="mb-1 block text-xs text-gold-300">{t.dishNames}</label>
+                        <select
+                          className="w-full rounded-lg border border-dark-600 bg-dark-800 px-2 py-1 text-xs text-gold-100"
+                          value={parseRestaurantDishNameLanguage(restaurant.settings)}
+                          onChange={(event) =>
+                            void updateRestaurantDishNameLanguage(restaurant, event.target.value)
+                          }
+                        >
+                          <option value="auto">{t.dishNamesAuto}</option>
+                          <option value="az">{t.dishNamesAz}</option>
+                          <option value="ru">{t.dishNamesRu}</option>
+                          <option value="en">{t.dishNamesEn}</option>
                         </select>
                       </div>
                       <p className="mt-2 break-all text-xs text-gold-300">

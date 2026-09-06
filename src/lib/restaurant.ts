@@ -49,6 +49,13 @@ export type RestaurantSettings = {
   // When false, the guest menu drops all dish photos and renders a compact
   // text-only list (name · description · price). Defaults to true (photos on).
   photosEnabled: boolean;
+  // Which language a dish's NAME is shown in. Descriptions always follow the
+  // guest's chosen language; names often should not. A menu written in
+  // Azerbaijani calls a dish "Düşbərə", and a guest reading the Russian
+  // interface still orders it by that name — translating it to "Дюшбара" gives
+  // the waiter a word that is not on the kitchen's list. "auto" keeps the old
+  // behaviour of following the interface.
+  dishNameLanguage: "auto" | "az" | "ru" | "en";
   brandName: string;
   brandSubtitle: string;
   primaryColor: string;
@@ -141,6 +148,7 @@ export function getDefaultRestaurantSettings(): RestaurantSettings {
   return {
     serviceMode: "pro",
     photosEnabled: true,
+    dishNameLanguage: "auto",
     brandName: "",
     brandSubtitle: "",
     primaryColor: "#111827",
@@ -170,4 +178,17 @@ export function getDefaultRestaurantSettings(): RestaurantSettings {
     qtyButtonBorderColor: "#e5e7eb",
     currencyMode: "manat",
   };
+}
+
+
+/** How a restaurant wants its dish names shown, regardless of interface language. */
+export function getDishNameLanguageFromSettings(rawSettings: string | null | undefined) {
+  try {
+    const parsed = rawSettings ? (JSON.parse(rawSettings) as { dishNameLanguage?: unknown }) : {};
+    const value = parsed.dishNameLanguage;
+
+    return value === "az" || value === "ru" || value === "en" ? value : "auto";
+  } catch {
+    return "auto" as const;
+  }
 }

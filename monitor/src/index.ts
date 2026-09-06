@@ -30,7 +30,8 @@ type ServiceBinding = { fetch(input: string, init?: RequestInit): Promise<Respon
 
 /** Only the one method the snapshot refresh needs. */
 type ObjectStore = {
-  put(key: string, value: string, options?: { httpMetadata?: Record<string, string> }): Promise<unknown>;
+  put(key: string, value: string, options?: { httpMetadata?: { contentType?: string; cacheControl?: string } }): Promise<unknown>;
+  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
 };
 
 type Env = {

@@ -297,6 +297,11 @@ export const dictionary: Record<
     createRestaurant: string;
     serviceMode: string;
     serviceModeLite: string;
+    dishNames: string;
+    dishNamesAuto: string;
+    dishNamesAz: string;
+    dishNamesRu: string;
+    dishNamesEn: string;
     stats: {
       weekOpens: string;
       perWeek: string;
@@ -380,6 +385,11 @@ export const dictionary: Record<
     createRestaurant: "Create Restaurant",
     serviceMode: "Mode",
     serviceModeLite: "Lite (menu + basket only)",
+    dishNames: "Dish names",
+    dishNamesAuto: "Follow interface language",
+    dishNamesAz: "Always Azerbaijani",
+    dishNamesRu: "Always Russian",
+    dishNamesEn: "Always English",
     stats: {
       weekOpens: "Menu opens in the last 7 days",
       perWeek: "per week",
@@ -465,6 +475,11 @@ export const dictionary: Record<
     createRestaurant: "Создать ресторан",
     serviceMode: "Режим",
     serviceModeLite: "Лайт (меню + корзина)",
+    dishNames: "Названия блюд",
+    dishNamesAuto: "Меняются с языком интерфейса",
+    dishNamesAz: "Всегда на азербайджанском",
+    dishNamesRu: "Всегда на русском",
+    dishNamesEn: "Всегда на английском",
     stats: {
       weekOpens: "Открытий меню за 7 дней",
       perWeek: "за неделю",
@@ -550,6 +565,11 @@ export const dictionary: Record<
     createRestaurant: "Restoran yarat",
     serviceMode: "Rejim",
     serviceModeLite: "Lite (menyu + səbət)",
+    dishNames: "Yemək adları",
+    dishNamesAuto: "İnterfeys dili ilə dəyişir",
+    dishNamesAz: "Həmişə Azərbaycanca",
+    dishNamesRu: "Həmişə Rusca",
+    dishNamesEn: "Həmişə İngiliscə",
     stats: {
       weekOpens: "Son 7 gündə menyu açılışları",
       perWeek: "həftədə",
