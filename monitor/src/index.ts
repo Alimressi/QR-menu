@@ -79,6 +79,8 @@ const SAMPLE_SPACING_MS = 1500;
 const STATE_KEY = "menu-status";
 /** The day the look-ahead last spoke, so it speaks at most once per day. */
 const WARNED_KEY = "warned-on";
+/** Yesterday's compute reading, so today's can be turned into a rate. */
+const COMPUTE_SAMPLE_KEY = "compute-sample";
 
 type MenuState = Record<string, { down: boolean; since: string }>;
 
@@ -198,6 +200,17 @@ const CU_HOURS_WARN_RATIO = 0.8;
  * so. A projection is the useful form. "Used 78 of 100" invites waiting;
  * "on course for 108, out on the 26th" is a date to act before.
  *
+ * Projected from the recent rate, not from the period average. The difference
+ * is not academic: on 7 September the average since the 1st still forecast 114
+ * hours and an allowance gone by the 27th, while the previous day had actually
+ * used 0.56 — the six days before a fix were dragging the mean. An average
+ * cannot tell "we are burning too much" from "we were, and stopped", and the
+ * second is the answer you get after doing something about the first.
+ *
+ * The rate comes from the change since yesterday's reading, kept in KV. With no
+ * previous sample there is nothing to compare against, so the first run only
+ * records one.
+ *
  * Needs an API key. Without one this returns nothing rather than complaining
  * every morning about a key that may never be set on purpose.
  */
@@ -228,26 +241,36 @@ async function computeHoursWarning(env: Env): Promise<string | null> {
   const end = new Date(project.consumption_period_end).getTime();
   const elapsed = Date.now() - start;
 
-  // Too early in the period to extrapolate from: one busy evening on day one
-  // would forecast a catastrophe.
-  if (elapsed < 2 * 86_400_000) {
+  const previous = (await env.MONITOR_STATE.get(COMPUTE_SAMPLE_KEY, "json")) as
+    | { at: number; hours: number }
+    | null;
+
+  await env.MONITOR_STATE.put(COMPUTE_SAMPLE_KEY, JSON.stringify({ at: Date.now(), hours: used }));
+
+  // Nothing to compare against yet, or the samples are too close together for
+  // the difference to mean anything.
+  const sinceSample = previous ? Date.now() - previous.at : 0;
+  if (!previous || sinceSample < 12 * 3_600_000) {
     return null;
   }
 
-  const projected = used * ((end - start) / elapsed);
+  const perDay = ((used - previous.hours) / sinceSample) * 86_400_000;
+  const daysLeft = (end - Date.now()) / 86_400_000;
+  const projected = used + Math.max(0, perDay) * daysLeft;
 
   if (projected < CU_HOURS_LIMIT * CU_HOURS_WARN_RATIO) {
     return null;
   }
 
+  const daysToLimit = perDay > 0 ? (CU_HOURS_LIMIT - used) / perDay : Infinity;
   const runsOutOn =
     projected > CU_HOURS_LIMIT
-      ? new Date(start + elapsed * (CU_HOURS_LIMIT / used)).toISOString().slice(0, 10)
+      ? new Date(Date.now() + daysToLimit * 86_400_000).toISOString().slice(0, 10)
       : null;
 
   return (
     `🗄 Neon compute: ${used.toFixed(1)} of ${CU_HOURS_LIMIT} CU-hours used, ` +
-    `on course for ${projected.toFixed(0)} this period` +
+    `${perDay.toFixed(2)}/day lately, on course for ${projected.toFixed(0)} this period` +
     (runsOutOn ? ` — the allowance runs out around ${runsOutOn}.` : ".")
   );
 }
