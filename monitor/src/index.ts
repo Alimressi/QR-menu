@@ -81,6 +81,8 @@ const STATE_KEY = "menu-status";
 const WARNED_KEY = "warned-on";
 /** Yesterday's compute reading, so today's can be turned into a rate. */
 const COMPUTE_SAMPLE_KEY = "compute-sample";
+/** Free-plan egress allowance, in GB. */
+const TRANSFER_LIMIT_GB = 5;
 
 type MenuState = Record<string, { down: boolean; since: string }>;
 
@@ -214,9 +216,9 @@ const CU_HOURS_WARN_RATIO = 0.8;
  * Needs an API key. Without one this returns nothing rather than complaining
  * every morning about a key that may never be set on purpose.
  */
-async function computeHoursWarning(env: Env): Promise<string | null> {
+async function neonWarnings(env: Env): Promise<string[]> {
   if (!env.NEON_API_KEY || !env.NEON_PROJECT_ID) {
-    return null;
+    return [];
   }
 
   const response = await fetch(`https://console.neon.tech/api/v2/projects/${env.NEON_PROJECT_ID}`, {
@@ -224,16 +226,21 @@ async function computeHoursWarning(env: Env): Promise<string | null> {
   });
 
   if (!response.ok) {
-    return `🗄 Neon usage unreadable (HTTP ${response.status}). The API key may have expired.`;
+    return [`🗄 Neon usage unreadable (HTTP ${response.status}). The API key may have expired.`];
   }
 
   const body = (await response.json()) as {
-    project?: { compute_time_seconds?: number; consumption_period_start?: string; consumption_period_end?: string };
+    project?: {
+      compute_time_seconds?: number;
+      data_transfer_bytes?: number;
+      consumption_period_start?: string;
+      consumption_period_end?: string;
+    };
   };
   const project = body.project;
 
   if (!project?.compute_time_seconds || !project.consumption_period_start || !project.consumption_period_end) {
-    return null;
+    return [];
   }
 
   const used = project.compute_time_seconds / 3600;
@@ -241,38 +248,60 @@ async function computeHoursWarning(env: Env): Promise<string | null> {
   const end = new Date(project.consumption_period_end).getTime();
   const elapsed = Date.now() - start;
 
+  const transferGb = (project.data_transfer_bytes ?? 0) / 1024 ** 3;
+
   const previous = (await env.MONITOR_STATE.get(COMPUTE_SAMPLE_KEY, "json")) as
-    | { at: number; hours: number }
+    | { at: number; hours: number; transferGb?: number }
     | null;
 
-  await env.MONITOR_STATE.put(COMPUTE_SAMPLE_KEY, JSON.stringify({ at: Date.now(), hours: used }));
+  await env.MONITOR_STATE.put(
+    COMPUTE_SAMPLE_KEY,
+    JSON.stringify({ at: Date.now(), hours: used, transferGb }),
+  );
 
   // Nothing to compare against yet, or the samples are too close together for
   // the difference to mean anything.
   const sinceSample = previous ? Date.now() - previous.at : 0;
   if (!previous || sinceSample < 12 * 3_600_000) {
-    return null;
+    return [];
   }
 
   const perDay = ((used - previous.hours) / sinceSample) * 86_400_000;
   const daysLeft = (end - Date.now()) / 86_400_000;
   const projected = used + Math.max(0, perDay) * daysLeft;
 
-  if (projected < CU_HOURS_LIMIT * CU_HOURS_WARN_RATIO) {
-    return null;
+  const warnings: string[] = [];
+
+  if (projected >= CU_HOURS_LIMIT * CU_HOURS_WARN_RATIO) {
+    const daysToLimit = perDay > 0 ? (CU_HOURS_LIMIT - used) / perDay : Infinity;
+    const runsOutOn =
+      projected > CU_HOURS_LIMIT
+        ? new Date(Date.now() + daysToLimit * 86_400_000).toISOString().slice(0, 10)
+        : null;
+
+    warnings.push(
+      `🗄 Neon compute: ${used.toFixed(1)} of ${CU_HOURS_LIMIT} CU-hours used, ` +
+        `${perDay.toFixed(2)}/day lately, on course for ${projected.toFixed(0)} this period` +
+        (runsOutOn ? ` — the allowance runs out around ${runsOutOn}.` : "."),
+    );
   }
 
-  const daysToLimit = perDay > 0 ? (CU_HOURS_LIMIT - used) / perDay : Infinity;
-  const runsOutOn =
-    projected > CU_HOURS_LIMIT
-      ? new Date(Date.now() + daysToLimit * 86_400_000).toISOString().slice(0, 10)
-      : null;
+  // Egress. Menu photos are served by Cloudflare, not Postgres, so this rises
+  // with admin work rather than with guests — but it is a hard monthly ceiling
+  // like the others, and nothing else would mention it.
+  if (previous.transferGb !== undefined) {
+    const gbPerDay = ((transferGb - previous.transferGb) / sinceSample) * 86_400_000;
+    const projectedGb = transferGb + Math.max(0, gbPerDay) * daysLeft;
 
-  return (
-    `🗄 Neon compute: ${used.toFixed(1)} of ${CU_HOURS_LIMIT} CU-hours used, ` +
-    `${perDay.toFixed(2)}/day lately, on course for ${projected.toFixed(0)} this period` +
-    (runsOutOn ? ` — the allowance runs out around ${runsOutOn}.` : ".")
-  );
+    if (projectedGb >= TRANSFER_LIMIT_GB * 0.8) {
+      warnings.push(
+        `🌐 Neon egress: ${transferGb.toFixed(2)} of ${TRANSFER_LIMIT_GB} GB used, ` +
+          `on course for ${projectedGb.toFixed(1)} this period.`,
+      );
+    }
+  }
+
+  return warnings;
 }
 
 async function dailyWarnings(env: Env): Promise<string[]> {
@@ -651,8 +680,7 @@ async function runCheck(
       const warnings = [...(await dailyWarnings(env))];
 
       try {
-        const compute = await computeHoursWarning(env);
-        if (compute) warnings.push(compute);
+        warnings.push(...(await neonWarnings(env)));
       } catch (error) {
         warnings.push(`🗄 Could not read Neon usage: ${String(error).slice(0, 120)}`);
       }
