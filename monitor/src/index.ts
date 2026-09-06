@@ -17,7 +17,9 @@ import { buildMenuSnapshot, snapshotKeyFor } from "../../src/lib/menu-snapshot";
 // src/types/cloudflare.d.ts).
 type KvStore = {
   get(key: string, type: "json"): Promise<unknown>;
+  get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
 };
 
 type ScheduledEvent = { scheduledTime: number };
@@ -72,6 +74,8 @@ const FAILURE_THRESHOLD = 0.5;
 const SAMPLE_SPACING_MS = 1500;
 
 const STATE_KEY = "menu-status";
+/** The day the look-ahead last spoke, so it speaks at most once per day. */
+const WARNED_KEY = "warned-on";
 
 type MenuState = Record<string, { down: boolean; since: string }>;
 
@@ -160,6 +164,107 @@ async function getServableSlugs(env: Env): Promise<string[]> {
  * Best effort throughout: a menu that cannot be snapshotted leaves the previous
  * one in place, which is exactly what a fallback should do.
  */
+// ---- The daily look ahead -------------------------------------------------
+//
+// The outage alerts above say a menu is already broken. These say one is going
+// to break, which is the message worth having: on 6 September the free
+// database allowance was on course to run out on the 28th, and nothing in this
+// worker would have mentioned it.
+//
+// Sent once a day and only when something is actually wrong. A monitor that
+// writes every morning to say all is well is a monitor nobody reads.
+
+/** Free-plan ceiling for Neon storage. */
+const DB_SIZE_LIMIT_MB = 512;
+/** Warn while there is still time to act, not when the wall is reached. */
+const DB_SIZE_WARN_RATIO = 0.7;
+/** A snapshot older than this means the safety net has quietly stopped. */
+const SNAPSHOT_STALE_HOURS = 24;
+/** A trial worth mentioning before it lapses on a paying-to-be client. */
+const TRIAL_WARN_DAYS = 5;
+
+async function dailyWarnings(env: Env): Promise<string[]> {
+  const warnings: string[] = [];
+  const sql = neon(env.DATABASE_URL);
+
+  // Storage. Far from the ceiling today, and the one limit that creeps up on
+  // its own as restaurants are added rather than as guests arrive.
+  try {
+    const rows = (await sql`
+      SELECT pg_database_size(current_database()) / 1024 / 1024 AS mb
+    `) as Array<{ mb: number }>;
+    const usedMb = Math.round(Number(rows[0]?.mb ?? 0));
+
+    if (usedMb > DB_SIZE_LIMIT_MB * DB_SIZE_WARN_RATIO) {
+      warnings.push(`💾 Database ${usedMb} MB of ${DB_SIZE_LIMIT_MB} MB.`);
+    }
+  } catch (error) {
+    warnings.push(`💾 Could not read the database size: ${String(error).slice(0, 120)}`);
+  }
+
+  // Subscriptions. A lapsed one replaces a paying client's menu with a notice,
+  // and the first anybody hears of it is usually the client.
+  try {
+    const rows = (await sql`
+      SELECT "slug", "status", "trialEndsAt"
+      FROM "Restaurant"
+      WHERE "status" <> 'active'
+      ORDER BY "id" ASC
+    `) as Array<{ slug: string; status: string; trialEndsAt: string | null }>;
+
+    for (const row of rows) {
+      if (row.status === "past_due" || row.status === "disabled") {
+        warnings.push(`💳 ${row.slug} is ${row.status} — guests see the suspended notice.`);
+        continue;
+      }
+
+      if (row.status === "trial" && row.trialEndsAt) {
+        const daysLeft = Math.ceil((new Date(row.trialEndsAt).getTime() - Date.now()) / 86_400_000);
+
+        if (daysLeft <= TRIAL_WARN_DAYS) {
+          warnings.push(
+            daysLeft < 0
+              ? `💳 ${row.slug} trial ended ${-daysLeft} day(s) ago.`
+              : `💳 ${row.slug} trial ends in ${daysLeft} day(s).`,
+          );
+        }
+      }
+    }
+  } catch (error) {
+    warnings.push(`💳 Could not read restaurant statuses: ${String(error).slice(0, 120)}`);
+  }
+
+  return warnings;
+}
+
+/** Whether every menu still has a snapshot fresh enough to serve from. */
+async function staleSnapshots(env: Env, slugs: string[]): Promise<string[]> {
+  const stale: string[] = [];
+
+  for (const slug of slugs) {
+    try {
+      const object = await env.MEDIA_BUCKET.get(snapshotKeyFor(slug));
+
+      if (!object) {
+        stale.push(`${slug} (none)`);
+        continue;
+      }
+
+      const body = (await object.json()) as { savedAt?: string };
+      const savedAt = body.savedAt ? new Date(body.savedAt).getTime() : 0;
+      const hours = (Date.now() - savedAt) / 3_600_000;
+
+      if (!savedAt || hours > SNAPSHOT_STALE_HOURS) {
+        stale.push(`${slug} (${Math.round(hours)}h)`);
+      }
+    } catch {
+      stale.push(`${slug} (unreadable)`);
+    }
+  }
+
+  return stale;
+}
+
 async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
   // The shared query layer reads its connection string from process.env, which is
   // how the app's runtime supplies it. Set it explicitly rather than depending on
@@ -322,7 +427,12 @@ async function measure(env: Env, url: string): Promise<Measurement> {
  *   wording, delivery — without waiting for a real outage. The next normal run
  *   then reports the recovery, so the drill cleans up after itself.
  */
-async function runCheck(env: Env, simulateDownSlug?: string, withSnapshots = true): Promise<string> {
+async function runCheck(
+  env: Env,
+  simulateDownSlug?: string,
+  withSnapshots = true,
+  withWarnings = false,
+): Promise<string> {
   let slugs: string[];
 
   try {
@@ -440,14 +550,44 @@ async function runCheck(env: Env, simulateDownSlug?: string, withSnapshots = tru
     lines.push(await refreshSnapshots(env, slugs));
   }
 
+  // Once a day, and only if there is something to say.
+  if (withWarnings) {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastWarned = await env.MONITOR_STATE.get(WARNED_KEY);
+
+    if (lastWarned !== today) {
+      const warnings = [...(await dailyWarnings(env))];
+      const stale = await staleSnapshots(env, slugs);
+
+      if (stale.length > 0) {
+        // Worth saying plainly: nothing looks wrong while this is true, right
+        // up until the database goes down and there is nothing to fall back to.
+        warnings.push(`🗂 Stale fallback snapshots: ${stale.join(", ")}. A database outage would show empty menus.`);
+      }
+
+      if (warnings.length > 0) {
+        await sendTelegram(env, `⚠️ <b>QR Menu — worth looking at</b>\n\n${warnings.join("\n")}`);
+        lines.push(`warnings sent: ${warnings.length}`);
+      } else {
+        lines.push("warnings: none");
+      }
+
+      await env.MONITOR_STATE.put(WARNED_KEY, today);
+    }
+  }
+
   return lines.join("\n");
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: WaitUntilContext) {
     // On the hour, refresh the snapshots too; on the half hour, only probe.
-    const onTheHour = new Date(event.scheduledTime).getUTCMinutes() < 30;
-    ctx.waitUntil(runCheck(env, undefined, onTheHour).then((summary) => console.log(summary)));
+    const at = new Date(event.scheduledTime);
+    const onTheHour = at.getUTCMinutes() < 30;
+    // 06:00 UTC is ten in the morning in Baku — read with coffee, not at night,
+    // and early enough to act on the same day.
+    const morning = at.getUTCHours() === 6 && onTheHour;
+    ctx.waitUntil(runCheck(env, undefined, onTheHour, morning).then((summary) => console.log(summary)));
   },
 
   // Manual trigger, for testing the setup and for checking on demand:
@@ -515,7 +655,18 @@ export default {
       );
     }
 
-    const summary = await runCheck(env, url.searchParams.get("simulate") ?? undefined);
+    // ?warn=1 runs the daily look-ahead now instead of waiting for the morning,
+    // and ignores the once-a-day guard so it can be tested twice in a row.
+    if (url.searchParams.get("warn") === "1") {
+      await env.MONITOR_STATE.delete(WARNED_KEY);
+    }
+
+    const summary = await runCheck(
+      env,
+      url.searchParams.get("simulate") ?? undefined,
+      true,
+      url.searchParams.get("warn") === "1",
+    );
 
     return new Response(`${summary}\n`, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
