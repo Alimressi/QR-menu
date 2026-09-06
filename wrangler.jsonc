@@ -42,6 +42,12 @@
     {
       "binding": "MEDIA_BUCKET",
       "bucket_name": "qr-menu-media"
+    },
+    // Where a rendered menu page is kept between guests. The name is fixed by
+    // OpenNext, which looks this binding up by exactly this string.
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "qr-menu-media"
     }
   ],
   "observability": {

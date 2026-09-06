@@ -30,3 +30,29 @@ export function publicOriginFrom(request: NextRequest): string {
 
   return new URL(request.url).origin;
 }
+
+/**
+ * The same address, for code that has no request to read it from.
+ *
+ * A cached menu page is rendered once and served to everybody, so there is no
+ * "incoming request" whose host can be trusted — the render may have happened
+ * for a guest who left an hour ago. The runtime variable is read through the
+ * Cloudflare context rather than `process.env`, because `process.env` hands
+ * back the value Next inlined at build time (see the note above), which is the
+ * localhost address that once ended up inside every printed QR code.
+ */
+export async function publicOriginFromEnv(): Promise<string> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = getCloudflareContext();
+    const configured = (env as Record<string, unknown>).NEXT_PUBLIC_BASE_URL;
+
+    if (typeof configured === "string" && configured.startsWith("http")) {
+      return configured;
+    }
+  } catch {
+    // No Worker around: `next build` and `next dev` both land here.
+  }
+
+  return process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+}

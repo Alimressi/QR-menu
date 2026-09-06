@@ -322,7 +322,7 @@ async function measure(env: Env, url: string): Promise<Measurement> {
  *   wording, delivery — without waiting for a real outage. The next normal run
  *   then reports the recovery, so the drill cleans up after itself.
  */
-async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
+async function runCheck(env: Env, simulateDownSlug?: string, withSnapshots = true): Promise<string> {
   let slugs: string[];
 
   try {
@@ -432,14 +432,22 @@ async function runCheck(env: Env, simulateDownSlug?: string): Promise<string> {
 
   // After the checks, never before: a slow or failing snapshot refresh must not
   // delay the thing people actually get alerted by.
-  lines.push(await refreshSnapshots(env, slugs));
+  // Rebuilding six whole menus is the heaviest thing in this cycle and the
+  // least urgent: a snapshot is read only when the database is down, and one an
+  // hour old serves a guest exactly as well as one from a minute ago. The
+  // health probes stay on the half hour; this rides every second run.
+  if (withSnapshots) {
+    lines.push(await refreshSnapshots(env, slugs));
+  }
 
   return lines.join("\n");
 }
 
 export default {
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: WaitUntilContext) {
-    ctx.waitUntil(runCheck(env).then((summary) => console.log(summary)));
+  async scheduled(event: ScheduledEvent, env: Env, ctx: WaitUntilContext) {
+    // On the hour, refresh the snapshots too; on the half hour, only probe.
+    const onTheHour = new Date(event.scheduledTime).getUTCMinutes() < 30;
+    ctx.waitUntil(runCheck(env, undefined, onTheHour).then((summary) => console.log(summary)));
   },
 
   // Manual trigger, for testing the setup and for checking on demand:

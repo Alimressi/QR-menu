@@ -10,10 +10,27 @@ import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { publicOriginFromEnv } from "@/lib/public-origin";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Rendered once and kept for a minute, rather than rebuilt for every guest.
+//
+// A 92-dish menu costs about 14 ms of CPU to render against the free plan's
+// 10 ms allowance, and each render also woke the database — between them they
+// were the two ceilings this project was closest to. Cached, a hundred guests
+// in a minute cost one render and one query.
+//
+// A minute is the delay a price change takes to reach the tables. That is the
+// whole price of this, and for a menu it is nothing: the alternative was a
+// guest occasionally meeting an error instead of the food.
+//
+// force-static is needed as well as revalidate, and the reason is particular to
+// Next 16: fetch is no longer cached by default, the Neon driver reaches the
+// database through fetch, and a page holding uncached data is rendered per
+// request no matter what revalidate says. force-static declares the intent
+// instead of inferring it. Nothing here reads cookies or headers, which is what
+// it would otherwise blank out.
+export const dynamic = "force-static";
+export const revalidate = 60;
 
 type Params = {
   params: Promise<{ slug: string }>;
@@ -120,16 +137,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     imagePath = await findFirstDishImage(restaurant.id).catch(() => null);
   }
 
-  // Build the public origin from the incoming request. NEXT_PUBLIC_BASE_URL is
-  // inlined at build time (undefined then, since it's only a runtime Worker var),
-  // so relying on it here yields http://localhost:3000 in production. These pages
-  // are force-dynamic, so the request headers are the reliable source of truth.
-  const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const origin = host
-    ? `${proto}://${host}`
-    : process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  // From the runtime variable, not from the request. Reading a header here
+  // would make this page dynamic again, which is exactly what the cache above
+  // is for; and a cached page has no one request whose host is the right one.
+  const origin = await publicOriginFromEnv();
   const toAbsolute = (path: string) => (path.startsWith("http") ? path : `${origin}${path}`);
 
   const imageUrl = imagePath ? toAbsolute(imagePath) : null;

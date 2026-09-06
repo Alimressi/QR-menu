@@ -8,8 +8,19 @@
   // Deliberately a SEPARATE worker from the app it watches. A monitor that runs
   // inside the thing it monitors goes quiet exactly when it is needed most —
   // when the app is the part that is broken.
+  // Every half hour, not every ten minutes. The database is what this costs:
+  // Neon suspends a compute after five idle minutes, so a probe every ten kept
+  // it awake roughly half the day — 3.6 of the free plan's 100 CU-hours a day,
+  // which projected to 108 a month for a service whose guests number in the
+  // hundreds. At thirty the compute sleeps most of the hour and the same work
+  // costs about a third as much.
+  //
+  // What it buys back: an outage is noticed in fifteen minutes on average
+  // rather than five. For a menu that is a fair trade — nothing here pages
+  // anyone at night, and the alert exists so the client is not the one who
+  // notices first.
   "triggers": {
-    "crons": ["*/10 * * * *"]
+    "crons": ["*/30 * * * *"]
   },
 
   "vars": {
