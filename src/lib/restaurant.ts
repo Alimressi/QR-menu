@@ -53,8 +53,13 @@ export type RestaurantSettings = {
   // guest's chosen language; names often should not. A menu written in
   // Azerbaijani calls a dish "Düşbərə", and a guest reading the Russian
   // interface still orders it by that name — translating it to "Дюшбара" gives
-  // the waiter a word that is not on the kitchen's list. "auto" keeps the old
-  // behaviour of following the interface.
+  // the waiter a word that is not on the kitchen's list.
+  //
+  // "auto" follows the interface. It was the original behaviour and is no
+  // longer the default: every menu built here so far was written in
+  // Azerbaijani, and a restaurant left on "auto" starts renaming its food the
+  // day someone fills in the translation columns — which is how this was found,
+  // on a menu where the names had quietly been translated all along.
   dishNameLanguage: "auto" | "az" | "ru" | "en";
   brandName: string;
   brandSubtitle: string;
@@ -148,7 +153,7 @@ export function getDefaultRestaurantSettings(): RestaurantSettings {
   return {
     serviceMode: "pro",
     photosEnabled: true,
-    dishNameLanguage: "auto",
+    dishNameLanguage: "az",
     brandName: "",
     brandSubtitle: "",
     primaryColor: "#111827",
