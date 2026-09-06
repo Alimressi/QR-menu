@@ -24,7 +24,13 @@
   },
 
   "vars": {
-    "SITE_URL": "https://qr-menu.imran-ask-2006.workers.dev",
+    // The address a guest actually uses. It was the workers.dev one until the
+    // custom domain took over and that route started answering 404 — which the
+    // monitor read as "the public channel is unavailable" and quietly stopped
+    // alerting on, for every restaurant, for as long as it was wrong. A checker
+    // pointed at an address nobody visits is worse than no checker: it reports
+    // success while the thing it guards is unwatched.
+    "SITE_URL": "https://qr-menu.az",
     // Read from the console URL. Not a secret; the API key that goes with it is
     // one, and lives in `wrangler secret put NEON_API_KEY`.
     "NEON_PROJECT_ID": "orange-flower-46662484"
