@@ -24,7 +24,10 @@
   },
 
   "vars": {
-    "SITE_URL": "https://qr-menu.imran-ask-2006.workers.dev"
+    "SITE_URL": "https://qr-menu.imran-ask-2006.workers.dev",
+    // Read from the console URL. Not a secret; the API key that goes with it is
+    // one, and lives in `wrangler secret put NEON_API_KEY`.
+    "NEON_PROJECT_ID": "orange-flower-46662484"
   },
 
   // Cloudflare refuses a plain fetch() from one Worker to another on the same

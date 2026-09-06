@@ -39,6 +39,9 @@ type Env = {
   MONITOR_STATE: KvStore;
   SITE_URL: string;
   DATABASE_URL: string;
+  /** Optional. Without it the compute-hours check quietly does not run. */
+  NEON_API_KEY?: string;
+  NEON_PROJECT_ID?: string;
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_CHAT_ID: string;
   /** Shared secret for triggering a check by hand over HTTP. */
@@ -182,6 +185,72 @@ const DB_SIZE_WARN_RATIO = 0.7;
 const SNAPSHOT_STALE_HOURS = 24;
 /** A trial worth mentioning before it lapses on a paying-to-be client. */
 const TRIAL_WARN_DAYS = 5;
+/** The free plan's monthly compute allowance, in CU-hours. */
+const CU_HOURS_LIMIT = 100;
+/** Speak when the month is on course to end above this share of it. */
+const CU_HOURS_WARN_RATIO = 0.8;
+
+/**
+ * Compute hours used this billing period, and where the month is heading.
+ *
+ * This is the one that nearly bit: on 6 September the project was 21.64 hours
+ * into a 100-hour month on day six, which projects to 108 — and nothing said
+ * so. A projection is the useful form. "Used 78 of 100" invites waiting;
+ * "on course for 108, out on the 26th" is a date to act before.
+ *
+ * Needs an API key. Without one this returns nothing rather than complaining
+ * every morning about a key that may never be set on purpose.
+ */
+async function computeHoursWarning(env: Env): Promise<string | null> {
+  if (!env.NEON_API_KEY || !env.NEON_PROJECT_ID) {
+    return null;
+  }
+
+  const response = await fetch(`https://console.neon.tech/api/v2/projects/${env.NEON_PROJECT_ID}`, {
+    headers: { Authorization: `Bearer ${env.NEON_API_KEY}`, Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    return `🗄 Neon usage unreadable (HTTP ${response.status}). The API key may have expired.`;
+  }
+
+  const body = (await response.json()) as {
+    project?: { compute_time_seconds?: number; consumption_period_start?: string; consumption_period_end?: string };
+  };
+  const project = body.project;
+
+  if (!project?.compute_time_seconds || !project.consumption_period_start || !project.consumption_period_end) {
+    return null;
+  }
+
+  const used = project.compute_time_seconds / 3600;
+  const start = new Date(project.consumption_period_start).getTime();
+  const end = new Date(project.consumption_period_end).getTime();
+  const elapsed = Date.now() - start;
+
+  // Too early in the period to extrapolate from: one busy evening on day one
+  // would forecast a catastrophe.
+  if (elapsed < 2 * 86_400_000) {
+    return null;
+  }
+
+  const projected = used * ((end - start) / elapsed);
+
+  if (projected < CU_HOURS_LIMIT * CU_HOURS_WARN_RATIO) {
+    return null;
+  }
+
+  const runsOutOn =
+    projected > CU_HOURS_LIMIT
+      ? new Date(start + elapsed * (CU_HOURS_LIMIT / used)).toISOString().slice(0, 10)
+      : null;
+
+  return (
+    `🗄 Neon compute: ${used.toFixed(1)} of ${CU_HOURS_LIMIT} CU-hours used, ` +
+    `on course for ${projected.toFixed(0)} this period` +
+    (runsOutOn ? ` — the allowance runs out around ${runsOutOn}.` : ".")
+  );
+}
 
 async function dailyWarnings(env: Env): Promise<string[]> {
   const warnings: string[] = [];
@@ -557,6 +626,13 @@ async function runCheck(
 
     if (lastWarned !== today) {
       const warnings = [...(await dailyWarnings(env))];
+
+      try {
+        const compute = await computeHoursWarning(env);
+        if (compute) warnings.push(compute);
+      } catch (error) {
+        warnings.push(`🗄 Could not read Neon usage: ${String(error).slice(0, 120)}`);
+      }
       const stale = await staleSnapshots(env, slugs);
 
       if (stale.length > 0) {
