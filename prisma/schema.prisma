@@ -30,12 +30,14 @@ model Restaurant {
   lemonSqueezySubscriptionId String? @unique
   lemonSqueezyCustomerId     String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   categories  Category[]
   dishes      Dish[]
   orders      Order[]
   waiterCalls WaiterCall[]
+  menuOpens   MenuOpenStat[]
+  dishViews   DishViewStat[]
 }
 
 model Category {
@@ -54,7 +56,7 @@ model Category {
 }
 
 model Dish {
-  id             Int          @id @default(autoincrement())
+  id             Int    @id @default(autoincrement())
   nameEn         String
   nameRu         String
   nameAz         String
@@ -63,21 +65,22 @@ model Dish {
   descriptionAz  String
   price          Float
   imageUrl       String
-  imagePositionX Float        @default(50)
-  imagePositionY Float        @default(50)
+  imagePositionX Float  @default(50)
+  imagePositionY Float  @default(50)
 
   /// Today's stop list: the kitchen has run out. The dish stays in the menu,
   /// shown but not orderable, and comes back with one click. Defaults to false
   /// so a bad write can never hide a dish that is actually available.
-  soldOut        Boolean      @default(false)
-  categoryId     Int
-  restaurantId   Int
-  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  restaurant     Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  orderItems     OrderItem[]
-  options        DishOption[]
+  soldOut      Boolean        @default(false)
+  categoryId   Int
+  restaurantId Int
+  category     Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  orderItems   OrderItem[]
+  options      DishOption[]
+  views        DishViewStat[]
 
   @@index([restaurantId])
   @@index([categoryId])
@@ -143,4 +146,37 @@ model WaiterCall {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([restaurantId])
+}
+
+/// How many times a menu was opened, one row per restaurant per day.
+///
+/// Counted rather than logged. A row per visit would be the flexible thing and
+/// the wrong one here: the question anybody asks is "how many this week", the
+/// answer is a sum, and a year of raw visits costs storage to answer it more
+/// slowly. A daily bucket keeps the whole history of every restaurant smaller
+/// than one dish photograph.
+///
+/// `day` is a plain "YYYY-MM-DD" in UTC, not a timestamp — the unit is the day,
+/// and storing it as text makes the upsert key exact instead of nearly-equal.
+model MenuOpenStat {
+  restaurantId Int
+  day          String
+  count        Int        @default(0)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, day])
+  @@index([restaurantId, day])
+}
+
+/// The same, for taps on a single dish — what the guest opened to look at.
+model DishViewStat {
+  restaurantId Int
+  dishId       Int
+  day          String
+  count        Int        @default(0)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  dish         Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, dishId, day])
+  @@index([restaurantId, day])
 }

@@ -302,6 +302,12 @@ function emptyRestaurantForm() {
 }
 
 
+type RestaurantStats = {
+  opens: number;
+  byDay: Array<{ day: string; count: number }>;
+  topDishes: Array<{ dishId: number; name: string; count: number }>;
+};
+
 export function SuperAdminDashboard() {
   const [language, setLanguage] = useState<SuperAdminLanguage>("en");
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -317,6 +323,10 @@ export function SuperAdminDashboard() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
   /** Which restaurant's checkout link was just copied, for the button's label. */
   const [copiedBillingFor, setCopiedBillingFor] = useState<number | null>(null);
+  /** Which restaurant's traffic panel is open, and what it holds. */
+  const [statsFor, setStatsFor] = useState<number | null>(null);
+  const [statsData, setStatsData] = useState<RestaurantStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   /** Table count as typed in the QR tab, before it is saved. */
   const [qrTableCount, setQrTableCount] = useState("");
   const [savingTableCount, setSavingTableCount] = useState(false);
@@ -396,6 +406,30 @@ export function SuperAdminDashboard() {
         (key) => String(savedDesign[key]) !== String(designForm[key]),
       )
     : [];
+
+  /** Opens the traffic panel for one restaurant, or closes it if already open. */
+  async function toggleStats(restaurantId: number) {
+    if (statsFor === restaurantId) {
+      setStatsFor(null);
+      setStatsData(null);
+      return;
+    }
+
+    setStatsFor(restaurantId);
+    setStatsData(null);
+    setStatsLoading(true);
+
+    try {
+      const response = await fetch(`/api/superadmin/stats?restaurantId=${restaurantId}`, { cache: "no-store" });
+      if (response.ok) {
+        setStatsData((await response.json()) as RestaurantStats);
+      }
+    } catch {
+      // The panel stays empty; the number on the card is still true.
+    } finally {
+      setStatsLoading(false);
+    }
+  }
 
   const loadRestaurants = useCallback(async () => {
     const response = await fetch("/api/superadmin/restaurants", { cache: "no-store" });
@@ -1674,7 +1708,7 @@ export function SuperAdminDashboard() {
                       : "border-dark-700 bg-dark-900"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="font-serif text-xl text-gold-100">{restaurant.name}</h3>
                       <p className="text-sm text-gold-400">/{restaurant.slug}</p>
@@ -1744,7 +1778,80 @@ export function SuperAdminDashboard() {
                         <span>{restaurant._count?.orders || 0} orders</span>
                       </div>
                     </div>
+
+                    {/* Traffic. A week is the window because it is the one a
+                        restaurant thinks in — a day is noise, a month is too
+                        late to react to. Tapping it opens the breakdown. */}
+                    <button
+                      type="button"
+                      onClick={() => void toggleStats(restaurant.id)}
+                      title={t.stats.weekOpens}
+                      className="shrink-0 rounded-xl border px-3 py-2 text-right transition"
+                      style={{
+                        borderColor: statsFor === restaurant.id ? dracula.cyan : "rgba(139,233,253,0.25)",
+                        background: statsFor === restaurant.id ? "rgba(139,233,253,0.12)" : "transparent",
+                      }}
+                    >
+                      <span className="block font-serif text-2xl leading-none" style={{ color: dracula.cyan }}>
+                        {restaurant.weeklyOpens ?? 0}
+                      </span>
+                      <span className="mt-1 block text-[10px] uppercase tracking-wider text-gold-500">
+                        {t.stats.perWeek}
+                      </span>
+                    </button>
                   </div>
+
+                  {statsFor === restaurant.id ? (
+                    <div
+                      className="mt-3 rounded-xl border p-3"
+                      style={{ borderColor: "rgba(139,233,253,0.25)", background: "rgba(139,233,253,0.06)" }}
+                    >
+                      {statsLoading ? (
+                        <p className="text-xs text-gold-400">{t.stats.loading}</p>
+                      ) : !statsData || statsData.opens === 0 ? (
+                        <p className="text-xs text-gold-400">{t.stats.empty}</p>
+                      ) : (
+                        <>
+                          <p className="mb-2 text-xs text-gold-300">
+                            {t.stats.opensLine.replace("{n}", String(statsData.opens))}
+                          </p>
+                          {statsData.topDishes.length === 0 ? (
+                            <p className="text-xs text-gold-500">{t.stats.noDishes}</p>
+                          ) : (
+                            <ol className="space-y-1">
+                              {statsData.topDishes.slice(0, 5).map((dish, index) => {
+                                const top = statsData.topDishes[0].count || 1;
+                                return (
+                                  <li key={dish.dishId} className="text-xs">
+                                    <div className="flex items-baseline justify-between gap-2">
+                                      <span className="truncate text-gold-200">
+                                        {index + 1}. {dish.name}
+                                      </span>
+                                      <span className="shrink-0 tabular-nums" style={{ color: dracula.cyan }}>
+                                        {dish.count}
+                                      </span>
+                                    </div>
+                                    {/* A bar rather than only a number: which dish
+                                        leads is read at a glance, the exact count
+                                        is there for whoever wants it. */}
+                                    <div className="mt-0.5 h-1 rounded-full bg-dark-700">
+                                      <div
+                                        className="h-1 rounded-full"
+                                        style={{
+                                          width: `${Math.max(4, Math.round((dish.count / top) * 100))}%`,
+                                          background: dracula.cyan,
+                                        }}
+                                      />
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : null}
                   <div className="mt-3 flex gap-2">
                     <button
                       type="button"

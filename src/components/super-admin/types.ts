@@ -12,6 +12,8 @@ export type Restaurant = {
   status: string;
   trialEndsAt: string | null;
   createdAt: string;
+  /** Menu opens over the last seven days. Comes from the restaurants listing. */
+  weeklyOpens?: number;
   _count?: {
     categories: number;
     dishes: number;

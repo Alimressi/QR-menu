@@ -1271,7 +1271,33 @@ export function MenuClient({
     }));
   }
 
+  // Fire-and-forget. keepalive so a count still lands if the guest taps a dish
+  // and immediately backs out of the page, and no await anywhere: the menu must
+  // never wait on a statistic.
+  const countView = useCallback(
+    (dishId?: number) => {
+      if (!liveRestaurantId) return;
+
+      void fetch("/api/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dishId ? { restaurantId: liveRestaurantId, dishId } : { restaurantId: liveRestaurantId }),
+        keepalive: true,
+      }).catch(() => {});
+    },
+    [liveRestaurantId],
+  );
+
+  // One per page load, not per render, and only once the restaurant is known.
+  const countedOpenFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!liveRestaurantId || countedOpenFor.current === liveRestaurantId) return;
+    countedOpenFor.current = liveRestaurantId;
+    countView();
+  }, [liveRestaurantId, countView]);
+
   function openDishModal(dishId: number) {
+    countView(dishId);
     setDishModalDishId(dishId);
     setIsDishModalOpen(true);
 

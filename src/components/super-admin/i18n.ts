@@ -297,6 +297,14 @@ export const dictionary: Record<
     createRestaurant: string;
     serviceMode: string;
     serviceModeLite: string;
+    stats: {
+      weekOpens: string;
+      perWeek: string;
+      loading: string;
+      empty: string;
+      opensLine: string;
+      noDishes: string;
+    };
     serviceModePro: string;
     photosMode: string;
     photosOn: string;
@@ -372,6 +380,14 @@ export const dictionary: Record<
     createRestaurant: "Create Restaurant",
     serviceMode: "Mode",
     serviceModeLite: "Lite (menu + basket only)",
+    stats: {
+      weekOpens: "Menu opens in the last 7 days",
+      perWeek: "per week",
+      loading: "Loading…",
+      empty: "No opens yet this week.",
+      opensLine: "{n} menu opens in 7 days · most viewed dishes:",
+      noDishes: "Nobody has tapped a dish yet.",
+    },
     serviceModePro: "Pro (menu + waiter + online orders)",
     photosMode: "Photos",
     photosOn: "Show dish photos",
@@ -449,6 +465,14 @@ export const dictionary: Record<
     createRestaurant: "Создать ресторан",
     serviceMode: "Режим",
     serviceModeLite: "Лайт (меню + корзина)",
+    stats: {
+      weekOpens: "Открытий меню за 7 дней",
+      perWeek: "за неделю",
+      loading: "Загрузка…",
+      empty: "На этой неделе меню ещё не открывали.",
+      opensLine: "{n} открытий меню за 7 дней · чаще всего смотрели:",
+      noDishes: "Блюда пока никто не открывал.",
+    },
     serviceModePro: "Про (меню + вызов официанта + онлайн заказ)",
     photosMode: "Фотографии",
     photosOn: "Показывать фото блюд",
@@ -526,6 +550,14 @@ export const dictionary: Record<
     createRestaurant: "Restoran yarat",
     serviceMode: "Rejim",
     serviceModeLite: "Lite (menyu + səbət)",
+    stats: {
+      weekOpens: "Son 7 gündə menyu açılışları",
+      perWeek: "həftədə",
+      loading: "Yüklənir…",
+      empty: "Bu həftə menyu hələ açılmayıb.",
+      opensLine: "7 gündə {n} menyu açılışı · ən çox baxılanlar:",
+      noDishes: "Hələ heç bir yeməyə toxunulmayıb.",
+    },
     serviceModePro: "Pro (menyu + ofisiant çağırışı + onlayn sifariş)",
     photosMode: "Şəkillər",
     photosOn: "Yemək şəkillərini göstər",

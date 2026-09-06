@@ -25,10 +25,25 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    // Menu opens over the last seven days, as one grouped read for every
+    // restaurant rather than one query per card.
+    const since = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const opens = await prisma.menuOpenStat.groupBy({
+      by: ["restaurantId"],
+      where: { day: { gte: since } },
+      _sum: { count: true },
+    });
+    const opensByRestaurant = new Map(opens.map((row) => [row.restaurantId, row._sum.count ?? 0]));
+
+    const withStats = restaurants.map((restaurant) => ({
+      ...restaurant,
+      weeklyOpens: opensByRestaurant.get(restaurant.id) ?? 0,
+    }));
+
     // Never cached: this is what the edit form reads back after a save. Without
     // an explicit header the browser applies heuristic caching and the form
     // repopulates from a stale copy, silently showing pre-edit values.
-    return NextResponse.json({ restaurants }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ restaurants: withStats }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     return NextResponse.json(
