@@ -188,6 +188,16 @@ const DB_SIZE_LIMIT_MB = 512;
 const DB_SIZE_WARN_RATIO = 0.7;
 /** A snapshot older than this means the safety net has quietly stopped. */
 const SNAPSHOT_STALE_HOURS = 24;
+/**
+ * What a menu with anything in it always contains, and an empty one never does.
+ *
+ * The app answers 200 for any slug at all — /asdkjhasd987 renders an 11 KB
+ * shell titled after the slug — so a status code alone cannot tell a served
+ * menu from a restaurant that was renamed, deleted, or never filled in. This
+ * field name rides along in the payload of every dish and category: 25 times in
+ * the smallest real menu here, 295 in the largest, and zero in the shell.
+ */
+const MENU_CONTENT_MARKER = "nameAz";
 /** A trial worth mentioning before it lapses on a paying-to-be client. */
 const TRIAL_WARN_DAYS = 5;
 /** The free plan's monthly compute allowance, in CU-hours. */
@@ -385,6 +395,43 @@ async function staleSnapshots(env: Env, slugs: string[]): Promise<string[]> {
   }
 
   return stale;
+}
+
+/**
+ * Menus that answer but have nothing in them.
+ *
+ * Deliberately a once-a-day warning rather than an outage alert. A restaurant
+ * created ten minutes ago and not yet filled in is empty on purpose, and paging
+ * on that would teach the reader to skip the red messages — the one failure a
+ * monitor never recovers from. Reachable-but-empty is a thing to read over
+ * coffee; the half-hourly probe stays on hard failures.
+ *
+ * Over the service binding rather than the public address: this asks whether
+ * the app can still produce the menu, which is the question, and the binding
+ * cannot be answered by an edge cache holding a copy from before it emptied.
+ */
+async function emptyMenus(env: Env, slugs: string[]): Promise<string[]> {
+  const empty: string[] = [];
+
+  for (const slug of slugs) {
+    try {
+      const response = await env.APP.fetch(`${env.SITE_URL}/${slug}`, {
+        headers: { "User-Agent": "qr-menu-monitor" },
+        cache: "no-store",
+      });
+
+      const body = await response.text();
+
+      if (response.ok && !body.includes(MENU_CONTENT_MARKER)) {
+        empty.push(slug);
+      }
+    } catch {
+      // A menu that cannot be read at all is the probe's business, not this one.
+      // Saying it twice in two voices helps nobody.
+    }
+  }
+
+  return empty;
 }
 
 async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
@@ -691,6 +738,21 @@ async function runCheck(
         // Worth saying plainly: nothing looks wrong while this is true, right
         // up until the database goes down and there is nothing to fall back to.
         warnings.push(`🗂 Stale fallback snapshots: ${stale.join(", ")}. A database outage would show empty menus.`);
+      }
+
+      // Wrapped like the Neon call above, and for the same reason: this block
+      // is the only thing that speaks once a day, and one check failing inside
+      // it must not take the other warnings down with it.
+      try {
+        const empty = await emptyMenus(env, slugs);
+
+        if (empty.length > 0) {
+          warnings.push(
+            `📭 Answering but empty: ${empty.join(", ")}. A guest scanning these gets a menu with no dishes in it.`,
+          );
+        }
+      } catch (error) {
+        warnings.push(`📭 Could not check menus for content: ${String(error).slice(0, 120)}`);
       }
 
       if (warnings.length > 0) {
