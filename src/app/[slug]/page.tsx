@@ -10,6 +10,7 @@ import { getPublicSettingsFromRaw } from "@/lib/restaurant";
 import { SUSPENDED_NOTICE, isRestaurantServable } from "@/lib/subscription";
 import type { CategoryWithDishes } from "@/types";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { publicOriginFromEnv } from "@/lib/public-origin";
 
 // Rendered once and kept for a minute, rather than rebuilt for every guest.
@@ -48,6 +49,20 @@ type LoadedMenu = {
   categories: CategoryWithDishes[];
   /** True when the database failed and this came out of the R2 snapshot. */
   degraded: boolean;
+  /**
+   * True only when the database answered and had no such restaurant.
+   *
+   * Optional, and absent means "not missing", because the two ways to end up
+   * without a restaurant are not the same thing and the wrong one is expensive.
+   * A slug nobody owns and "the database is down and there is no snapshot" both
+   * leave `restaurant` null, but only the first is a 404; treating the second as
+   * one would turn a Neon cold start into a hard 404 on a real menu, cached for
+   * a minute, exactly where the client-side retry currently rescues the guest.
+   *
+   * So this is a claim a path has to make on purpose. A return added later that
+   * forgets it degrades to the shell, which is the safe direction to fail in.
+   */
+  missing?: boolean;
 };
 
 /**
@@ -77,7 +92,9 @@ async function loadMenu(slug: string): Promise<LoadedMenu> {
 
     if (!restaurant) {
       // A genuinely unknown slug, not a failure. Nothing to fall back to.
-      return { restaurant: null, categories: [], degraded: false };
+      // This is the one path that knows that for certain: the query ran, and
+      // came back empty. Every other empty-handed return here is a failure.
+      return { restaurant: null, categories: [], degraded: false, missing: true };
     }
 
     if (!isRestaurantServable(restaurant)) {
@@ -177,7 +194,16 @@ export default async function RestaurantPage({ params }: Params) {
   // A cold-start failure here used to throw and render a 500 for the guest.
   // MenuClient already refetches everything on the client when server data is
   // missing, so degrade to that instead of failing the page.
-  const { restaurant, categories, degraded } = await loadMenu(slug);
+  const { restaurant, categories, degraded, missing } = await loadMenu(slug);
+
+  // A slug no restaurant owns is a 404, not a menu with nothing in it. The page
+  // used to answer 200 for anything at all — /asdkjhasd987 rendered an empty
+  // shell titled after the slug — which told a guest whose QR code was misprinted
+  // that the menu was simply empty, and left the monitor unable to tell a served
+  // menu from a deleted one.
+  if (missing) {
+    notFound();
+  }
 
   if (degraded) {
     // Observability is on for this Worker, so this is the trail that says the
