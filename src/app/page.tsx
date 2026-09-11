@@ -20,7 +20,7 @@ export const metadata = {
 };
 
 // wa.me wants the number bare — no plus, no spaces.
-const WHATSAPP = "https://wa.me/994517770577";
+const WHATSAPP = "https://wa.me/994777171131";
 
 const COPY = {
   az: {
