@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 // The service's own front door.
@@ -30,16 +29,6 @@ export const metadata = {
 const WHATSAPP = "https://wa.me/994777171131";
 const DEMO = "/lumiere";
 
-// Real cards from a real menu, not an illustration of one. These three dishes
-// are live at /lumiere right now, at these prices, with these photographs — the
-// page is the product showing itself. The -card copies are the same 12-19 KB
-// files the guest menu serves, so they cost nothing extra to put here.
-const CARDS = [
-  { name: "Burrata", price: 14, img: "/images/dishes/dish-308-card.jpg" },
-  { name: "Avokado tost", price: 11, img: "/images/dishes/dish-303-card.jpg" },
-  { name: "Sezar salatı", price: 12, img: "/images/dishes/dish-307-card.jpg" },
-];
-
 const COPY = {
   az: {
     lead: "Bir QR kod - və qonaq menyunu öz telefonunda görür. Restoranlar üçün belə menyular hazırlayıram.",
@@ -52,7 +41,6 @@ const COPY = {
     example: "Nümunəyə baxın",
     invite: "Öz yeriniz üçün belə menyu istəyirsiniz?",
     contact: "Mənimlə əlaqə saxlayın",
-    scan: "Kameranı tutun",
   },
   en: {
     lead: "One QR code - and the guest sees the menu on their own phone. I build these menus for restaurants.",
@@ -65,7 +53,6 @@ const COPY = {
     example: "See a live menu",
     invite: "Want one for your own place?",
     contact: "Get in touch with me",
-    scan: "Point your camera",
   },
   ru: {
     lead: "Один QR-код - и гость видит меню на своём телефоне. Делаю такие меню для заведений.",
@@ -78,7 +65,6 @@ const COPY = {
     example: "Посмотреть пример",
     invite: "Хотите такое же для своего заведения?",
     contact: "Связаться со мной",
-    scan: "Наведите камеру",
   },
 } as const;
 
@@ -104,9 +90,13 @@ const CSS = `
 body:has(.lp) { background: #FBFBF9; }
 
 .lp-wrap {
-  max-width: 1120px;
+  max-width: 720px;
   margin: 0 auto;
   padding: 28px 24px 64px;
+}
+
+@media (min-width: 900px) {
+  .lp-wrap { padding: 40px 32px 96px; }
 }
 
 /* ---------- header ---------- */
@@ -116,7 +106,11 @@ body:has(.lp) { background: #FBFBF9; }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 40px;
+  padding-bottom: 48px;
+}
+
+@media (min-width: 900px) {
+  .lp-top { padding-bottom: 72px; }
 }
 
 .lp-brand {
@@ -159,9 +153,9 @@ body:has(.lp) { background: #FBFBF9; }
 /* ---------- language switch ----------
 
    Was Tailwind's peer-checked variant, which only reaches a later SIBLING of
-   the radio. The two-column layout puts each panel two levels down, so every
-   panel stayed hidden and the page rendered with an empty left half. :has() on
-   the wrapper reads the same checked state from any depth.
+   the radio. Each panel sits a level down, so every panel stayed hidden and the
+   page rendered with an empty column. :has() on the wrapper reads the same
+   checked state from any depth.
 
    Azerbaijani is shown by a plain rule and hidden by the :has() ones, so a
    browser too old for :has() still gets a readable page in the default
@@ -182,35 +176,21 @@ body:has(.lp) { background: #FBFBF9; }
   color: var(--accent);
 }
 
-/* ---------- two columns ---------- */
-
-.lp-cols {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 56px;
-  align-items: start;
-}
-
-@media (min-width: 900px) {
-  .lp-wrap { padding: 36px 32px 88px; }
-  .lp-cols { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 72px; }
-  .lp-top { padding-bottom: 64px; }
-}
-
-/* ---------- left column ---------- */
+/* ---------- the page ---------- */
 
 .lp h1 {
   font-family: var(--font-display), system-ui, sans-serif;
   font-weight: 700;
-  font-size: clamp(38px, 6.4vw, 62px);
+  font-size: clamp(38px, 6.8vw, 60px);
   line-height: 1.03;
   letter-spacing: -0.035em;
   margin: 0;
+  max-width: 14ch;
   text-wrap: balance;
 }
 
 .lp-lead {
-  margin: 20px 0 0;
+  margin: 22px 0 0;
   max-width: 46ch;
   font-size: 17px;
   line-height: 1.6;
@@ -218,7 +198,7 @@ body:has(.lp) { background: #FBFBF9; }
 }
 
 .lp-points {
-  margin: 40px 0 0;
+  margin: 44px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -254,10 +234,11 @@ body:has(.lp) { background: #FBFBF9; }
   font-size: 15px;
   line-height: 1.55;
   color: var(--muted);
+  max-width: 52ch;
 }
 
 .lp-invite {
-  margin: 40px 0 0;
+  margin: 44px 0 0;
   font-size: 17px;
   font-weight: 500;
 }
@@ -301,89 +282,10 @@ body:has(.lp) { background: #FBFBF9; }
 
 .lp-btn:active { transform: scale(0.985); }
 
-/* ---------- right column: the product, not a picture of it ---------- */
-
-.lp-proof { display: flex; flex-direction: column; gap: 18px; }
-
-.lp-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 14px;
-}
-
-.lp-card {
-  display: grid;
-  grid-template-columns: 68px 1fr auto;
-  align-items: center;
-  gap: 14px;
-}
-
-.lp-card img {
-  width: 68px;
-  height: 51px;
-  object-fit: cover;
-  border-radius: 10px;
-  display: block;
-}
-
-.lp-card-name {
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.01em;
-}
-
-.lp-card-price {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.lp-cards-foot {
-  border-top: 1px solid var(--line);
-  padding-top: 11px;
-  margin-top: 3px;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-/* The QR is real: point a phone at the screen and the demo menu opens. */
-.lp-qr {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 16px 18px;
-}
-
-.lp-qr svg { width: 78px; height: 78px; display: block; border-radius: 4px; }
-
-.lp-qr-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-
-.lp-qr-label {
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.lp-qr-url {
-  font-size: 13px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
 /* ---------- footer ---------- */
 
 .lp-foot {
-  margin-top: 72px;
+  margin-top: 80px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
   display: flex;
@@ -414,21 +316,8 @@ body:has(.lp) { background: #FBFBF9; }
   to   { opacity: 1; transform: none; }
 }
 
-/* The proof column arrives as one object rather than piece by piece — it is a
-   single thing being handed over, and staggering its rows made it read as a
-   list loading in. */
-.lp-settle {
-  opacity: 0;
-  animation: lp-settle 760ms cubic-bezier(0.22, 1, 0.36, 1) 260ms forwards;
-}
-
-@keyframes lp-settle {
-  from { opacity: 0; transform: translateY(20px) scale(0.985); }
-  to   { opacity: 1; transform: none; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .lp-rise, .lp-settle { opacity: 1; animation: none; }
+  .lp-rise { opacity: 1; animation: none; }
 }
 `;
 
@@ -479,21 +368,6 @@ function Panel({ lang }: { lang: keyof typeof COPY }) {
   );
 }
 
-// Generated once with `qrcode` and inlined rather than fetched or drawn at
-// runtime: 1.2 KB of paths, no library, no request, and it renders before the
-// first paint. Points at the demo menu — change the target and regenerate.
-function DemoQr() {
-  return (
-    <svg viewBox="0 0 25 25" shapeRendering="crispEdges" role="img" aria-label="QR: qr-menu.az/lumiere">
-      <path fill="#ffffff" d="M0 0h25v25H0z" />
-      <path
-        stroke="#15130E"
-        d="M0 0.5h7m3 0h1m1 0h2m1 0h1m2 0h7M0 1.5h1m5 0h1m1 0h1m1 0h1m4 0h2m1 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m3 0h1m3 0h1m1 0h1m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m2 0h1m1 0h2m2 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m1 0h1m3 0h4m2 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m2 0h1m2 0h1m1 0h2m2 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 7.5h1m1 0h1m1 0h2m1 0h1M0 8.5h1m1 0h1m1 0h1m1 0h1m2 0h1m2 0h2m1 0h2m3 0h1m2 0h1M0 9.5h2m1 0h1m3 0h1m1 0h4m5 0h1m5 0h1M1 10.5h1m1 0h4m1 0h1m9 0h3m1 0h3M2 11.5h4m2 0h2m1 0h1m1 0h1m1 0h5m3 0h1M0 12.5h2m1 0h1m1 0h2m1 0h3m1 0h2m4 0h2m1 0h1m1 0h2M1 13.5h1m1 0h1m1 0h1m2 0h1m1 0h2m1 0h2m1 0h3m2 0h1m2 0h1M0 14.5h1m2 0h1m1 0h4m1 0h1m5 0h2m1 0h1m2 0h3M1 15.5h1m3 0h1m1 0h1m2 0h5m1 0h1m3 0h1m2 0h1M0 16.5h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h7M8 17.5h1m3 0h1m2 0h2m3 0h2m1 0h2M0 18.5h7m5 0h1m2 0h2m1 0h1m1 0h2m1 0h2M0 19.5h1m5 0h1m6 0h2m1 0h1m3 0h2m1 0h2M0 20.5h1m1 0h3m1 0h1m1 0h2m3 0h1m2 0h6M0 21.5h1m1 0h3m1 0h1m2 0h2m1 0h1m6 0h4M0 22.5h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h3m3 0h1m3 0h1M0 23.5h1m5 0h1m2 0h8m1 0h1m1 0h2m1 0h1M0 24.5h7m1 0h2m2 0h2m1 0h5m3 0h2"
-      />
-    </svg>
-  );
-}
-
 export default function Home() {
   return (
     <>
@@ -501,7 +375,7 @@ export default function Home() {
 
       <main className="lp">
         <div className="lp-wrap">
-          {/* Read by the `:has()` rules above, so these can sit anywhere inside
+          {/* Read by the :has() rules above, so these can sit anywhere inside
               the wrapper — but keep them here, ahead of everything they drive. */}
           <input type="radio" name="lang" id="lang-az" defaultChecked className="sr-only" />
           <input type="radio" name="lang" id="lang-ru" className="sr-only" />
@@ -520,42 +394,14 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="lp-cols">
-            <div>
-              <div className="lp-panel-az">
-                <Panel lang="az" />
-              </div>
-              <div className="lp-panel-ru">
-                <Panel lang="ru" />
-              </div>
-              <div className="lp-panel-en">
-                <Panel lang="en" />
-              </div>
-            </div>
-
-            {/* Language-neutral on purpose: these are the dish names as a guest
-                reads them at Lumière, and the QR needs no sentence to explain a
-                web address. Nothing here has to be translated three times. */}
-            <aside className="lp-proof lp-settle">
-              <div className="lp-cards">
-                {CARDS.map((card) => (
-                  <div key={card.name} className="lp-card">
-                    <Image src={card.img} alt="" width={68} height={51} />
-                    <span className="lp-card-name">{card.name}</span>
-                    <span className="lp-card-price">{card.price} ₼</span>
-                  </div>
-                ))}
-                <div className="lp-cards-foot">Lumière · qr-menu.az/lumiere</div>
-              </div>
-
-              <Link href={DEMO} className="lp-qr">
-                <DemoQr />
-                <span className="lp-qr-text">
-                  <span className="lp-qr-label">Lumière</span>
-                  <span className="lp-qr-url">qr-menu.az/lumiere</span>
-                </span>
-              </Link>
-            </aside>
+          <div className="lp-panel-az">
+            <Panel lang="az" />
+          </div>
+          <div className="lp-panel-ru">
+            <Panel lang="ru" />
+          </div>
+          <div className="lp-panel-en">
+            <Panel lang="en" />
           </div>
 
           <footer className="lp-foot lp-rise" style={{ animationDelay: "560ms" }}>
