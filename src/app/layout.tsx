@@ -1,6 +1,6 @@
 import { LEGAL } from "@/lib/legal";
 import type { Metadata } from "next";
-import { Inter, Cormorant_Garamond } from "next/font/google";
+import { Inter, Cormorant_Garamond, Onest } from "next/font/google";
 import "./globals.css";
 
 // Inter (with latin-ext) has a clean, evenly-weighted Azerbaijani schwa (Ə/ə) —
@@ -15,6 +15,16 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
+});
+
+// Headings on the landing page only — the guest menus keep Cormorant, which is
+// the face their restaurants were designed around. Onest is here because the
+// headline is written three times over: it has to carry Azerbaijani (ə, ğ, ı)
+// and Cyrillic in the same weights, which rules out most display faces.
+const onest = Onest({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext", "cyrillic"],
+  weight: ["600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -41,7 +51,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${cormorant.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${manrope.variable} ${cormorant.variable} ${onest.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
