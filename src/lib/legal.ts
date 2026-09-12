@@ -25,10 +25,14 @@ export const LEGAL = {
   operatorCountry: "Azerbaijan",
 
   /**
-   * TODO: consider a dedicated address on your own domain instead of a personal
-   * inbox — this one is published on both legal pages.
+   * Published on both legal pages, and the address an acquiring bank will look
+   * for when it reviews the site before approving online payments.
+   *
+   * TODO: a mailbox on qr-menu.az itself. A free inbox is fine for a first
+   * client and wrong for a page a bank is checking — the domain is the part
+   * that says the operator and the site are the same party.
    */
-  contactEmail: "imran.ask.2006@gmail.com",
+  contactEmail: "alimran.askerov05@gmail.com",
 
   /** Bump whenever either document changes materially. */
   lastUpdated: "12 August 2026",
