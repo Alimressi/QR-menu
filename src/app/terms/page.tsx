@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   // The root layout appends " | QR Menu", so don't repeat the name here.
   title: "Terms of Service",
-  description: `The agreement between ${LEGAL.serviceName} and the restaurants that subscribe to it.`,
+  description: `The agreement between ${LEGAL.serviceName} and the venues it serves.`,
 };
 
 export default function TermsPage() {
@@ -16,13 +16,17 @@ export default function TermsPage() {
         <>
           <p>
             These terms are the agreement between {LEGAL.operatorLegalName}{" "}
-            (&ldquo;we&rdquo;, &ldquo;us&rdquo;), operating from {LEGAL.operatorCountry}, and the
-            business that subscribes to {LEGAL.serviceName}{" "}(&ldquo;you&rdquo;). By subscribing,
-            or by using the service, you accept them.
+            (&ldquo;we&rdquo;, &ldquo;us&rdquo;), working in {LEGAL.serviceArea},{" "}
+            {LEGAL.operatorCountry}, and the venue we build a menu for
+            (&ldquo;you&rdquo;). By using the service, you accept them.
           </p>
           <p>
             {LEGAL.serviceName} is a hosted digital menu. We publish your menu at a web address your
             guests reach by scanning a QR code at the table.
+          </p>
+          <p>
+            The service is offered to venues in {LEGAL.serviceArea}, agreed in person and invoiced
+            directly. There is no online sign-up and nothing to buy on this website.
           </p>
         </>
       }
@@ -34,8 +38,8 @@ export default function TermsPage() {
         </p>
         <p>
           Unless you have agreed otherwise with us in writing, we build and update your menu on your
-          behalf as part of your subscription. Turnaround for routine changes is normally one
-          business day.
+          behalf as part of the monthly fee. Turnaround for routine changes is normally one business
+          day.
         </p>
       </LegalSection>
 
@@ -47,47 +51,42 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="3. Fees, trial and renewal">
+      <LegalSection title="3. Fees">
         <p>
-          Setup fees and the monthly subscription price are those quoted to you in writing before
-          you subscribe. Prices are exclusive of any taxes that may apply in your jurisdiction.
+          A one-off setup fee and a monthly fee, both quoted to you in writing before any work
+          starts. Prices are exclusive of any taxes that may apply.
         </p>
         <p>
-          Where a free trial is offered it runs for {LEGAL.trialDays} days, and no charge is made
-          during it. If you do not cancel before the trial ends, the subscription begins and the
-          first payment is taken.
-        </p>
-        <p>
-          The subscription renews automatically each month until cancelled. You may cancel at any
-          time; the cancellation takes effect at the end of the period you have already paid for,
-          and your menu stays online until then.
+          The monthly fee continues until either of us ends the agreement. Nothing renews
+          automatically and no payment is ever taken without you making it: each month is invoiced
+          and paid separately.
         </p>
       </LegalSection>
 
       <LegalSection title="4. Payment">
         <p>
-          Payments are processed by {LEGAL.paymentProcessor}, which acts as merchant of record and
-          is the seller for your purchase. Their terms apply to the payment itself. We never
-          receive or store your card details.
+          You pay us directly, by the method we agree — bank transfer or cash. There is no checkout
+          on this website and no card is ever entered anywhere in this service. We do not receive,
+          process or store card details of any kind.
         </p>
       </LegalSection>
 
       <LegalSection title="5. Refunds">
         <p>
           If the service does not work as described and we cannot fix it within a reasonable time,
-          contact us and we will refund the current month.
+          contact us and we will refund the month in question.
         </p>
         <p>
-          Setup fees cover work already performed — entering your menu, translating it, styling the
-          page and producing your QR codes — and are refundable only where that work has not yet
+          The setup fee covers work already performed — entering your menu, translating it, styling
+          the page and producing your QR codes — and is refundable only where that work has not yet
           been done.
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Late or failed payment">
+      <LegalSection title="6. Late or unpaid invoices">
         <p>
-          If a payment fails we will contact you. If it remains unpaid, we may suspend your menu:
-          guests then see a short notice instead of your dishes.
+          If an invoice goes unpaid we will contact you. If it stays unpaid, we may suspend your
+          menu: guests then see a short notice instead of your dishes.
         </p>
         <p>
           Suspension does not delete anything. Your menu, photos, styling and account remain intact
@@ -142,28 +141,28 @@ export default function TermsPage() {
 
       <LegalSection title="11. Ending the agreement">
         <p>
-          You may cancel at any time. We may end the agreement with 30 days&rsquo; notice, or
-          immediately if you materially breach these terms.
+          You may stop at any time, with the current month being the last you pay for. We may end
+          the agreement with 30 days&rsquo; notice, or immediately if you materially breach these
+          terms.
         </p>
         <p>
-          On request at any time before or within {LEGAL.dataRetentionDays} days of the end of your
-          subscription, we will send you an export of your menu data. After that period we delete
-          it.
+          On request at any time before or within {LEGAL.dataRetentionDays} days of the end of the
+          agreement, we will send you an export of your menu data. After that period we delete it.
         </p>
       </LegalSection>
 
       <LegalSection title="12. Changes to these terms">
         <p>
           We may update these terms. If a change materially affects you we will give at least 30
-          days&rsquo; notice by email before it takes effect, and you may cancel if you do not
-          accept it. Price changes always follow that notice period.
+          days&rsquo; notice by email before it takes effect, and you may end the agreement if you
+          do not accept it. Price changes always follow that notice period.
         </p>
       </LegalSection>
 
       <LegalSection title="13. Governing law">
         <p>
-          These terms are governed by the law of {LEGAL.operatorCountry}. Nothing here removes
-          consumer or business protections you have under the mandatory law of your own country.
+          These terms are governed by the law of {LEGAL.operatorCountry}, and any dispute belongs to
+          the courts of {LEGAL.serviceArea}.
         </p>
       </LegalSection>
 

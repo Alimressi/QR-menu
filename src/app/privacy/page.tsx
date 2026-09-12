@@ -15,8 +15,8 @@ export default function PrivacyPage() {
         <>
           <p>
             This policy explains what {LEGAL.serviceName}, operated by {LEGAL.operatorLegalName} in{" "}
-            {LEGAL.operatorCountry}, does with personal data. It covers both the restaurants that
-            subscribe and the guests who open a menu.
+            {LEGAL.serviceArea}, {LEGAL.operatorCountry}, does with personal data. It covers both
+            the venues we work with and the guests who open a menu.
           </p>
           <p>
             The short version: a guest can read a menu, and order from it, without giving us a name,
@@ -49,26 +49,27 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Restaurants that subscribe">
+      <LegalSection title="Venues we work with">
         <p>To provide the service we hold:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>your venue name, address, phone number and social links, where you supply them</li>
           <li>a contact email address</li>
           <li>an admin login, with the password stored only as an irreversible hash</li>
           <li>your menu content: dishes, prices, descriptions, photos and styling</li>
-          <li>your subscription status and, if you had one, when your trial ends</li>
+          <li>whether your account is active or suspended</li>
         </ul>
-        <p>
-          Payment details are handled entirely by {LEGAL.paymentProcessor}. We receive confirmation
-          that a payment succeeded or failed. We never see or store card numbers.
+        <p className="font-medium text-neutral-900">
+          We hold no payment information at all. Fees are invoiced and paid directly, outside this
+          service — there is no checkout here, no card is ever entered, and no card number reaches
+          us or is stored anywhere in the system.
         </p>
       </LegalSection>
 
       <LegalSection title="Why we hold it">
         <p>
-          To publish your menu, to let your staff sign in, to take payment for the subscription, and
-          to contact you about your account or a service problem. We do not use your data, or your
-          guests&rsquo; orders, for anything else, and we do not sell or share it for advertising.
+          To publish your menu, to let your staff sign in, to invoice you, and to contact you about
+          your account or a service problem. We do not use your data, or your guests&rsquo; orders,
+          for anything else, and we do not sell or share it for advertising.
         </p>
       </LegalSection>
 
@@ -82,9 +83,6 @@ export default function PrivacyPage() {
             <strong>Neon</strong> — the database holding menus and orders
           </li>
           <li>
-            <strong>{LEGAL.paymentProcessor}</strong> — subscription payments, as merchant of record
-          </li>
-          <li>
             <strong>Cloudflare Workers AI</strong> — translating menu text between languages when a
             menu is imported. Menu text is sent for translation; guest data never is.
           </li>
@@ -93,9 +91,8 @@ export default function PrivacyPage() {
 
       <LegalSection title="How long we keep it">
         <p>
-          Menu content is kept for as long as your subscription is active. If it ends, we keep your
-          data for {LEGAL.dataRetentionDays} days so you can ask for an export or resume, then
-          delete it.
+          Menu content is kept for as long as your account is active. If it ends, we keep your data
+          for {LEGAL.dataRetentionDays} days so you can ask for an export or resume, then delete it.
         </p>
         <p>
           Orders and waiter calls are operational records, kept for as long as the restaurant needs
@@ -121,10 +118,8 @@ export default function PrivacyPage() {
           to delete it. Write to {LEGAL.contactEmail} and we will respond within 30 days.
         </p>
         <p>
-          Depending on where you live you may have further rights — for example under the GDPR in
-          Europe, or under state privacy laws in the United States including the right to know what
-          is collected and to have it deleted. We apply the protections described here to everyone,
-          wherever they are.
+          We apply the protections described here to everyone who uses the service, whether they are
+          a venue in {LEGAL.serviceArea} or a guest passing through it.
         </p>
         <p>
           Because we hold no identifying information about guests, we normally cannot connect a
@@ -132,11 +127,11 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="International transfers">
+      <LegalSection title="Where the data is processed">
         <p>
-          We operate from {LEGAL.operatorCountry}, and our providers run globally distributed
-          infrastructure, so data may be processed outside your country. We use providers that offer
-          appropriate safeguards for such transfers.
+          We work in {LEGAL.serviceArea}, but the providers above run globally distributed
+          infrastructure, so menus and orders may be stored and served from outside{" "}
+          {LEGAL.operatorCountry}. We use providers that offer appropriate safeguards for that.
         </p>
       </LegalSection>
 
@@ -150,7 +145,7 @@ export default function PrivacyPage() {
       <LegalSection title="Changes">
         <p>
           We may update this policy. The date at the top shows when it last changed, and we will
-          notify subscribers by email of any material change.
+          notify the venues we work with by email of any material change.
         </p>
       </LegalSection>
 
