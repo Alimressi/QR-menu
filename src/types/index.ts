@@ -62,7 +62,14 @@ export type Order = {
    */
   displayNumber?: number;
   tableNumber: string;
-  status: "new" | "preparing" | "ready" | "paid";
+  /**
+   * "pending" is where an order from a QR session starts: a guest has asked, and
+   * nobody at the venue has looked at it yet. Staff move it to "new" — which is
+   * what the kitchen acts on — or to "rejected", which is what an order from a
+   * table nobody is sitting at gets. The two ends of the list are reachable only
+   * from the panel, never from the dropdown.
+   */
+  status: "pending" | "new" | "preparing" | "ready" | "paid" | "rejected";
   total: number;
   createdAt: string;
   updatedAt: string;

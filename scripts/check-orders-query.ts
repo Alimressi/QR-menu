@@ -124,7 +124,10 @@ async function main() {
     check("total stored", created?.total === 24.0, created?.total);
     check("createdAt is a Date", created?.createdAt instanceof Date);
     check("updatedAt is a Date", created?.updatedAt instanceof Date);
-    check("status defaults to new", created?.status === "new");
+    // Not the column default of "new". A guest's order waits for a person at
+    // the venue to accept it, because the QR code it came from is a permanent
+    // public string that anyone could have photographed off a table.
+    check("starts pending, not new", created?.status === "pending", created?.status);
     check("null option survives", created?.items.some((i) => i.optionId === null) === true);
     check("option name survives", created?.items.some((i) => i.optionNameEn === "Large") === true);
     check("items ordered by id", (created?.items ?? []).every((item, i, all) => i === 0 || all[i - 1].id < item.id));

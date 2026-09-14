@@ -11,7 +11,53 @@ import { getSql, withRetry } from "@/lib/db";
 // driver parses TIMESTAMP columns into Date objects exactly as Prisma did, so
 // `createdAt` and friends still serialise to the same ISO strings.
 
-export const ACTIVE_ORDER_STATUSES = ["new", "preparing"];
+// "pending" is a guest's order that no one at the venue has accepted yet. It is
+// active — the guest is waiting and a second round must merge into it rather
+// than opening a third order — but the kitchen never sees it.
+export const ACTIVE_ORDER_STATUSES = ["pending", "new", "preparing"];
+
+/**
+ * How much one table may order in an hour before we stop listening.
+ *
+ * Counted in lines rather than orders, because a second submission from the same
+ * table merges into the open order instead of creating a new one — counting
+ * orders would see one and miss a thousand items.
+ *
+ * Sixty lines is far more than a real table gets through and still small enough
+ * that a script cannot bury the staff screen. A table that genuinely hits it can
+ * call a waiter, which is the older and better channel anyway.
+ */
+export const MAX_ITEMS_PER_TABLE_PER_HOUR = 60;
+
+/** Lines in a single submission. A basket this long is not a person ordering. */
+export const MAX_ITEMS_PER_REQUEST = 40;
+
+/**
+ * Lines this table has ordered in the last hour, across every order.
+ *
+ * The QR code on a table is a permanent, public string: anyone who photographs
+ * it can mint a session from anywhere, forever. Staff confirmation is what keeps
+ * the kitchen safe from that; this is what keeps the screen readable.
+ */
+export async function countRecentOrderItems(
+  tableNumber: string,
+  restaurantId: number,
+): Promise<number> {
+  const sql = getSql();
+
+  const rows = (await withRetry(
+    () => sql`
+      SELECT count(*)::int AS "count"
+      FROM "OrderItem" i
+      JOIN "Order" o ON o."id" = i."orderId"
+      WHERE o."tableNumber" = ${tableNumber}
+        AND o."restaurantId" = ${restaurantId}
+        AND i."createdAt" > NOW() - INTERVAL '1 hour'
+    `,
+  )) as Array<{ count: number }>;
+
+  return rows[0]?.count ?? 0;
+}
 
 /** The gate every guest write goes through: is this tenant open for business? */
 export type OrderingRestaurant = {
@@ -378,8 +424,12 @@ export async function createOrderWithItems(
   const rows = (await withRetry(
     () => sql`
       WITH new_order AS (
-        INSERT INTO "Order" ("tableNumber", "restaurantId", "total", "updatedAt")
-        VALUES (${tableNumber}, ${restaurantId}, ${total}, NOW())
+        -- "pending", not the column default of "new": an order arriving from a
+        -- QR session has not been seen by anyone at the venue yet, and the code
+        -- it came from may have been photographed off a table months ago. A
+        -- person accepts it before the kitchen is told.
+        INSERT INTO "Order" ("tableNumber", "restaurantId", "total", "status", "updatedAt")
+        VALUES (${tableNumber}, ${restaurantId}, ${total}, 'pending', NOW())
         RETURNING "id"
       )
       INSERT INTO "OrderItem" (

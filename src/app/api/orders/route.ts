@@ -1,6 +1,9 @@
 import { resolveTenantScope } from "@/lib/auth";
 import {
+  MAX_ITEMS_PER_REQUEST,
+  MAX_ITEMS_PER_TABLE_PER_HOUR,
   type NewOrderItem,
+  countRecentOrderItems,
   createOrderWithItems,
   findActiveOrderWithItems,
   findDishOptionsForOrder,
@@ -115,6 +118,27 @@ export async function POST(request: Request) {
 
     if (normalizedItems.length === 0) {
       return NextResponse.json({ error: "Invalid order items." }, { status: 400 });
+    }
+
+    // The two caps below exist because the table's QR code is a permanent public
+    // string. Photograph it once and you can open a session from anywhere, for
+    // as long as the sticker is on the table — nothing about the code expires.
+    // Staff confirmation is what stops that reaching the kitchen; these stop it
+    // filling the panel faster than anyone can dismiss it.
+    if (normalizedItems.length > MAX_ITEMS_PER_REQUEST) {
+      return NextResponse.json(
+        { error: "That is too many items at once. Please order in smaller rounds." },
+        { status: 400 },
+      );
+    }
+
+    const recentItems = await countRecentOrderItems(tableNumber, restaurantId);
+
+    if (recentItems + normalizedItems.length > MAX_ITEMS_PER_TABLE_PER_HOUR) {
+      return NextResponse.json(
+        { error: "This table has ordered a lot in the last hour. Please ask a member of staff." },
+        { status: 429 },
+      );
     }
 
     const dishIds = [...new Set<number>(normalizedItems.map((item) => item.dishId))];

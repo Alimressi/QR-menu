@@ -6,7 +6,10 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
-const ALLOWED_STATUSES = new Set(["new", "preparing", "ready", "paid"]);
+// "pending" is where a guest's order starts and "rejected" is where staff send
+// one that came from a table nobody is sitting at. Both are reachable only from
+// the panel, which is why they are here and not in the dropdown.
+const ALLOWED_STATUSES = new Set(["pending", "new", "preparing", "ready", "paid", "rejected"]);
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const scope = resolveTenantScope(request);

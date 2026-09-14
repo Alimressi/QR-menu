@@ -64,6 +64,10 @@ const dictionary: Record<
     delete: string;
     saving: string;
     statusNew: string;
+    statusPending: string;
+    awaitingHint: string;
+    acceptOrder: string;
+    dismissOrder: string;
     statusPreparing: string;
     statusReady: string;
     statusPaid: string;
@@ -125,6 +129,10 @@ const dictionary: Record<
     delete: "Delete",
     saving: "Saving...",
     statusNew: "new",
+    statusPending: "awaiting confirmation",
+    awaitingHint: "Check that someone is actually at this table before accepting. Nothing is cooked until you do.",
+    acceptOrder: "Accept",
+    dismissOrder: "Dismiss",
     statusPreparing: "preparing",
     statusReady: "ready",
     statusPaid: "paid",
@@ -185,6 +193,10 @@ const dictionary: Record<
     delete: "Удалить",
     saving: "Сохранение...",
     statusNew: "новый",
+    statusPending: "ждёт подтверждения",
+    awaitingHint: "Проверьте, что за столом действительно кто-то есть. До подтверждения ничего не готовится.",
+    acceptOrder: "Принять",
+    dismissOrder: "Отклонить",
     statusPreparing: "готовится",
     statusReady: "готов",
     statusPaid: "оплачен",
@@ -245,6 +257,10 @@ const dictionary: Record<
     delete: "Sil",
     saving: "Saxlanilir...",
     statusNew: "yeni",
+    statusPending: "tesdiq gozleyir",
+    awaitingHint: "Tesdiqlemezden once masada birinin oldugunu yoxlayin. Tesdiqe qeder hec ne hazirlanmir.",
+    acceptOrder: "Qebul et",
+    dismissOrder: "Imtina et",
     statusPreparing: "hazirlanir",
     statusReady: "hazirdir",
     statusPaid: "odenilib",
@@ -459,7 +475,11 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     return item.optionNameEn || "";
   }
 
-  function getStatusLabel(status: (typeof statuses)[number]) {
+  function getStatusLabel(status: string) {
+    if (status === "pending") {
+      return t.statusPending;
+    }
+
     if (status === "new") {
       return t.statusNew;
     }
@@ -477,6 +497,10 @@ export function AdminDashboard({ restaurantSlug }: Props) {
 
   // Traffic-light colours so the waiter can read order state at a glance.
   function getStatusColor(status: string) {
+    if (status === "pending") {
+      return "#818cf8"; // indigo — a guest is asking, nobody is cooking yet
+    }
+
     if (status === "new") {
       return "#f87171"; // red — needs attention
     }
@@ -489,7 +513,60 @@ export function AdminDashboard({ restaurantSlug }: Props) {
       return "#34d399"; // green — ready to serve
     }
 
+    if (status === "rejected") {
+      return design.mutedTextColor; // dismissed — never reached the kitchen
+    }
+
     return design.mutedTextColor; // paid — settled
+  }
+
+  /**
+   * The control on an order card.
+   *
+   * A pending order gets two buttons rather than the status dropdown. It has not
+   * reached the kitchen, and the only two things to do with it are send it there
+   * or throw it away — burying that in a five-item select would get it picked by
+   * accident, and the whole point is that a person decides. A select would also
+   * render blank, since "pending" is deliberately not one of its options.
+   */
+  function StatusControl({ order }: { order: { id: number; status: string } }) {
+    if (order.status === "pending") {
+      return (
+        <div className="flex w-full gap-2 sm:w-auto">
+          <button
+            type="button"
+            onClick={() => updateOrderStatus(order.id, "new")}
+            className="min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold sm:flex-none"
+            style={{ background: design.primaryColor, color: design.accentTextColor }}
+          >
+            {t.acceptOrder}
+          </button>
+          <button
+            type="button"
+            onClick={() => updateOrderStatus(order.id, "rejected")}
+            className="min-h-11 flex-1 rounded-lg border px-4 py-2 text-sm sm:flex-none"
+            style={{ borderColor: design.borderColor, color: design.mutedTextColor }}
+          >
+            {t.dismissOrder}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <select
+        value={order.status}
+        onChange={(event) => updateOrderStatus(order.id, event.target.value)}
+        className="min-h-11 w-full rounded-lg border px-3 py-2 sm:w-auto"
+        style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
+      >
+        {statuses.map((status) => (
+          <option key={status} value={status}>
+            {getStatusLabel(status)}
+          </option>
+        ))}
+      </select>
+    );
   }
 
   const checkSession = useCallback(async () => {
@@ -677,8 +754,11 @@ export function AdminDashboard({ restaurantSlug }: Props) {
     return () => window.clearInterval(interval);
   }, [authenticated, isPageVisible, loadOrders, loadWaiterCalls, refreshAll]);
 
+  // Dismissed orders leave the board entirely. They are the ones that came from
+  // a table nobody was sitting at, and keeping them visible would defeat the
+  // point of dismissing them.
   const activeOrders = useMemo(
-    () => orders.filter((order) => order.status !== "paid"),
+    () => orders.filter((order) => order.status !== "paid" && order.status !== "rejected"),
     [orders],
   );
 
@@ -981,19 +1061,20 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                   </p>
                 </div>
 
-                <select
-                  value={order.status}
-                  onChange={(event) => updateOrderStatus(order.id, event.target.value)}
-                  className="min-h-11 w-full rounded-lg border px-3 py-2 sm:w-auto"
-                  style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {getStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
+                <StatusControl order={order} />
               </div>
+
+              {order.status === "pending" ? (
+                <p
+                  className="mt-3 rounded-lg px-3 py-2 text-xs leading-relaxed"
+                  style={{
+                    color: design.mutedTextColor,
+                    background: "color-mix(in srgb, #818cf8 12%, transparent)",
+                  }}
+                >
+                  {t.awaitingHint}
+                </p>
+              ) : null}
 
               <ul className="mt-3 space-y-2 text-sm" style={{ color: design.textColor }}>
                 {order.items.map((item) => (
@@ -1058,19 +1139,20 @@ export function AdminDashboard({ restaurantSlug }: Props) {
                   </p>
                 </div>
 
-                <select
-                  value={order.status}
-                  onChange={(event) => updateOrderStatus(order.id, event.target.value)}
-                  className="min-h-11 w-full rounded-lg border px-3 py-2 sm:w-auto"
-                  style={{ borderColor: design.borderColor, background: design.controlSurfaceColor, color: design.textColor }}
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {getStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
+                <StatusControl order={order} />
               </div>
+
+              {order.status === "pending" ? (
+                <p
+                  className="mt-3 rounded-lg px-3 py-2 text-xs leading-relaxed"
+                  style={{
+                    color: design.mutedTextColor,
+                    background: "color-mix(in srgb, #818cf8 12%, transparent)",
+                  }}
+                >
+                  {t.awaitingHint}
+                </p>
+              ) : null}
 
               <ul className="mt-3 space-y-2 text-sm" style={{ color: design.textColor }}>
                 {order.items.map((item) => (

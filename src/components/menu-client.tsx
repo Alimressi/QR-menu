@@ -91,6 +91,7 @@ type Dictionary = {
   mergedOrderSuccess: string;
   newOrderSuccess: string;
   statusNew: string;
+  statusPending: string;
   statusPreparing: string;
   statusReady: string;
   statusPaid: string;
@@ -138,6 +139,7 @@ const dictionary: Record<Language, Dictionary> = {
     mergedOrderSuccess: "Items were added to your current order.",
     newOrderSuccess: "Order created successfully.",
     statusNew: "new",
+    statusPending: "sent to the waiter",
     statusPreparing: "preparing",
     statusReady: "ready",
     statusPaid: "paid",
@@ -183,6 +185,7 @@ const dictionary: Record<Language, Dictionary> = {
     mergedOrderSuccess: "Позиции добавлены в текущий заказ.",
     newOrderSuccess: "Заказ успешно создан.",
     statusNew: "новый",
+    statusPending: "передан официанту",
     statusPreparing: "готовится",
     statusReady: "готов",
     statusPaid: "оплачен",
@@ -228,6 +231,7 @@ const dictionary: Record<Language, Dictionary> = {
     mergedOrderSuccess: "Məhsullar cari sifarişinizə əlavə olundu.",
     newOrderSuccess: "Sifariş uğurla yaradıldı.",
     statusNew: "yeni",
+    statusPending: "ofisiante gonderildi",
     statusPreparing: "hazırlanır",
     statusReady: "hazırdır",
     statusPaid: "ödənilib",
@@ -758,6 +762,12 @@ export function MenuClient({
   }, [design.backgroundFrom, design.backgroundTo]);
 
   function getStatusLabel(status: Order["status"]) {
+    // Before this branch existed, an order awaiting staff confirmation fell
+    // through to the final return and told the guest it was paid.
+    if (status === "pending") {
+      return t.statusPending;
+    }
+
     if (status === "new") {
       return t.statusNew;
     }
