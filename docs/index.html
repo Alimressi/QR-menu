@@ -3,91 +3,271 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Restaurant Web - QR menu & restaurant websites</title>
-  <meta name="description" content="Live restaurant web projects: a QR-menu platform and two restaurant websites, built with TypeScript, React and more.">
+  <title>Alimran Askerov - live restaurant projects</title>
+  <meta name="description" content="A QR-menu platform serving six venues in Baku, and two restaurant websites. TypeScript, React, Cloudflare Workers, Postgres.">
 
   <!-- Social preview (LinkedIn / WhatsApp / Telegram) -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Restaurant Web">
-  <meta property="og:title" content="Restaurant Web - QR menu & restaurant websites">
-  <meta property="og:description" content="Live projects: a QR-menu platform and two restaurant websites. TypeScript · React · Cloudflare.">
+  <meta property="og:site_name" content="Alimran Askerov">
+  <meta property="og:title" content="Alimran Askerov - live restaurant projects">
+  <meta property="og:description" content="A QR-menu platform serving six venues in Baku, and two restaurant websites.">
   <meta property="og:image" content="https://alimressi.github.io/QR-menu/og/landing.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:url" content="https://alimressi.github.io/QR-menu/">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Restaurant Web - QR menu & restaurant websites">
-  <meta name="twitter:description" content="Live projects: a QR-menu platform and two restaurant websites.">
+  <meta name="twitter:title" content="Alimran Askerov - live restaurant projects">
+  <meta name="twitter:description" content="A QR-menu platform serving six venues in Baku, and two restaurant websites.">
   <meta name="twitter:image" content="https://alimressi.github.io/QR-menu/og/landing.jpg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
-    :root{ --bg1:#ffffff; --bg2:#f3efe7; --text:#26231d; --muted:#8a8579;
-           --line:#d8d0c2; --gold:#b3a173; --card:#ffffff; }
-    *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%}
-    body{font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
-      background:linear-gradient(160deg,var(--bg1),var(--bg2));
-      display:flex;align-items:center;justify-content:center;padding:32px 18px}
-    .wrap{width:100%;max-width:640px}
-    h1{font-family:'Playfair Display',Georgia,serif;font-weight:700;
-      font-size:clamp(21px,6.3vw,54px);white-space:nowrap;margin:0 0 14px;line-height:1.1}
-    .lead{color:var(--muted);margin:0 0 30px;font-size:17px}
-    .group-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
-      font-weight:700;margin:26px 0 12px}
-    a.card{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);
-      background:var(--card);border:1px solid var(--line);border-radius:14px;
-      padding:16px 18px;margin:10px 0;transition:border-color .15s,transform .15s,box-shadow .15s}
-    a.card:hover{border-color:var(--gold);transform:translateY(-1px);
-      box-shadow:0 8px 24px rgba(0,0,0,.06)}
-    .card .body{min-width:0;flex:1}
-    .card .name{font-family:'Playfair Display',Georgia,serif;font-size:21px;font-weight:600}
-    .card .sub{color:var(--muted);font-size:14px}
-    .card .tag{flex-shrink:0;font-size:11px;letter-spacing:1px;text-transform:uppercase;
-      font-weight:700;color:var(--gold);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
-    .arrow{color:var(--muted);flex-shrink:0}
-    footer{margin-top:34px;color:var(--muted);font-size:13px;text-align:center}
-    footer a{color:var(--gold);text-decoration:none}
+    /* A register of work, not a brochure. Three projects, each one live and
+       reachable — so the page is an index: numbered rows, the name large, the
+       facts about it set small in mono beside it. Nothing is decorated that
+       could instead be stated. */
+    :root {
+      --paper: #F6F6F3;
+      --surface: #FFFFFF;
+      --ink: #191917;
+      --muted: #6E6E67;
+      --faint: #9B9B93;
+      --line: #E3E3DC;
+      --accent: #2F4BD6;
+      --accent-soft: #EBEEFC;
+
+      --display: "Fraunces", Georgia, "Times New Roman", serif;
+      --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 40px 20px 64px;
+    }
+
+    .wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 44px;
+    }
+
+    /* ---- header ---- */
+
+    header { display: flex; flex-direction: column; gap: 14px; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-weight: 600;
+      /* No nowrap here. The old page pinned the headline to one line and then
+         shrank it to fit a phone, which left it smaller than the paragraph
+         under it. Let it wrap instead. */
+      font-size: clamp(32px, 6.2vw, 50px);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      margin: 0;
+      max-width: 15ch;
+      text-wrap: balance;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 52ch;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    /* ---- the index ----
+
+       Each row is a div, not one big anchor. The first version wrapped the
+       whole row in <a> and then put a second link to the live menu inside it;
+       nested anchors are invalid, the parser closes the outer one early, and
+       that inner link fell out of the grid and sat against the page edge. The
+       name is the link now, and anything else in the row can be one too. */
+
+    .index { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 16px;
+      padding: 22px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .row:last-child { border-bottom: 1px solid var(--line); }
+
+    .num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+      padding-top: 10px;
+    }
+
+    .body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+    a.name {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 4px 16px;
+      font-family: var(--display);
+      font-size: clamp(22px, 3.6vw, 28px);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.15;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a.name:hover { color: var(--accent); }
+
+    a.name:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .go {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    a.name:hover .go { color: var(--accent); }
+
+    .body p { margin: 0; color: var(--muted); font-size: 15px; max-width: 48ch; }
+
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .meta span {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 3px 8px;
+    }
+
+    /* The one venue count worth stating twice: it is the difference between a
+       demo and something restaurants actually run on. */
+    .meta span.live {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: transparent;
+    }
+
+    .aside { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+
+    .aside a { color: var(--accent); text-decoration: none; }
+    .aside a:hover { text-decoration: underline; }
+
+    /* ---- footer ---- */
+
+    footer {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .stack {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      color: var(--faint);
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <main class="wrap">
-    <h1>QR menus and websites</h1>
-    <p class="lead">A collection of live restaurant projects I built - a QR-menu platform
-      and two restaurant websites. Tap any to open.</p>
+    <header>
+      <span class="eyebrow">Baku, Azerbaijan</span>
+      <h1>Things I built that restaurants use</h1>
+      <p class="lead">A QR-menu platform running six venues, and two restaurant
+        websites. All three are live — open any of them.</p>
+    </header>
 
-    <p class="group-label">QR-menu platform</p>
-    <a class="card" href="https://qr-menu.imran-ask-2006.workers.dev/lumiere">
-      <div class="body">
-        <div class="name">Lumière</div>
-        <div class="sub">Live QR menu</div>
-      </div>
-      <span class="tag">QR menu</span>
-      <span class="arrow">→</span>
-    </a>
+    <ol class="index">
+      <li class="row">
+        <span class="num">01</span>
+        <div class="body">
+          <a class="name" href="https://qr-menu.az">QR Menu <span class="go">qr-menu.az &rarr;</span></a>
+          <p>A menu platform I built and run. Guests scan the code on the table and read
+            the menu in Azerbaijani, Russian or English; the venue edits prices itself and
+            the change is live in a minute.</p>
+          <span class="meta">
+            <span class="live">6 venues live</span>
+            <span>TypeScript</span>
+            <span>Next.js</span>
+            <span>Cloudflare Workers</span>
+            <span>Postgres</span>
+          </span>
+          <span class="aside">Open a real one: <a href="https://qr-menu.az/lumiere">qr-menu.az/lumiere</a></span>
+        </div>
+      </li>
 
-    <p class="group-label">Restaurant websites</p>
-    <a class="card" href="https://bahce-restoran.pages.dev">
-      <div class="body">
-        <div class="name">Bahçe Restoran</div>
-        <div class="sub">Turkish restaurant</div>
-      </div>
-      <span class="tag">Website</span>
-      <span class="arrow">→</span>
-    </a>
-    <a class="card" href="https://veten-restoran.pages.dev">
-      <div class="body">
-        <div class="name">Vətən Restoran</div>
-        <div class="sub">Traditional Azerbaijani restaurant</div>
-      </div>
-      <span class="tag">Website</span>
-      <span class="arrow">→</span>
-    </a>
+      <li class="row">
+        <span class="num">02</span>
+        <div class="body">
+          <a class="name" href="https://bahce-restoran.pages.dev">Bah&ccedil;e Restoran <span class="go">Website &rarr;</span></a>
+          <p>Site for a Turkish restaurant.</p>
+          <span class="meta">
+            <span>HTML</span>
+            <span>CSS</span>
+            <span>JavaScript</span>
+          </span>
+        </div>
+      </li>
 
-    <footer>Built with TypeScript, JavaScript, HTML, CSS &amp; SQL · <a href="https://qr-menu.imran-ask-2006.workers.dev/lumiere">live demo</a></footer>
+      <li class="row">
+        <span class="num">03</span>
+        <div class="body">
+          <a class="name" href="https://veten-restoran.pages.dev">V&#601;t&#601;n Restoran <span class="go">Website &rarr;</span></a>
+          <p>Site for a traditional Azerbaijani restaurant.</p>
+          <span class="meta">
+            <span>HTML</span>
+            <span>CSS</span>
+            <span>JavaScript</span>
+          </span>
+        </div>
+      </li>
+    </ol>
+
+    <footer>
+      <p style="margin:0">Alimran Askerov — I build menus, websites and online payment
+        for venues in Baku. <a href="https://wa.me/994777171131">Write to me</a>.</p>
+      <span class="stack">TypeScript · JavaScript · React · SQL · HTML · CSS</span>
+    </footer>
   </main>
 </body>
 </html>
