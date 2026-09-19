@@ -712,9 +712,11 @@ async function runCheck(
   // After the checks, never before: a slow or failing snapshot refresh must not
   // delay the thing people actually get alerted by.
   // Rebuilding six whole menus is the heaviest thing in this cycle and the
-  // least urgent: a snapshot is read only when the database is down, and one an
-  // hour old serves a guest exactly as well as one from a minute ago. The
-  // health probes stay on the half hour; this rides every second run.
+  // least urgent: a snapshot is read only when the database is down, and one
+  // four hours old serves that guest as well as one from a minute ago — the
+  // choice it decides is a menu against a blank page. The health probes stay on
+  // the half hour; this rides one run in eight. See the scheduled handler for
+  // what the hourly version was costing.
   if (withSnapshots) {
     lines.push(await refreshSnapshots(env, slugs));
   }
@@ -771,13 +773,31 @@ async function runCheck(
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: WaitUntilContext) {
-    // On the hour, refresh the snapshots too; on the half hour, only probe.
     const at = new Date(event.scheduledTime);
     const onTheHour = at.getUTCMinutes() < 30;
+
+    // Snapshots every four hours, not every one.
+    //
+    // Rebuilding six whole menus is the heaviest thing this worker does, and
+    // each rebuild wakes the database for its five-minute minimum. Measured
+    // over eight days the project burns 2.25 of Neon's 100 monthly CU-hours a
+    // day with almost no guests, so nearly all of that is this worker knocking.
+    //
+    // What it costs: a snapshot is read only while the database is down, and it
+    // is the difference between a guest seeing yesterday's prices and seeing
+    // nothing at all. Four hours stale still serves that guest. The daily
+    // warning still calls a snapshot stale at 24 hours, so a refresh that quietly
+    // stops is caught with a wide margin.
+    const snapshotHour = at.getUTCHours() % 4 === 0 && onTheHour;
+
     // 06:00 UTC is ten in the morning in Baku — read with coffee, not at night,
-    // and early enough to act on the same day.
+    // and early enough to act on the same day. It is deliberately not one of the
+    // snapshot hours (00, 04, 08, 12, 16, 20): the warning that reports a stale
+    // snapshot should read the state the day has actually been in, not the one
+    // left by a rebuild in the same run.
     const morning = at.getUTCHours() === 6 && onTheHour;
-    ctx.waitUntil(runCheck(env, undefined, onTheHour, morning).then((summary) => console.log(summary)));
+
+    ctx.waitUntil(runCheck(env, undefined, snapshotHour, morning).then((summary) => console.log(summary)));
   },
 
   // Manual trigger, for testing the setup and for checking on demand:
