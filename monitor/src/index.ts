@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { buildMenuSnapshot, snapshotKeyFor } from "../../src/lib/menu-snapshot";
+import { STATS_PENDING_PREFIX, aggregateStatKeys } from "../../src/lib/stats-buffer";
 
 // Uptime watchdog for the guest menus.
 //
@@ -29,9 +30,18 @@ type WaitUntilContext = { waitUntil(promise: Promise<unknown>): void };
 type ServiceBinding = { fetch(input: string, init?: RequestInit): Promise<Response> };
 
 /** Only the one method the snapshot refresh needs. */
+// Hand-written rather than pulled from @cloudflare/workers-types: this worker
+// touches four methods and the full type package is not otherwise needed here.
+// Widen it when a fifth is used, and only then.
 type ObjectStore = {
   put(key: string, value: string, options?: { httpMetadata?: { contentType?: string; cacheControl?: string } }): Promise<unknown>;
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
+  list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
+    objects: Array<{ key: string }>;
+    truncated: boolean;
+    cursor?: string;
+  }>;
+  delete(keys: string | string[]): Promise<void>;
 };
 
 type Env = {
@@ -434,6 +444,109 @@ async function emptyMenus(env: Env, slugs: string[]): Promise<string[]> {
   return empty;
 }
 
+/** Keys drained in one run. A cap so a backlog cannot make a cycle run long. */
+const STATS_DRAIN_LIMIT = 5000;
+
+/** R2 takes up to a thousand keys per delete call. */
+const R2_DELETE_CHUNK = 1000;
+
+/**
+ * Fold the counter's R2 buffer into Postgres.
+ *
+ * Runs every cycle rather than on the snapshot schedule, and that is the point:
+ * runCheck already queries the database for the restaurant list at the top of
+ * every run, so the connection is awake regardless. Folding the counter in here
+ * costs nothing on top. Writing each event straight to Postgres, which is what
+ * this replaces, cost a five-minute wake per event.
+ *
+ * Never throws — a counter must not be able to take the monitor down.
+ */
+async function flushStats(env: Env): Promise<string> {
+  const keys: string[] = [];
+  let cursor: string | undefined;
+
+  while (keys.length < STATS_DRAIN_LIMIT) {
+    const page = await env.MEDIA_BUCKET.list({ prefix: STATS_PENDING_PREFIX, cursor, limit: 1000 });
+
+    for (const object of page.objects) {
+      keys.push(object.key);
+    }
+
+    if (!page.truncated) {
+      break;
+    }
+
+    cursor = page.cursor;
+  }
+
+  if (keys.length === 0) {
+    return "stats: nothing pending";
+  }
+
+  const { totals, unreadable } = aggregateStatKeys(keys);
+
+  // The database refuses a row dated before yesterday — see the
+  // reject_backdated_stats trigger, which exists because fabricated history is
+  // indistinguishable from real history a month later. Events older than that
+  // can only come from a drain that has not run in over a day; their counts are
+  // already unrecoverable, so they are dropped rather than allowed to fail the
+  // whole statement for everything else.
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const fresh = totals.filter((total) => total.day >= yesterday);
+  const stale = totals.filter((total) => total.day < yesterday);
+
+  const sql = neon(env.DATABASE_URL);
+  const opens = fresh.filter((total) => total.dishId === null);
+  const views = fresh.filter((total) => total.dishId !== null);
+
+  // One statement each rather than one per row: the totals are already folded,
+  // so every (restaurant, day) and every (restaurant, dish, day) appears exactly
+  // once — which is also what lets ON CONFLICT work here at all, since Postgres
+  // refuses to touch the same row twice in one statement.
+  if (opens.length > 0) {
+    await sql`
+      INSERT INTO "MenuOpenStat" ("restaurantId", "day", "count")
+      SELECT * FROM unnest(
+        ${opens.map((o) => o.restaurantId)}::int[],
+        ${opens.map((o) => o.day)}::text[],
+        ${opens.map((o) => o.count)}::int[]
+      )
+      ON CONFLICT ("restaurantId", "day")
+      DO UPDATE SET "count" = "MenuOpenStat"."count" + EXCLUDED."count"
+    `;
+  }
+
+  if (views.length > 0) {
+    await sql`
+      INSERT INTO "DishViewStat" ("restaurantId", "dishId", "day", "count")
+      SELECT * FROM unnest(
+        ${views.map((v) => v.restaurantId)}::int[],
+        ${views.map((v) => v.dishId as number)}::int[],
+        ${views.map((v) => v.day)}::text[],
+        ${views.map((v) => v.count)}::int[]
+      )
+      ON CONFLICT ("restaurantId", "dishId", "day")
+      DO UPDATE SET "count" = "DishViewStat"."count" + EXCLUDED."count"
+    `;
+  }
+
+  // Only now. A delete that ran first would lose the batch on any database
+  // hiccup; running it after means a failed delete counts a batch twice on the
+  // next pass instead, which is the direction worth erring in only because
+  // deletes here are a single call against keys that certainly exist.
+  const doomed = [...fresh.flatMap((t) => t.keys), ...stale.flatMap((t) => t.keys), ...unreadable];
+
+  for (let i = 0; i < doomed.length; i += R2_DELETE_CHUNK) {
+    await env.MEDIA_BUCKET.delete(doomed.slice(i, i + R2_DELETE_CHUNK));
+  }
+
+  const notes = [`stats: ${keys.length} events -> ${fresh.length} rows`];
+  if (stale.length > 0) notes.push(`${stale.length} too old, dropped`);
+  if (unreadable.length > 0) notes.push(`${unreadable.length} unreadable, dropped`);
+
+  return notes.join(", ");
+}
+
 async function refreshSnapshots(env: Env, slugs: string[]): Promise<string> {
   // The shared query layer reads its connection string from process.env, which is
   // how the app's runtime supplies it. Set it explicitly rather than depending on
@@ -708,6 +821,14 @@ async function runCheck(
   }
 
   await env.MONITOR_STATE.put(STATE_KEY, JSON.stringify(next));
+
+  // Wrapped because the counter is the least important thing this worker does
+  // and must never be able to stop the alerting that is the most important.
+  try {
+    lines.push(await flushStats(env));
+  } catch (error) {
+    lines.push(`stats: drain failed — ${String(error).slice(0, 120)}`);
+  }
 
   // After the checks, never before: a slow or failing snapshot refresh must not
   // delay the thing people actually get alerted by.

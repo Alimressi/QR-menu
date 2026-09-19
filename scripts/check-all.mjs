@@ -17,6 +17,7 @@ const steps = [
   { name: "lint", command: "npx", args: ["eslint", "src", "monitor/src", "scripts"] },
   { name: "subscription", args: ["scripts/check-subscription.ts"] },
   { name: "auth", args: ["scripts/check-auth.ts"] },
+  { name: "stats buffer", args: ["scripts/check-stats-buffer.ts"] },
   { name: "qr tokens", args: ["scripts/check-qr-token.ts"] },
   { name: "media", args: ["scripts/check-media.ts"] },
   { name: "menu import", args: ["scripts/check-menu-import.ts"] },

@@ -1,4 +1,5 @@
-import { getSql, withRetry } from "@/lib/db";
+import { statEventKey } from "@/lib/stats-buffer";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextRequest, NextResponse } from "next/server";
 
 // Counts a menu being opened, or a dish being tapped to look at.
@@ -8,8 +9,11 @@ import { NextRequest, NextResponse } from "next/server";
 // render path is the one measured in CPU milliseconds against a hard limit, and
 // a vanity counter has no business inside it.
 //
-// The light neon() driver for the same reason. Prisma would boot a 1.9 MB WASM
-// engine to add one to an integer.
+// The event goes to R2, not to Postgres. Neon wakes for a five-minute minimum on
+// any query, so writing here directly meant a busy evening kept the database
+// awake for the whole of it; the monitor folds the pile into Postgres every half
+// hour, while it is already awake for its own probes. See src/lib/stats-buffer.ts
+// for the arithmetic that made that necessary.
 //
 // Unauthenticated, like the menu it counts. Someone determined could inflate a
 // restaurant's numbers; the counter is there to tell an owner whether Tuesday
@@ -36,36 +40,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "dishId must be a dish." }, { status: 400 });
     }
 
-    const sql = getSql();
-    const day = today();
+    const { env } = await getCloudflareContext({ async: true });
+    const bucket = env.MEDIA_BUCKET;
 
-    // ON CONFLICT rather than read-then-write: one round trip, and two guests
-    // opening the same menu in the same millisecond both get counted.
+    if (!bucket) {
+      // `next dev` without the Cloudflare proxy has no bindings. Counting is not
+      // worth failing a local page over.
+      return NextResponse.json({ ok: false }, { status: 202 });
+    }
+
+    // Empty body on purpose: the key is the record. See stats-buffer.ts.
     //
-    // A dish tap counts as a dish tap only. The menu open was already counted
-    // when the page loaded, and counting it twice would make every tap look
-    // like a fresh visit.
-    await withRetry(() =>
-      dishId === null
-        ? sql`
-            INSERT INTO "MenuOpenStat" ("restaurantId", "day", "count")
-            VALUES (${restaurantId}, ${day}, 1)
-            ON CONFLICT ("restaurantId", "day")
-            DO UPDATE SET "count" = "MenuOpenStat"."count" + 1
-          `
-        : sql`
-            INSERT INTO "DishViewStat" ("restaurantId", "dishId", "day", "count")
-            VALUES (${restaurantId}, ${dishId}, ${day}, 1)
-            ON CONFLICT ("restaurantId", "dishId", "day")
-            DO UPDATE SET "count" = "DishViewStat"."count" + 1
-          `,
+    // The random suffix is what keeps two guests tapping the same dish in the
+    // same second from becoming one event — without it the second write would
+    // overwrite the first and the count would silently be short.
+    await bucket.put(
+      statEventKey({ day: today(), restaurantId, dishId }, crypto.randomUUID()),
+      "",
     );
 
     return NextResponse.json({ ok: true });
   } catch {
     // A lost count is not worth an error in a guest's console. The dish may have
-    // been deleted a second ago, or the database may be waking up; either way
-    // the menu in front of them is fine and nothing here is worth telling them.
+    // been deleted a second ago, or R2 may be having a moment; either way the
+    // menu in front of them is fine and nothing here is worth telling them.
     return NextResponse.json({ ok: false }, { status: 202 });
   }
 }

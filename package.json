@@ -25,6 +25,7 @@
     "frank:theme:apply": "node node_modules/tsx/dist/cli.mjs scripts/apply-frank-theme.ts",
     "frank:theme:verify": "node node_modules/tsx/dist/cli.mjs scripts/verify-frank-theme.ts",
     "check:orders": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-orders-query.ts",
+    "check:stats": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-stats-buffer.ts",
     "check:qr": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-qr-token.ts",
     "check:menu": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-menu-query.ts",
     "check:snapshot": "node --env-file=.env node_modules/tsx/dist/cli.mjs scripts/check-snapshot.ts",
