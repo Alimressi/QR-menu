@@ -899,6 +899,34 @@ async function runCheck(
       if (warnings.length > 0) {
         await sendTelegram(env, `⚠️ <b>QR Menu — worth looking at</b>\n\n${warnings.join("\n")}`);
         lines.push(`warnings sent: ${warnings.length}`);
+      } else if (new Date().getUTCDay() === 1) {
+        // Monday, and nothing is wrong. Say so anyway, once a week.
+        //
+        // This worker went quiet for three weeks and was right to: after the
+        // snapshot and counter work there was nothing above a threshold. But
+        // silence from a thing that only speaks on bad news is unreadable — a
+        // healthy monitor and a monitor with a revoked bot token produce
+        // exactly the same inbox, and the owner has no way to tell which he is
+        // looking at until the night something breaks and nobody is told.
+        //
+        // One line a week is cheap enough not to be ignored and regular enough
+        // that its absence means something.
+        // Carries a figure rather than just "fine": a heartbeat nobody can
+        // check is only half a heartbeat, and the compute reading is the one
+        // number that going stale would otherwise hide.
+        const sample = (await env.MONITOR_STATE.get(COMPUTE_SAMPLE_KEY, "json")) as
+          | { at: number; hours: number }
+          | null;
+
+        const compute = sample
+          ? `Neon ${sample.hours.toFixed(1)}/${CU_HOURS_LIMIT} CU-hours, read ${Math.round((Date.now() - sample.at) / 3_600_000)}h ago.`
+          : "No Neon reading yet.";
+
+        await sendTelegram(
+          env,
+          `✅ <b>QR Menu</b>\n\nNothing to report. ${slugs.length} menus answering. ${compute}`,
+        );
+        lines.push("weekly heartbeat sent");
       } else {
         lines.push("warnings: none");
       }
