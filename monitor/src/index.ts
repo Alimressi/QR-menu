@@ -259,17 +259,27 @@ async function neonWarnings(env: Env): Promise<string[]> {
     };
   };
   const project = body.project;
+  const seconds = project?.compute_time_seconds;
+  const periodEnd = project?.consumption_period_end;
 
-  if (!project?.compute_time_seconds || !project.consumption_period_start || !project.consumption_period_end) {
-    return [];
+  // `=== undefined`, not a falsy check.
+  //
+  // A billing period that has just rolled over reports zero compute, and `!0`
+  // is true — so the previous guard returned here, wrote no sample and said
+  // nothing, on the first mornings of every month. A usage check that goes
+  // quiet exactly when the numbers reset is the failure this worker exists to
+  // catch, and it is invisible: no error, no message, just a stale reading that
+  // looks like a current one.
+  //
+  // Missing fields now produce a line rather than silence, for the same reason.
+  if (seconds === undefined || !periodEnd) {
+    return ["🗄 Neon answered without usage figures — compute is not being tracked until that changes."];
   }
 
-  const used = project.compute_time_seconds / 3600;
-  const start = new Date(project.consumption_period_start).getTime();
-  const end = new Date(project.consumption_period_end).getTime();
-  const elapsed = Date.now() - start;
+  const used = seconds / 3600;
+  const end = new Date(periodEnd).getTime();
 
-  const transferGb = (project.data_transfer_bytes ?? 0) / 1024 ** 3;
+  const transferGb = (project?.data_transfer_bytes ?? 0) / 1024 ** 3;
 
   const previous = (await env.MONITOR_STATE.get(COMPUTE_SAMPLE_KEY, "json")) as
     | { at: number; hours: number; transferGb?: number }
@@ -288,6 +298,14 @@ async function neonWarnings(env: Env): Promise<string[]> {
   }
 
   const perDay = ((used - previous.hours) / sinceSample) * 86_400_000;
+
+  // The counter went backwards, so the billing period rolled over between the
+  // two samples and they measure different months. Any rate from that pair is
+  // meaningless — wait for the next one rather than report a negative day.
+  if (perDay < 0) {
+    return [];
+  }
+
   const daysLeft = (end - Date.now()) / 86_400_000;
   const projected = used + Math.max(0, perDay) * daysLeft;
 
